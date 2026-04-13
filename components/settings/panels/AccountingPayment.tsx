@@ -5,7 +5,7 @@ import {
   CreditCard, Plus, X, Check, Clock, MoreHorizontal, Settings,
 } from "lucide-react";
 import { useSettingsStore, type PaymentMethod as StorePaymentMethod } from "@/lib/settings-store";
-import { useFocusPulse, useScrollOnFocus } from "@/lib/settings-events";
+import { useScrollOnFocus } from "@/lib/settings-events";
 
 /* ═══════════════════════════════════════
    Panel-side enriched row shape — store 의 (active, monthlyLimit) 에
@@ -19,8 +19,6 @@ interface PaymentRow extends StorePaymentMethod {
   usagePercent: string;
   resetCycle: string;
 }
-
-const PULSE_SHADOW = "rgba(99,102,241,0.5) 0px 0px 0px 2px, rgba(99,102,241,0.15) 0px 6px 20px";
 
 function toRow(m: StorePaymentMethod): PaymentRow {
   return {
@@ -249,21 +247,16 @@ function PaymentRowView({
   onSettings: () => void;
   onDelete: () => void;
 }) {
-  const idPulse = useFocusPulse(`payment.${m.id}`);
-  const listPulse = useFocusPulse("payment.list");
-  const pulse = idPulse || listPulse;
   const ref = useRef<HTMLDivElement>(null);
   useScrollOnFocus(`payment.${m.id}`, ref);
 
   return (
     <div
       ref={ref}
-      className="grid items-center px-5 py-3.5 text-[13px] transition-all duration-300 hover:bg-[#fafafa] relative scroll-mt-16"
+      className="grid items-center px-5 py-3.5 text-[13px] hover:bg-[#fafafa] relative scroll-mt-16"
       style={{
         gridTemplateColumns: "100px 1fr 110px 130px 100px 110px 110px 40px",
         borderBottom: "1px solid rgba(0,0,0,0.04)",
-        boxShadow: pulse ? PULSE_SHADOW : undefined,
-        borderRadius: pulse ? "10px" : undefined,
       }}
     >
       <span className="text-[12px] text-[#999]">{m.type}</span>

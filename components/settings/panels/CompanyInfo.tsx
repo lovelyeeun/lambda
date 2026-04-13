@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSettingsStore, type CompanyField } from "@/lib/settings-store";
-import { useFocusPulse, useScrollOnFocus } from "@/lib/settings-events";
-
-const PULSE_RING = "rgba(99,102,241,0.55) 0px 0px 0px 2px";
+import { useScrollOnFocus } from "@/lib/settings-events";
 
 const FIELD_ORDER: { key: CompanyField; label: string }[] = [
   { key: "bizNumber", label: "사업자등록번호" },
@@ -81,7 +79,6 @@ function CompanyFieldRow({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const pulse = useFocusPulse(`company.field.${fieldKey}`);
   const ref = useRef<HTMLDivElement>(null);
   useScrollOnFocus(`company.field.${fieldKey}`, ref);
   return (
@@ -92,14 +89,12 @@ function CompanyFieldRow({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         readOnly={!editing}
-        className="w-full px-3.5 py-2.5 text-[14px] outline-none transition-all duration-300"
+        className="w-full px-3.5 py-2.5 text-[14px] outline-none"
         style={{
           borderRadius: "10px",
-          boxShadow: pulse
-            ? PULSE_RING
-            : editing
-              ? "rgba(0,0,0,0.06) 0px 0px 0px 1px"
-              : "rgba(0,0,0,0.04) 0px 0px 0px 1px",
+          boxShadow: editing
+            ? "rgba(0,0,0,0.06) 0px 0px 0px 1px"
+            : "rgba(0,0,0,0.04) 0px 0px 0px 1px",
           backgroundColor: editing ? "#fff" : "#fafafa",
           color: editing ? "#000" : "#444",
           cursor: editing ? "text" : "default",

@@ -3,14 +3,12 @@
 import { useRef, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useSettingsStore } from "@/lib/settings-store";
-import { useFocusPulse, useScrollOnFocus } from "@/lib/settings-events";
+import { useScrollOnFocus } from "@/lib/settings-events";
 import ShippingAddressModal, {
   addressToDraft,
   emptyShippingDraft,
   type ShippingDraft,
 } from "@/components/settings/ShippingAddressModal";
-
-const PULSE_SHADOW = "rgba(99,102,241,0.5) 0px 0px 0px 2px, rgba(99,102,241,0.15) 0px 6px 20px";
 
 export default function CompanyShipping() {
   const { shipping, addShipping, removeShipping, setDefaultShipping, updateShipping } = useSettingsStore();
@@ -101,19 +99,15 @@ function ShippingRow({
   onEdit: () => void;
   onRemove: () => void;
 }) {
-  const idPulse = useFocusPulse(`shipping.${id}`);
-  const listPulse = useFocusPulse("shipping.list");
-  const pulse = idPulse || listPulse;
   const ref = useRef<HTMLDivElement>(null);
   useScrollOnFocus(`shipping.${id}`, ref);
   return (
     <div
       ref={ref}
-      className="flex items-start gap-3 p-4 transition-all duration-300 scroll-mt-16"
+      className="flex items-start gap-3 p-4 scroll-mt-16"
       style={{
         borderRadius: "12px",
-        boxShadow: pulse ? PULSE_SHADOW : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
-        transform: pulse ? "scale(1.01)" : "scale(1)",
+        boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
       }}
     >
       <div className="flex-1">

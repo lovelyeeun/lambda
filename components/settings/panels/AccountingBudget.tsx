@@ -3,18 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useSettingsStore } from "@/lib/settings-store";
-import { useFocusPulse, useLastFocus, useScrollOnFocus } from "@/lib/settings-events";
+import { useLastFocus, useScrollOnFocus } from "@/lib/settings-events";
 
 function formatPrice(n: number) { return (n / 10000).toLocaleString() + "만원"; }
-
-const PULSE_SHADOW = "rgba(99,102,241,0.5) 0px 0px 0px 2px, rgba(99,102,241,0.15) 0px 6px 20px";
 
 export default function AccountingBudget() {
   const { budget, setCarryOver, setRenewPeriod, totalAnnual, totalUsed } = useSettingsStore();
   const [expanded, setExpanded] = useState<string | null>("경영지원");
   const [toast, setToast] = useState<string | null>(null);
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
-  const totalPulse = useFocusPulse("budget.total");
   const totalRef = useRef<HTMLDivElement>(null);
   useScrollOnFocus("budget.total", totalRef);
   const lastFocus = useLastFocus();
@@ -33,10 +30,10 @@ export default function AccountingBudget() {
       {/* Total */}
       <div
         ref={totalRef}
-        className="p-4 mb-4 transition-all duration-300 scroll-mt-16"
+        className="p-4 mb-4 scroll-mt-16"
         style={{
           borderRadius: "14px",
-          boxShadow: totalPulse ? PULSE_SHADOW : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+          boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
         }}
       >
         <div className="flex justify-between text-[13px] mb-2"><span className="text-[#777]">연간 총 예산</span><span className="font-semibold text-[16px]">{formatPrice(totalAnnual)}</span></div>
@@ -96,7 +93,6 @@ function DepartmentRow({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const pulse = useFocusPulse(`budget.dept.${dept.name}`);
   const ref = useRef<HTMLDivElement>(null);
   useScrollOnFocus(`budget.dept.${dept.name}`, ref);
   const pct = dept.annual > 0 ? Math.round((dept.used / dept.annual) * 100) : 0;
@@ -104,11 +100,10 @@ function DepartmentRow({
   return (
     <div
       ref={ref}
-      className="overflow-hidden transition-all duration-300 scroll-mt-16"
+      className="overflow-hidden scroll-mt-16"
       style={{
         borderRadius: "12px",
-        boxShadow: pulse ? PULSE_SHADOW : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
-        transform: pulse ? "scale(1.01)" : "scale(1)",
+        boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
       }}
     >
       <button

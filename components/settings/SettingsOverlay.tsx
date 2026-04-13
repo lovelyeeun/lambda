@@ -87,10 +87,15 @@ function SettingsOverlayInner() {
   const isOtherForm = section ? !!otherFormPanels[section] : false;
   const OtherPanel = section && isOtherForm ? otherFormPanels[section] : null;
 
-  // 반반이 기본이므로 카드 열렸을 때 강제 min(560) 제거 — 사용자 조정값 존중
-  const expandedWidth = rightWidth;
-  const dashboardMinWidth = activeCardPanel ? 440 : 340;
+  /* 패널별 권장 최소 너비 — 결제수단처럼 컬럼이 많은 표는 760 이상 필요 */
+  const PANEL_MIN_WIDTH: Record<string, number> = {
+    "accounting-payment": 760,
+  };
+  const panelMin = section ? PANEL_MIN_WIDTH[section] ?? 440 : 340;
+  const dashboardMinWidth = activeCardPanel ? panelMin : 340;
   const dashboardMaxWidth = activeCardPanel ? 920 : 720;
+  // 사용자 조정값을 존중하되 패널 최소 너비는 강제 보장
+  const expandedWidth = Math.max(rightWidth, dashboardMinWidth);
 
   return (
     <div className="fixed inset-0 z-50 flex">
