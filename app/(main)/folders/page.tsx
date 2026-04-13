@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Paperclip, Monitor, Armchair, Coffee, Search,
-  ChevronDown, Settings, Users, TrendingDown, Plus,
+  ChevronDown, ChevronRight, Settings, Users, TrendingDown, Plus,
   ShoppingCart, ShoppingBag,
+  FileText, Droplet, Pen, Printer, Square, Folder as FolderIcon,
 } from "lucide-react";
-import { folders } from "@/data/folders";
+import { folders as seedFolders } from "@/data/folders";
 import { products } from "@/data/products";
 import { useCart } from "@/lib/cart-context";
 import CartSidePanel from "@/components/commerce/CartSidePanel";
-import type { Product, ProductCategory } from "@/lib/types";
+import type { Folder, Product, ProductCategory } from "@/lib/types";
 
 /* ─── Icon map ─── */
 const iconMap: Record<string, React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }>> = {
   Paperclip, Monitor, Armchair, Coffee,
+  FileText, Droplet, Pen, Printer, Square,
+  FolderIcon,
 };
 
 /* ─── Source styles ─── */
@@ -65,17 +68,104 @@ const insights: Record<string, { team: string; freq: string; benchmark: string }
    Main Component
    ═══════════════════════════════════════ */
 
+/* ─── Folder tree helpers ─── */
+function findFolderDeep(list: Folder[], id: string): Folder | undefined {
+  for (const f of list) {
+    if (f.id === id) return f;
+    if (f.children) {
+      const hit = findFolderDeep(f.children, id);
+      if (hit) return hit;
+    }
+  }
+  return undefined;
+}
+
+function addFolderToTree(list: Folder[], parentId: string, newFolder: Folder): Folder[] {
+  return list.map((f) => {
+    if (f.id === parentId) {
+      return { ...f, children: [...(f.children ?? []), newFolder] };
+    }
+    if (f.children) {
+      return { ...f, children: addFolderToTree(f.children, parentId, newFolder) };
+    }
+    return f;
+  });
+}
+
+/** 주어진 id의 모든 조상 폴더 id를 루트→직계부모 순으로 반환 (대상 자신은 포함하지 않음) */
+function findAncestors(list: Folder[], id: string, trail: string[] = []): string[] {
+  for (const f of list) {
+    if (f.id === id) return trail;
+    if (f.children && f.children.length > 0) {
+      const hit = findAncestors(f.children, id, [...trail, f.id]);
+      if (hit.length > 0) return hit;
+    }
+  }
+  return [];
+}
+
 export default function FoldersPage() {
   const router = useRouter();
   const cart = useCart();
-  const [activeFolderId, setActiveFolderId] = useState(folders[0]?.id ?? "");
+  const [folders, setFolders] = useState<Folder[]>(() => seedFolders);
+  const [activeFolderId, setActiveFolderId] = useState(seedFolders[0]?.id ?? "");
   const [activeCategory, setActiveCategory] = useState<ProductCategory | "전체">("전체");
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   const [sortOpen, setSortOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [freeShippingOnly, setFreeShippingOnly] = useState(false);
+  // 펼쳐진 상위 폴더 — 기본: 첫 폴더만 펼침
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
+    const first = seedFolders[0];
+    return first?.children?.length ? { [first.id]: true } : {};
+  });
+  const toggleFolderExpand = (id: string) =>
+    setExpandedFolders((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const activeFolder = folders.find((f) => f.id === activeFolderId);
+  /* ── 폴더 추가 모달 상태 ── */
+  const [showAddFolderModal, setShowAddFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null); // null = 최상위
+  const folderIdCounter = useRef(100);
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2000);
+  };
+
+  const openAddFolderModal = () => {
+    // 현재 선택된 폴더를 부모로 기본 설정 (깊이 무관) — 선택 없으면 최상위
+    setNewFolderParentId(activeFolderId || null);
+    setNewFolderName("");
+    setShowAddFolderModal(true);
+  };
+
+  const handleCreateFolder = () => {
+    const name = newFolderName.trim();
+    if (!name) return;
+    const newId = `folder-new-${folderIdCounter.current++}`;
+    const newFolder: Folder = {
+      id: newId,
+      name,
+      icon: "FolderIcon",
+      productIds: [],
+      children: [],
+    };
+    if (newFolderParentId === null) {
+      setFolders((prev) => [...prev, newFolder]);
+    } else {
+      setFolders((prev) => addFolderToTree(prev, newFolderParentId, newFolder));
+      setExpandedFolders((prev) => ({ ...prev, [newFolderParentId]: true }));
+    }
+    setActiveFolderId(newId);
+    setActiveCategory("전체");
+    setSearchQuery("");
+    setFreeShippingOnly(false);
+    setShowAddFolderModal(false);
+    showToast(`"${name}" 폴더가 생성되었습니다`);
+  };
+
+  const activeFolder = findFolderDeep(folders, activeFolderId);
 
   const folderProducts = useMemo(() => {
     if (!activeFolder) return [];
@@ -110,6 +200,15 @@ export default function FoldersPage() {
     setActiveCategory("전체");
     setSearchQuery("");
     setFreeShippingOnly(false);
+    // 선택된 폴더의 모든 조상을 자동 펼침 (무제한 중첩 지원)
+    const ancestors = findAncestors(folders, id);
+    if (ancestors.length > 0) {
+      setExpandedFolders((prev) => {
+        const next = { ...prev };
+        for (const a of ancestors) next[a] = true;
+        return next;
+      });
+    }
   };
 
   return (
@@ -122,7 +221,12 @@ export default function FoldersPage() {
         <div className="flex items-center justify-between px-2 mb-3">
           <span className="text-[12px] font-semibold text-[#999] uppercase tracking-wider">폴더</span>
           <div className="flex items-center gap-1">
-            <button className="w-6 h-6 flex items-center justify-center rounded-md cursor-pointer hover:bg-[#eee] transition-colors">
+            <button
+              onClick={openAddFolderModal}
+              className="w-6 h-6 flex items-center justify-center rounded-md cursor-pointer hover:bg-[#eee] transition-colors"
+              aria-label="새 폴더 만들기"
+              title="새 폴더"
+            >
               <Plus size={13} strokeWidth={1.5} color="#999" />
             </button>
             <button className="w-6 h-6 flex items-center justify-center rounded-md cursor-pointer hover:bg-[#eee] transition-colors">
@@ -131,36 +235,17 @@ export default function FoldersPage() {
           </div>
         </div>
 
-        {folders.map((folder) => {
-          const Icon = iconMap[folder.icon] ?? Paperclip;
-          const isActive = folder.id === activeFolderId;
-          const count = folder.productIds.length;
-          return (
-            <button
-              key={folder.id}
-              onClick={() => selectFolder(folder.id)}
-              className="flex items-center gap-2.5 w-full px-3 py-[9px] rounded-lg text-[13px] cursor-pointer transition-all mb-0.5"
-              style={{
-                backgroundColor: isActive ? "#fff" : "transparent",
-                color: isActive ? "#111" : "#666",
-                fontWeight: isActive ? 500 : 400,
-                boxShadow: isActive ? "rgba(0,0,0,0.06) 0px 0px 0px 1px" : "none",
-              }}
-            >
-              <Icon size={15} strokeWidth={1.5} color={isActive ? "#333" : "#aaa"} />
-              <span className="flex-1 text-left truncate">{folder.name}</span>
-              <span
-                className="text-[10px] font-medium px-1.5 py-[1px] rounded-full"
-                style={{
-                  backgroundColor: isActive ? "#f0f0f0" : "rgba(0,0,0,0.04)",
-                  color: isActive ? "#444" : "#bbb",
-                }}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
+        {folders.map((folder) => (
+          <FolderRow
+            key={folder.id}
+            folder={folder}
+            depth={0}
+            activeFolderId={activeFolderId}
+            expandedFolders={expandedFolders}
+            onSelect={selectFolder}
+            onToggleExpand={toggleFolderExpand}
+          />
+        ))}
       </div>
 
       {/* ══ 중앙: 상품 그리드 ══ */}
@@ -316,6 +401,112 @@ export default function FoldersPage() {
 
       {/* ══ 우측: 장바구니 사이드 패널 ══ */}
       <CartSidePanel />
+
+      {/* ══ 새 폴더 모달 (설정-전체상품관리 UX 공유) ══ */}
+      {showAddFolderModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div
+            className="absolute inset-0 cursor-pointer"
+            style={{ backgroundColor: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }}
+            onClick={() => setShowAddFolderModal(false)}
+          />
+          <div
+            className="relative w-[380px] bg-white"
+            style={{
+              borderRadius: "18px",
+              boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px, rgba(0,0,0,0.15) 0px 16px 48px",
+            }}
+          >
+            <div className="px-6 pt-6 pb-2">
+              <h3 className="text-[16px] font-semibold text-[#111]">새 폴더</h3>
+              <p className="text-[12px] text-[#999] mt-1">
+                {newFolderParentId === null
+                  ? "최상위에 폴더가 생성됩니다"
+                  : `"${findFolderDeep(folders, newFolderParentId)?.name ?? ""}" 하위에 생성됩니다`}
+              </p>
+            </div>
+
+            {/* 위치 선택 — 전체 트리에서 부모 선택 가능 (무제한 중첩) */}
+            <div className="px-6 pt-2 pb-3">
+              <p className="text-[11px] font-medium text-[#888] mb-2" style={{ letterSpacing: "0.14px" }}>
+                위치
+              </p>
+              <div className="flex flex-col gap-0.5 max-h-[240px] overflow-y-auto">
+                <button
+                  onClick={() => setNewFolderParentId(null)}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-[12.5px] rounded-lg text-left cursor-pointer hover:bg-[#fafafa] transition-colors"
+                  style={{
+                    backgroundColor: newFolderParentId === null ? "#f5f5f5" : "transparent",
+                    color: newFolderParentId === null ? "#111" : "#666",
+                    fontWeight: newFolderParentId === null ? 500 : 400,
+                    boxShadow: newFolderParentId === null ? "rgba(0,0,0,0.06) 0px 0px 0px 1px" : "none",
+                  }}
+                >
+                  <FolderIcon size={13} strokeWidth={1.5} color={newFolderParentId === null ? "#333" : "#aaa"} />
+                  최상위
+                </button>
+                {folders.map((f) => (
+                  <ParentPickerRow
+                    key={f.id}
+                    folder={f}
+                    depth={0}
+                    selectedId={newFolderParentId}
+                    onSelect={setNewFolderParentId}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* 이름 입력 */}
+            <div className="px-6 pt-2 pb-4">
+              <p className="text-[11px] font-medium text-[#888] mb-2" style={{ letterSpacing: "0.14px" }}>
+                이름
+              </p>
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateFolder();
+                  if (e.key === "Escape") setShowAddFolderModal(false);
+                }}
+                placeholder="폴더 이름을 입력하세요"
+                className="w-full px-3 py-2.5 text-[13px] rounded-lg outline-none bg-white"
+                style={{ boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1.5px" }}
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-6 pb-6">
+              <button
+                onClick={() => setShowAddFolderModal(false)}
+                className="px-4 py-[8px] text-[13px] text-[#777] rounded-lg cursor-pointer hover:bg-[#f0f0f0]"
+                style={{ boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateFolder}
+                disabled={!newFolderName.trim()}
+                className="px-4 py-[8px] text-[13px] text-white font-medium rounded-lg cursor-pointer hover:opacity-80 disabled:cursor-not-allowed"
+                style={{ backgroundColor: newFolderName.trim() ? "#111" : "#ccc" }}
+              >
+                생성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ Toast ══ */}
+      {toast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 bg-[#1a1a1a] text-white text-[13px] font-medium"
+          style={{ borderRadius: "10px" }}
+        >
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
@@ -326,5 +517,153 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
       {label}
       {active && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-[#111]" style={{ width: "calc(100% - 16px)", borderRadius: "1px" }} />}
     </button>
+  );
+}
+
+/* ═══════════════════════════════════════
+   ParentPickerRow — 새 폴더 모달의 부모 선택 트리 행 (재귀)
+   ═══════════════════════════════════════ */
+
+function ParentPickerRow({
+  folder,
+  depth,
+  selectedId,
+  onSelect,
+}: {
+  folder: Folder;
+  depth: number;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const ParentIcon = iconMap[folder.icon] ?? FolderIcon;
+  const selected = selectedId === folder.id;
+  return (
+    <>
+      <button
+        onClick={() => onSelect(folder.id)}
+        className="flex items-center gap-2 w-full py-2 pr-3 text-[12.5px] rounded-lg text-left cursor-pointer hover:bg-[#fafafa] transition-colors"
+        style={{
+          paddingLeft: `${12 + depth * 14}px`,
+          backgroundColor: selected ? "#f5f5f5" : "transparent",
+          color: selected ? "#111" : "#666",
+          fontWeight: selected ? 500 : 400,
+          boxShadow: selected ? "rgba(0,0,0,0.06) 0px 0px 0px 1px" : "none",
+        }}
+      >
+        <ParentIcon size={13} strokeWidth={1.5} color={selected ? "#333" : "#aaa"} />
+        <span className="flex-1 truncate">{folder.name}</span>
+        <span className="text-[10px] text-[#bbb]">하위</span>
+      </button>
+      {folder.children?.map((c) => (
+        <ParentPickerRow key={c.id} folder={c} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
+      ))}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════
+   FolderRow — 폴더 트리의 한 행 (무제한 중첩 지원)
+   ═══════════════════════════════════════ */
+
+function FolderRow({
+  folder,
+  depth,
+  activeFolderId,
+  expandedFolders,
+  onSelect,
+  onToggleExpand,
+}: {
+  folder: Folder;
+  depth: number;
+  activeFolderId: string;
+  expandedFolders: Record<string, boolean>;
+  onSelect: (id: string) => void;
+  onToggleExpand: (id: string) => void;
+}) {
+  const Icon = iconMap[folder.icon] ?? Paperclip;
+  const isActive = folder.id === activeFolderId;
+  const hasChildren = !!folder.children && folder.children.length > 0;
+  const isExpanded = !!expandedFolders[folder.id];
+  const count = folder.productIds.length;
+
+  return (
+    <>
+      <div
+        className="flex items-center w-full rounded-lg text-[13px] transition-all mb-0.5"
+        style={{
+          backgroundColor: isActive ? "#fff" : "transparent",
+          color: isActive ? "#111" : "#666",
+          fontWeight: isActive ? 500 : 400,
+          boxShadow: isActive ? "rgba(0,0,0,0.06) 0px 0px 0px 1px" : "none",
+          paddingLeft: depth > 0 ? `${depth * 14}px` : undefined,
+        }}
+      >
+        {/* 펼침 토글 (자식 없으면 간격만 유지) */}
+        {hasChildren ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand(folder.id);
+            }}
+            className="w-5 h-7 flex items-center justify-center rounded cursor-pointer hover:bg-[#eee] transition-colors shrink-0"
+            aria-label={isExpanded ? "하위 폴더 접기" : "하위 폴더 펼치기"}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? (
+              <ChevronDown size={12} strokeWidth={1.8} color="#888" />
+            ) : (
+              <ChevronRight size={12} strokeWidth={1.8} color="#888" />
+            )}
+          </button>
+        ) : (
+          <span className="w-5 shrink-0" aria-hidden="true" />
+        )}
+
+        {/* 폴더 본체 */}
+        <button
+          onClick={() => onSelect(folder.id)}
+          className="flex items-center gap-2 flex-1 min-w-0 pl-1 pr-3 py-[8px] text-left cursor-pointer"
+        >
+          <Icon size={depth === 0 ? 15 : 13} strokeWidth={1.5} color={isActive ? "#333" : "#aaa"} />
+          <span className="flex-1 text-left truncate">{folder.name}</span>
+          <span
+            className="text-[10px] font-medium px-1.5 py-[1px] rounded-full shrink-0"
+            style={{
+              backgroundColor: isActive ? "#f0f0f0" : "rgba(0,0,0,0.04)",
+              color: isActive ? "#444" : "#bbb",
+            }}
+          >
+            {count}
+          </span>
+        </button>
+      </div>
+
+      {/* 하위 폴더 */}
+      {hasChildren && isExpanded && (
+        <div className="relative">
+          {/* 들여쓰기 가이드 라인 */}
+          <div
+            className="absolute top-0 bottom-0"
+            style={{
+              left: `${depth * 14 + 14}px`,
+              width: "1px",
+              backgroundColor: "rgba(0,0,0,0.06)",
+            }}
+            aria-hidden="true"
+          />
+          {folder.children!.map((child) => (
+            <FolderRow
+              key={child.id}
+              folder={child}
+              depth={depth + 1}
+              activeFolderId={activeFolderId}
+              expandedFolders={expandedFolders}
+              onSelect={onSelect}
+              onToggleExpand={onToggleExpand}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
