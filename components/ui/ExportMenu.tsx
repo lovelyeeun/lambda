@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 const exportOptions = [
   {
@@ -50,17 +51,45 @@ interface ExportMenuProps {
 
 export default function ExportMenu({ onExport }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Compute fixed-position coords (open upward, right-aligned to trigger)
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const menuWidth = 180;
+    const menuHeightEstimate = 4 + 36 * 4; // py-1 + 4 items
+    setCoords({
+      top: rect.top - menuHeightEstimate - 4,
+      left: rect.right - menuWidth,
+    });
+  }, [open]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        ref.current && !ref.current.contains(target) &&
+        menuRef.current && !menuRef.current.contains(target)
+      ) {
         setOpen(false);
       }
     }
+    function handleReposition() {
+      setOpen(false);
+    }
     if (open) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      window.addEventListener("scroll", handleReposition, true);
+      window.addEventListener("resize", handleReposition);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        window.removeEventListener("scroll", handleReposition, true);
+        window.removeEventListener("resize", handleReposition);
+      };
     }
   }, [open]);
 
@@ -68,6 +97,7 @@ export default function ExportMenu({ onExport }: ExportMenuProps) {
     <div ref={ref} className="relative inline-flex">
       {/* Trigger */}
       <button
+        ref={triggerRef}
         onClick={() => setOpen(!open)}
         className="inline-flex items-center gap-1.5 px-3 py-[6px] text-[13px] font-medium text-[#4e4e4e] bg-white cursor-pointer transition-colors hover:bg-[#f5f5f5]"
         style={{
@@ -87,11 +117,14 @@ export default function ExportMenu({ onExport }: ExportMenuProps) {
         </svg>
       </button>
 
-      {/* Dropdown */}
-      {open && (
+      {/* Dropdown — portal to escape overflow clipping of right panel */}
+      {open && coords && typeof document !== "undefined" && createPortal(
         <div
-          className="absolute top-full right-0 mt-1 w-[180px] bg-white py-1 z-50"
+          ref={menuRef}
+          className="fixed w-[180px] bg-white py-1 z-[1000]"
           style={{
+            top: coords.top,
+            left: coords.left,
             borderRadius: "10px",
             boxShadow:
               "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px, rgba(0,0,0,0.04) 0px 2px 4px, rgba(0,0,0,0.04) 0px 4px 8px",
@@ -111,7 +144,8 @@ export default function ExportMenu({ onExport }: ExportMenuProps) {
               {opt.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
