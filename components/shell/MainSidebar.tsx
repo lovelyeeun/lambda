@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   MessageSquarePlus,
-  Sparkles,
   FolderOpen,
   Activity,
   BarChart3,
@@ -152,20 +151,6 @@ export default function MainSidebar() {
         >
           <MessageSquarePlus size={16} strokeWidth={1.5} />
           새 채팅
-        </Link>
-        <Link
-          href="/chat/demo"
-          className="flex items-center gap-2.5 w-full px-3.5 py-[7px] rounded-[10px] text-[12px] font-medium cursor-pointer transition-all hover:bg-[#f8f8f8] mt-1.5"
-          style={{
-            letterSpacing: "0.14px",
-            backgroundColor: pathname === "/chat/demo" ? "rgba(99,102,241,0.06)" : "transparent",
-            color: pathname === "/chat/demo" ? "#6366f1" : "#999",
-            border: "1px dashed",
-            borderColor: pathname === "/chat/demo" ? "rgba(99,102,241,0.3)" : "rgba(0,0,0,0.08)",
-          }}
-        >
-          <Sparkles size={14} strokeWidth={1.5} />
-          구매 플로우 데모
         </Link>
       </div>
 
