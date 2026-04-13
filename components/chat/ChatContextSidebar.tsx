@@ -5,7 +5,7 @@ import {
   Search, Database, Building2, Globe, Package, Clock,
   Check, ChevronDown, ChevronRight, MapPin, CreditCard,
   PiggyBank, Bot, Sparkles, FileText, ExternalLink,
-  TrendingDown, ShoppingCart, Eye, Loader2, Zap,
+  TrendingDown, ShoppingCart, Eye, Loader2, Zap, ArrowRight,
 } from "lucide-react";
 import type { SourcedProduct } from "./SourcedProductCard";
 import type { CartItem } from "@/components/commerce/CartPanel";
@@ -47,6 +47,8 @@ interface ChatContextSidebarProps {
   context: ContextInfo;
   /* 콜백 */
   onProductClick?: (product: SourcedProduct) => void;
+  /* 플로우 상세 패널 열기 (flowActive일 때만 전달) */
+  onOpenFlow?: () => void;
 }
 
 /* ═══════════════════════════════════════
@@ -78,6 +80,7 @@ export default function ChatContextSidebar({
   cart,
   context,
   onProductClick,
+  onOpenFlow,
 }: ChatContextSidebarProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     progress: true,
@@ -95,27 +98,29 @@ export default function ChatContextSidebar({
   const budgetRemaining = context.budget.monthly - context.budget.used;
 
   return (
-    <div className="flex flex-col h-full bg-[#fafafa] overflow-hidden" style={{ borderLeft: "1px solid rgba(0,0,0,0.05)" }}>
-      {/* 헤더 */}
-      <div className="px-4 py-3 shrink-0" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-        <div className="flex items-center gap-2">
-          <Eye size={14} strokeWidth={1.5} color="#6366f1" />
-          <span className="text-[13px] font-semibold text-[#333]">구매 컨텍스트</span>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col">
+      <div className="flex flex-col">
         {/* ═══ 1. 진행상황 ═══ */}
         <SectionHeader
           title="진행상황"
           icon={<Zap size={12} strokeWidth={1.5} color="#6366f1" />}
           expanded={expandedSections.progress}
           onToggle={() => toggleSection("progress")}
-          badge={currentPhase !== "idle" ? currentPhase : undefined}
-          badgeColor="#6366f1"
+          rightAction={
+            onOpenFlow ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenFlow(); }}
+                className="inline-flex items-center gap-0.5 px-1.5 py-[2px] text-[10px] font-medium text-[#6366f1] cursor-pointer transition-colors hover:bg-[rgba(99,102,241,0.08)]"
+                style={{ borderRadius: "6px", letterSpacing: "0.14px" }}
+              >
+                상세보기
+                <ArrowRight size={10} strokeWidth={2} />
+              </button>
+            ) : undefined
+          }
         />
         {expandedSections.progress && (
-          <div className="px-4 pb-3">
+          <div className="px-1 pt-2 pb-3">
             {currentPhase === "idle" ? (
               <p className="text-[11px] text-[#bbb] py-2">구매 요청을 시작하면 진행 상태가 여기에 표시됩니다</p>
             ) : (
@@ -126,9 +131,10 @@ export default function ChatContextSidebar({
                   const isDone = stepIdx < currentPhaseIdx;
                   const isFuture = stepIdx > currentPhaseIdx;
                   const Icon = step.icon;
+                  const isClickable = isActive && !!onOpenFlow;
 
-                  return (
-                    <div key={step.key} className="flex items-center gap-2.5 py-[5px]">
+                  const rowContent = (
+                    <>
                       <div
                         className="w-5 h-5 shrink-0 flex items-center justify-center rounded-full"
                         style={{
@@ -152,11 +158,32 @@ export default function ChatContextSidebar({
                       >
                         {step.label}
                       </span>
-                      {isActive && (
+                      {isActive && !isClickable && (
                         <span className="ml-auto">
                           <Loader2 size={10} strokeWidth={2} color="#6366f1" className="animate-spin" />
                         </span>
                       )}
+                      {isClickable && (
+                        <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium text-[#6366f1] opacity-0 group-hover:opacity-100 transition-opacity">
+                          상세보기
+                          <ArrowRight size={10} strokeWidth={2} />
+                        </span>
+                      )}
+                    </>
+                  );
+
+                  return isClickable ? (
+                    <button
+                      key={step.key}
+                      onClick={onOpenFlow}
+                      className="group flex items-center gap-2.5 py-[5px] px-1.5 -mx-1.5 cursor-pointer transition-colors hover:bg-[rgba(99,102,241,0.06)]"
+                      style={{ borderRadius: "6px" }}
+                    >
+                      {rowContent}
+                    </button>
+                  ) : (
+                    <div key={step.key} className="flex items-center gap-2.5 py-[5px]">
+                      {rowContent}
                     </div>
                   );
                 })}
@@ -174,7 +201,7 @@ export default function ChatContextSidebar({
           count={searchRecords.length}
         />
         {expandedSections.search && (
-          <div className="px-4 pb-3">
+          <div className="px-1 pt-2 pb-3">
             {searchRecords.length === 0 ? (
               <p className="text-[11px] text-[#bbb] py-2">검색 기록이 없습니다</p>
             ) : (
@@ -232,7 +259,7 @@ export default function ChatContextSidebar({
               count={extractedProducts.length + candidateProducts.length}
             />
             {expandedSections.extracted && (
-              <div className="px-4 pb-3">
+              <div className="px-1 pt-2 pb-3">
                 {/* ── 선정 상품 ── */}
                 {extractedProducts.length > 0 && (
                   <div className="mb-3">
@@ -287,7 +314,7 @@ export default function ChatContextSidebar({
           onToggle={() => toggleSection("context")}
         />
         {expandedSections.context && (
-          <div className="px-4 pb-4">
+          <div className="px-1 pt-2 pb-2">
             <div className="flex flex-col gap-2.5">
               {/* 예산 */}
               <ContextCard icon={<PiggyBank size={13} strokeWidth={1.5} color="#f59e0b" />} title="이번 달 예산">
@@ -376,6 +403,7 @@ function SectionHeader({
   count,
   badge,
   badgeColor,
+  rightAction,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -384,15 +412,24 @@ function SectionHeader({
   count?: number;
   badge?: string;
   badgeColor?: string;
+  rightAction?: React.ReactNode;
 }) {
   return (
-    <button
-      onClick={onToggle}
-      className="w-full flex items-center gap-2 px-4 py-2.5 cursor-pointer transition-colors hover:bg-[#f0f0f0]"
-      style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
+    <div
+      className="w-full flex items-center gap-2 px-1 py-2.5 transition-colors hover:bg-[#f5f2ef]/40"
+      style={{ borderBottom: "1px solid rgba(0,0,0,0.04)", borderRadius: "4px" }}
     >
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
+      >
       {icon}
-      <span className="text-[11px] font-semibold text-[#555] uppercase tracking-wider">{title}</span>
+      <span
+        className="text-[12px] font-medium text-[#000]"
+        style={{ letterSpacing: "0.14px" }}
+      >
+        {title}
+      </span>
       {count != null && count > 0 && (
         <span className="text-[9px] font-medium px-1.5 py-[1px] bg-[#f0f0f0] text-[#999]" style={{ borderRadius: "4px" }}>
           {count}
@@ -406,12 +443,20 @@ function SectionHeader({
           {badge}
         </span>
       )}
-      <ChevronDown
-        size={12} strokeWidth={1.5} color="#bbb"
-        className="ml-auto transition-transform"
-        style={{ transform: expanded ? "rotate(0)" : "rotate(-90deg)" }}
-      />
-    </button>
+      </button>
+      {rightAction && <div className="shrink-0">{rightAction}</div>}
+      <button
+        onClick={onToggle}
+        className="shrink-0 flex items-center justify-center cursor-pointer"
+        aria-label={expanded ? "접기" : "펼치기"}
+      >
+        <ChevronDown
+          size={12} strokeWidth={1.5} color="#bbb"
+          className="transition-transform"
+          style={{ transform: expanded ? "rotate(0)" : "rotate(-90deg)" }}
+        />
+      </button>
+    </div>
   );
 }
 
