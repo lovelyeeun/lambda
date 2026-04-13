@@ -9,6 +9,8 @@ import type { ChatMessage, Product, WorkItem, WorkItemSnapshot, WorkItemStatus }
 import { products } from "@/data/products";
 import { chats } from "@/data/chats";
 import { useRightPanel } from "@/lib/right-panel-context";
+import { useSettings } from "@/lib/settings-context";
+import { useRouter } from "next/navigation";
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";
 import ProductRecommendCard from "./ProductRecommendCard";
@@ -419,6 +421,8 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const bottomRef = useRef<HTMLDivElement>(null);
   const responseIdx = useRef(0);
   const { openPanel, closePanel, open: panelOpen, contentKey, setWorkItemStrip } = useRightPanel();
+  const { openSettings } = useSettings();
+  const router = useRouter();
 
   const totalPrice = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
 
@@ -1005,12 +1009,16 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         onProductClick={handleSourcedSelect}
         onOpenFlow={flowActive ? () => openFlowRef.current() : undefined}
         progressNotification={hasUnviewedProgress}
+        onOpenBudget={() => router.push("/cost-intel")}
+        onOpenShipping={() => openSettings("company-shipping")}
+        onOpenPayment={() => openSettings("accounting-payment")}
+        onOpenOrders={() => router.push("/orders")}
       />,
       "chat-context",
       { label: "구매 컨텍스트" },  // 루트 — onBack 없음
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openPanel, sidebarPhase, searchRecords, sourcedProducts, candidateProducts, cart, flowActive, hasUnviewedProgress]);
+  }, [openPanel, sidebarPhase, searchRecords, sourcedProducts, candidateProducts, cart, flowActive, hasUnviewedProgress, router, openSettings]);
 
   // ref 동기화 (순환 참조 / forward 참조 해소)
   useEffect(() => { openContextRef.current = openContext; }, [openContext]);

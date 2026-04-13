@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   Search, Package, Clock, Check, ChevronDown,
   MapPin, CreditCard, PiggyBank, Bot, Sparkles, FileText,
-  TrendingDown, ShoppingCart, Loader2, Zap, ArrowRight,
+  TrendingDown, ShoppingCart, Loader2, Zap, ArrowRight, ArrowUpRight,
 } from "lucide-react";
 import type { SourcedProduct } from "./SourcedProductCard";
 import type { CartItem } from "@/components/commerce/CartPanel";
@@ -42,6 +42,11 @@ interface ChatContextSidebarProps {
   onOpenFlow?: () => void;
   /** 플로우 진행 상태에 확인하지 않은 변화가 있을 때 "진행 상황" 섹션에 알림 dot 표시 */
   progressNotification?: boolean;
+  /** 외부 페이지 점프 핸들러 — 각각 /cost-intel / /orders / settings(deep link) 로 연결 */
+  onOpenBudget?: () => void;
+  onOpenShipping?: () => void;
+  onOpenPayment?: () => void;
+  onOpenOrders?: () => void;
 }
 
 /* ═══════════════════════════════════════
@@ -77,6 +82,10 @@ export default function ChatContextSidebar({
   onProductClick,
   onOpenFlow,
   progressNotification = false,
+  onOpenBudget,
+  onOpenShipping,
+  onOpenPayment,
+  onOpenOrders,
 }: ChatContextSidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<GroupKey, boolean>>({
     ongoing: true,
@@ -326,59 +335,96 @@ export default function ChatContextSidebar({
         onToggle={() => toggle("conditions")}
       >
         <div className="flex flex-col">
-          {/* ── 이번 달 예산 — 그룹 카드 내부 상단, 강조 블록 (자체 카드 아님) ── */}
-          <div className="pb-3 mb-1" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <PiggyBank size={12} strokeWidth={1.5} color="#777169" />
-                <span
-                  className="text-[10px] font-semibold uppercase text-[#4e4e4e]"
-                  style={{ letterSpacing: "0.7px" }}
-                >
-                  이번 달 예산
-                </span>
-              </div>
-              <span className="text-[10px] text-[#999]" style={{ letterSpacing: "0.14px" }}>
-                {context.budget.department}
-              </span>
-            </div>
+          {/* ── 이번 달 예산 — 그룹 카드 내부 상단, 강조 블록. 클릭 시 /cost-intel ── */}
+          {(() => {
+            const budgetContent = (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <PiggyBank size={12} strokeWidth={1.5} color="#777169" />
+                    <span
+                      className="text-[10px] font-semibold uppercase text-[#4e4e4e]"
+                      style={{ letterSpacing: "0.7px" }}
+                    >
+                      이번 달 예산
+                    </span>
+                    {onOpenBudget && (
+                      <span
+                        className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
+                        style={{ letterSpacing: "0.14px" }}
+                      >
+                        분석 <ArrowUpRight size={10} strokeWidth={2} />
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-[#999]" style={{ letterSpacing: "0.14px" }}>
+                    {context.budget.department}
+                  </span>
+                </div>
 
-            {/* 큰 숫자 */}
-            <div className="flex items-baseline gap-1 mb-2">
-              <span
-                className="text-[22px] font-semibold text-[#111]"
-                style={{ letterSpacing: "-0.2px", lineHeight: 1 }}
+                {/* 큰 숫자 */}
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span
+                    className="text-[22px] font-semibold text-[#111]"
+                    style={{ letterSpacing: "-0.2px", lineHeight: 1 }}
+                  >
+                    {budgetPct}
+                  </span>
+                  <span className="text-[12px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                    %
+                  </span>
+                  <span className="ml-auto text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                    잔여 <span className="font-medium text-[#1a1a1a]">{budgetRemaining.toLocaleString()}원</span>
+                  </span>
+                </div>
+
+                {/* 진행바 */}
+                <div className="h-[4px] bg-[rgba(0,0,0,0.06)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(budgetPct, 100)}%`,
+                      backgroundColor:
+                        budgetPct > 90 ? "#ef4444" : budgetPct > 70 ? "#f59e0b" : "#111",
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-[#999] mt-1.5 text-left" style={{ letterSpacing: "0.14px" }}>
+                  {context.budget.used.toLocaleString()} / {context.budget.monthly.toLocaleString()}원
+                </p>
+              </>
+            );
+            return onOpenBudget ? (
+              <button
+                onClick={onOpenBudget}
+                className="group pb-3 mb-1 w-full text-left cursor-pointer transition-colors hover:bg-[rgba(99,102,241,0.03)] -mx-2 px-2 pt-1.5 rounded-[6px]"
+                style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}
               >
-                {budgetPct}
-              </span>
-              <span className="text-[12px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
-                %
-              </span>
-              <span className="ml-auto text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
-                잔여 <span className="font-medium text-[#1a1a1a]">{budgetRemaining.toLocaleString()}원</span>
-              </span>
-            </div>
+                {budgetContent}
+              </button>
+            ) : (
+              <div className="pb-3 mb-1" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                {budgetContent}
+              </div>
+            );
+          })()}
 
-            {/* 진행바 */}
-            <div className="h-[4px] bg-[rgba(0,0,0,0.06)] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${Math.min(budgetPct, 100)}%`,
-                  backgroundColor:
-                    budgetPct > 90 ? "#ef4444" : budgetPct > 70 ? "#f59e0b" : "#111",
-                }}
-              />
-            </div>
-            <p className="text-[10px] text-[#999] mt-1.5" style={{ letterSpacing: "0.14px" }}>
-              {context.budget.used.toLocaleString()} / {context.budget.monthly.toLocaleString()}원
-            </p>
-          </div>
-
-          {/* ── 배송지 · 결제수단 — 리스트 행 (사이 subtle divider) ── */}
-          <ListRow icon={MapPin} label="배송지" value={context.shippingAddress} />
+          {/* ── 배송지 · 결제수단 — 설정 페이지 딥링크 ── */}
+          <ListRow
+            icon={MapPin}
+            label="배송지"
+            value={context.shippingAddress}
+            onClick={onOpenShipping}
+            actionHint="변경"
+          />
           <div className="mx-1" style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }} />
-          <ListRow icon={CreditCard} label="결제수단" value={context.paymentMethod} />
+          <ListRow
+            icon={CreditCard}
+            label="결제수단"
+            value={context.paymentMethod}
+            onClick={onOpenPayment}
+            actionHint="변경"
+          />
 
           {/* ── 에이전트 모드 — 카드 하단 메타 영역 ── */}
           <div
@@ -412,6 +458,8 @@ export default function ChatContextSidebar({
           icon={Clock}
           label="이번 달 주문"
           value={`${context.recentOrders}건`}
+          onClick={onOpenOrders}
+          actionHint="열기"
         />
       </GroupSection>
     </div>
@@ -534,18 +582,23 @@ function MicroLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* 리스트 행 (아이콘 + 라벨 + 값) — 구매 조건·참고 그룹용 */
+/* 리스트 행 (아이콘 + 라벨 + 값) — 구매 조건·참고 그룹용
+   onClick 제공 시 외부 페이지 점프 어포던스(↗) 노출 */
 function ListRow({
   icon: Icon,
   label,
   value,
+  onClick,
+  actionHint = "열기",
 }: {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string; className?: string }>;
   label: string;
   value: string;
+  onClick?: () => void;
+  actionHint?: string;
 }) {
-  return (
-    <div className="flex items-start gap-2 px-1 py-2">
+  const content = (
+    <>
       <Icon size={13} strokeWidth={1.5} color="#777169" className="mt-[2px] shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-[10px] text-[#999] mb-0.5" style={{ letterSpacing: "0.14px" }}>
@@ -558,6 +611,31 @@ function ListRow({
           {value}
         </p>
       </div>
+      {onClick && (
+        <span
+          className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] shrink-0 mt-[3px] opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ letterSpacing: "0.14px" }}
+        >
+          {actionHint}
+          <ArrowUpRight size={10} strokeWidth={2} />
+        </span>
+      )}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        className="group flex items-start gap-2 px-1 py-2 w-full text-left cursor-pointer rounded-[6px] transition-colors hover:bg-[rgba(99,102,241,0.04)]"
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-start gap-2 px-1 py-2">
+      {content}
     </div>
   );
 }

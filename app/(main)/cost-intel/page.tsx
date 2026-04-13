@@ -494,12 +494,35 @@ function DrillButton({ label, onClick }: { label: string; onClick: () => void })
 
 function AccessBadge({ members }: { members: { name: string; role: string; initials: string }[] }) {
   const colors = ["#000", "#4e4e4e", "#777169"];
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-[#777] bg-[#f5f5f5] rounded-full">
+    <div ref={wrapRef} className="relative flex items-center gap-2.5">
+      <span className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-[#777169] bg-[#f5f5f5] rounded-full" style={{ letterSpacing: "0.14px" }}>
         <Lock size={10} strokeWidth={2} />관리자 전용
       </span>
-      <div className="flex items-center">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label="접근 가능한 멤버 보기"
+        className="flex items-center cursor-pointer transition-opacity hover:opacity-80"
+      >
         {members.slice(0, 3).map((m, i) => (
           <div
             key={m.name}
@@ -509,12 +532,71 @@ function AccessBadge({ members }: { members: { name: string; role: string; initi
               marginLeft: i > 0 ? "-6px" : "0",
               zIndex: 3 - i,
               position: "relative",
+              letterSpacing: "0.14px",
             }}
           >
             {m.initials}
           </div>
         ))}
-      </div>
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-2 z-20 bg-white overflow-hidden"
+          style={{
+            width: 280,
+            borderRadius: "16px",
+            boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px, rgba(0,0,0,0.04) 0px 4px 16px",
+          }}
+        >
+          {/* 헤더 */}
+          <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
+            <span className="text-[13px] font-semibold text-[#000]" style={{ letterSpacing: "0.14px" }}>
+              접근 가능한 멤버
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="닫기"
+              className="flex items-center justify-center w-6 h-6 rounded-md cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+            >
+              <X size={14} strokeWidth={1.5} color="#777169" />
+            </button>
+          </div>
+
+          {/* 멤버 리스트 */}
+          <div className="px-2 pb-2">
+            {members.map((m, i) => (
+              <div
+                key={m.name}
+                className="flex items-center gap-3 px-2 py-2 rounded-lg"
+              >
+                <div
+                  className="flex items-center justify-center w-8 h-8 rounded-full text-[11px] font-medium text-white shrink-0"
+                  style={{ backgroundColor: colors[i % colors.length], letterSpacing: "0.14px" }}
+                >
+                  {m.initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-[#000]" style={{ letterSpacing: "0.14px" }}>
+                    {m.name}
+                  </p>
+                  <p className="text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                    {m.role}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 푸터 */}
+          <div className="px-4 py-2.5" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+            <p className="text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+              접근 권한은 조직 설정에서 관리됩니다
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
