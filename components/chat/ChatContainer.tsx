@@ -8,7 +8,7 @@ import {
 import type { ChatMessage, Product, WorkItem, WorkItemSnapshot, WorkItemStatus } from "@/lib/types";
 import { products } from "@/data/products";
 import { chats } from "@/data/chats";
-import { useRightPanel, type PanelChip } from "@/lib/right-panel-context";
+import { useRightPanel } from "@/lib/right-panel-context";
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";
 import ProductRecommendCard from "./ProductRecommendCard";
@@ -584,7 +584,22 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   /* ── 소싱 상품 선택/장바구니 ── */
 
+  // SourcedProduct → Product 변환 헬퍼 (장바구니/상품 상세 공용)
+  const toProduct = useCallback((product: SourcedProduct): Product => ({
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    category: (product.category as any) ?? "생활용품",
+    brand: product.brand,
+    image: "",
+    description: product.aiNote ?? "",
+    specs: product.scrapedSpecs ?? {},
+    inStock: true,
+    source: product.platform ?? (product.source === "airsupply-db" ? "에어서플라이" : product.source === "airsupply-supplier" ? "입점공급사" : "외부마켓"),
+  }), []);
+
   const handleSourcedSelect = useCallback((product: SourcedProduct) => {
+    // 1) 채팅에 AI 맥락 응답
     if (product.source === "api-external") {
       const isScraping = scrapingProduct?.scrapingStatus === "scraping";
       const isDone = scrapingProduct?.scrapingStatus === "done" || product.scrapingStatus === "done";
@@ -606,25 +621,14 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     } else {
       addAI(`**${product.name}** — ${product.price.toLocaleString()}원\n\n모든 정보가 확인되었습니다.\n배송비: ${product.deliveryFee === 0 ? "무료" : (product.deliveryFee?.toLocaleString() ?? "—") + "원"}\n도착: ${product.deliveryDays ?? "—"}일 내\n옵션: ${product.options?.join(", ") ?? "—"}\n\n장바구니에 담을까요?`, "주문");
     }
-  }, [addAI, scrapingProduct, runBackgroundScrape]);
+    // 2) 우측 패널을 "상품 상세" 자식으로 drill-down
+    viewProductRef.current(toProduct(product));
+  }, [addAI, scrapingProduct, runBackgroundScrape, toProduct]);
 
   const handleSourcedAddToCart = useCallback((product: SourcedProduct) => {
-    // SourcedProduct → Product 변환하여 장바구니에 추가
-    const asProduct: Product = {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      category: (product.category as any) ?? "생활용품",
-      brand: product.brand,
-      image: "",
-      description: product.aiNote ?? "",
-      specs: product.scrapedSpecs ?? {},
-      inStock: true,
-      source: product.platform ?? (product.source === "airsupply-db" ? "에어서플라이" : product.source === "airsupply-supplier" ? "입점공급사" : "외부마켓"),
-    };
-    addToCart(asProduct);
+    addToCart(toProduct(product));
     addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`);
-  }, [addToCart, addSys]);
+  }, [addToCart, addSys, toProduct]);
 
   /* ═══════════════════════════════════════
      기존 구매 플로우 (approval, payment, shipping)
@@ -684,12 +688,15 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const confirmPurchase = useCallback(() => { setShippingStep("구매확정"); addSys("구매가 확정되었습니다."); addAI("구매 확정 처리되었습니다!", "주문"); }, [addSys, addAI]);
   const requestReturn = useCallback(() => { setShippingStep("반품요청"); addSys("반품 요청이 접수되었습니다."); addAI("반품 요청이 접수되었습니다.", "주문"); }, [addSys, addAI]);
 
-  /* ── Right panel sync ── */
+  /* ── Right panel sync — 계층 내비게이션 모델 ──
+     루트: 구매 컨텍스트 (chat-context)
+     자식: 장바구니 / 품의 진행 / 결제 / 배송 / 상품 상세
+     각 자식 페이지 헤더의 "← 구매 컨텍스트"로 루트 복귀. */
 
-  // 상호 참조를 위한 ref (openCart ↔ openContext ↔ openFlow 순환 방지)
+  // 상호 참조를 위한 ref (createWorkItem → openContext 순환, handleSourcedSelect → viewProduct forward ref)
   const openContextRef = useRef<() => void>(() => {});
-  const openCartRef = useRef<() => void>(() => {});
   const openFlowRef = useRef<() => void>(() => {});
+  const viewProductRef = useRef<(p: Product) => void>(() => {});
 
   const phaseLabel =
     timelinePhase === "approval" ? "품의 진행" :
@@ -697,42 +704,51 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     timelinePhase === "shipping" ? "배송" :
     timelinePhase === "complete" ? "주문 완료" : "주문 진행";
 
-  // 플로우 진입/재진입 (컨텍스트에서 복귀 시에도 이 함수 사용)
+  // 진행 상황 알림 — 확인하지 않은 플로우 변화가 있을 때 true
+  const [hasUnviewedProgress, setHasUnviewedProgress] = useState(false);
+
+  // 플로우 진입/재진입 (자식 페이지로 drill-down)
   const openFlow = useCallback(() => {
     if (!flowActive) return;
-    const chips: PanelChip[] = [{ label: "구매 컨텍스트", onClick: () => openContextRef.current() }];
+    const backToContext = () => openContextRef.current();
     if (timelinePhase === "payment" && !paymentMethod) {
       openPanel(
         <PaymentSelector totalPrice={frozenTotal} onConfirm={confirmPayment} />,
         "payment",
-        { label: "결제", chips },
+        { label: "결제", onBack: backToContext },
       );
-      return;
+    } else {
+      openPanel(
+        <OrderTimeline activePhase={timelinePhase} cart={frozenCart} totalPrice={frozenTotal}
+          approvalStep={approvalStep} approver="김지현 매니저" approvalDate={approvalDate}
+          isAutoApproved={isAutoApproved} paymentMethod={paymentMethod} paymentDate={paymentDate}
+          shippingStep={shippingStep} trackingNumber="CJ1234567890" estimatedDate="2026-04-14"
+          onAdvance={advanceFlow} onConfirmPurchase={confirmPurchase} onRequestReturn={requestReturn} />,
+        "order-timeline",
+        { label: phaseLabel, onBack: backToContext },
+      );
     }
-    openPanel(
-      <OrderTimeline activePhase={timelinePhase} cart={frozenCart} totalPrice={frozenTotal}
-        approvalStep={approvalStep} approver="김지현 매니저" approvalDate={approvalDate}
-        isAutoApproved={isAutoApproved} paymentMethod={paymentMethod} paymentDate={paymentDate}
-        shippingStep={shippingStep} trackingNumber="CJ1234567890" estimatedDate="2026-04-14"
-        onAdvance={advanceFlow} onConfirmPurchase={confirmPurchase} onRequestReturn={requestReturn} />,
-      "order-timeline",
-      { label: phaseLabel, chips },
-    );
+    // drill-in = 사용자가 확인함 → 알림 dot 끔
+    setHasUnviewedProgress(false);
   }, [flowActive, timelinePhase, frozenCart, frozenTotal, approvalStep, approvalDate, isAutoApproved, paymentMethod, paymentDate, shippingStep, advanceFlow, confirmPurchase, requestReturn, confirmPayment, openPanel, phaseLabel]);
 
-  // 플로우 상태 변화 감지 시 order-timeline/payment 자동 갱신
-  // 단, 현재 컨텍스트로 빠져있으면 갱신하지 않음 (사용자가 명시적으로 컨텍스트에 있는 상태 유지)
+  // 플로우 단계 변화 시:
+  //  - cart/order-timeline/payment 페이지에 있으면 → 자동으로 최신 플로우 페이지로 (사용자가 명시적 액션으로 진입한 맥락)
+  //  - 루트(chat-context) 또는 product-detail 등에 있으면 → dot 알림만 (drill-down은 사용자가 직접)
   useEffect(() => {
     if (!flowActive) return;
-    if (contentKey === "chat-context") return;
-    openFlow();
+    if (contentKey === "cart" || contentKey === "order-timeline" || contentKey === "payment") {
+      openFlow();
+      return;
+    }
+    setHasUnviewedProgress(true);
   }, [flowActive, timelinePhase, paymentMethod, approvalStep, shippingStep, openFlow, contentKey]);
 
   const openCart = useCallback(() => {
     openPanel(
       <CartPanel items={cart} onUpdateQuantity={updateQty} onRemove={removeItem} onRequestApproval={startApproval} onDirectPurchase={startDirectPurchase} />,
       "cart",
-      { label: "장바구니", chips: [{ label: "구매 컨텍스트", onClick: () => openContextRef.current() }] },
+      { label: "장바구니", onBack: () => openContextRef.current() },
     );
   }, [cart, openPanel, updateQty, removeItem, startApproval, startDirectPurchase]);
 
@@ -740,7 +756,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     openPanel(
       <ProductDetailPanel product={product} onAddToCart={() => { addToCart(product); addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`); }} />,
       "product-detail",
-      { label: "상품 상세", chips: [{ label: "구매 컨텍스트", onClick: () => openContextRef.current() }] },
+      { label: "상품 상세", onBack: () => openContextRef.current() },
     );
   }, [openPanel, addToCart, addSys]);
 
@@ -834,6 +850,9 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     });
     loadSnapshot(target.snapshot);
     setActiveWorkItemId(targetId);
+    setHasUnviewedProgress(false);
+    // WI 전환 시 루트(구매 컨텍스트)로 복귀 — 이전 자식 페이지가 떠있었다면 닫고 새 WI의 루트로
+    openContextRef.current();
   }, [activeWorkItemId, workItems, buildSnapshot, deriveStatus, loadSnapshot]);
 
   // 새 WI 생성 (현재 live state는 이전 active에 저장, 새 WI는 빈 상태로 시작 + 활성화)
@@ -861,6 +880,9 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     });
     loadSnapshot(emptySnapshot());
     setActiveWorkItemId(id);
+    setHasUnviewedProgress(false);
+    // 새 WI 생성 = 새 검색 시작 = 루트 복귀
+    openContextRef.current();
     return id;
   }, [activeWorkItemId, buildSnapshot, deriveStatus, emptySnapshot, loadSnapshot]);
 
@@ -967,21 +989,11 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     recentOrders: 8,
   };
 
-  /* ── 구매 컨텍스트를 글로벌 RightPanel로 송출 ──
+  /* ── 구매 컨텍스트(루트) 송출 ──
      - 마운트 시 자동 오픈
      - chat-context가 활성 상태면 의존성 변화 시 콘텐츠 갱신
-     - 다른 패널(cart, payment, product-detail, order-timeline)이 떠 있을 땐 덮어쓰지 않음 */
+     - 자식 페이지(cart/payment/product-detail/order-timeline)가 떠 있을 땐 덮어쓰지 않음 */
   const openContext = useCallback(() => {
-    const chips: PanelChip[] = [];
-    // 플로우 전이면서 카트에 아이템이 있으면 "장바구니" chip 노출
-    // (플로우 복귀는 진행상황 섹션 내부의 "상세보기 →" 액션으로 담당)
-    if (!flowActive && cart.length > 0) {
-      const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
-      chips.push({
-        label: `장바구니 (${cartCount})`,
-        onClick: () => openCartRef.current(),
-      });
-    }
     openPanel(
       <ChatContextSidebar
         currentPhase={sidebarPhase}
@@ -992,17 +1004,18 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         context={contextInfo}
         onProductClick={handleSourcedSelect}
         onOpenFlow={flowActive ? () => openFlowRef.current() : undefined}
+        progressNotification={hasUnviewedProgress}
       />,
       "chat-context",
-      { label: "구매 컨텍스트", chips },
+      { label: "구매 컨텍스트" },  // 루트 — onBack 없음
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openPanel, sidebarPhase, searchRecords, sourcedProducts, candidateProducts, cart, flowActive]);
+  }, [openPanel, sidebarPhase, searchRecords, sourcedProducts, candidateProducts, cart, flowActive, hasUnviewedProgress]);
 
-  // ref 동기화 (순환 참조 해소)
+  // ref 동기화 (순환 참조 / forward 참조 해소)
   useEffect(() => { openContextRef.current = openContext; }, [openContext]);
-  useEffect(() => { openCartRef.current = openCart; }, [openCart]);
   useEffect(() => { openFlowRef.current = openFlow; }, [openFlow]);
+  useEffect(() => { viewProductRef.current = viewProduct; }, [viewProduct]);
 
   /* ── Work Item 칩 스위처 등록 ──
      workItems 변화 / activeId 변화 시 우측 패널 최상단 스위처 갱신.

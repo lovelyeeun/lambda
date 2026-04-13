@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronLeft } from "lucide-react";
 import { useRightPanel } from "@/lib/right-panel-context";
 import ResizableHandle from "@/components/ui/ResizableHandle";
 
 export default function RightPanel() {
   const { open, content, meta, workItemStrip, closePanel } = useRightPanel();
   const [width, setWidth] = useState(480);
+
+  const isChildPage = !!meta?.onBack;
 
   return (
     <>
@@ -85,39 +88,39 @@ export default function RightPanel() {
               </div>
             )}
 
-            {/* Header — 현재 모드 라벨 + 빠른 전환 chips + 닫기 */}
+            {/* Header — 계층 내비게이션:
+                루트(구매 컨텍스트): "구매 컨텍스트" 라벨만 표시
+                자식 페이지: [← 구매 컨텍스트] 백 버튼 + "/" + 현재 페이지 라벨 */}
             <div
               className="flex items-center gap-2 px-3 h-[44px] shrink-0"
-              style={{ borderBottom: meta?.label ? "1px solid rgba(0,0,0,0.04)" : "none" }}
+              style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
             >
-              {meta?.label && (
+              {isChildPage ? (
+                <>
+                  <button
+                    onClick={meta!.onBack}
+                    className="inline-flex items-center gap-0.5 text-[12px] font-medium text-[#777169] cursor-pointer transition-colors hover:text-[#000] -ml-1 px-1 py-0.5 rounded-md hover:bg-[#f5f2ef]"
+                    style={{ letterSpacing: "0.14px" }}
+                    aria-label="구매 컨텍스트로 돌아가기"
+                  >
+                    <ChevronLeft size={14} strokeWidth={1.75} />
+                    구매 컨텍스트
+                  </button>
+                  <span className="text-[#d4d4d4] text-[12px]">/</span>
+                  <span
+                    className="text-[13px] font-medium text-[#000]"
+                    style={{ letterSpacing: "0.14px" }}
+                  >
+                    {meta?.label ?? ""}
+                  </span>
+                </>
+              ) : (
                 <span
                   className="text-[13px] font-medium text-[#000]"
                   style={{ letterSpacing: "0.14px" }}
                 >
-                  {meta.label}
+                  {meta?.label ?? "구매 컨텍스트"}
                 </span>
-              )}
-
-              {meta?.chips && meta.chips.length > 0 && (
-                <div className="flex items-center gap-1.5 ml-1">
-                  {meta.chips.map((chip, i) => (
-                    <button
-                      key={i}
-                      onClick={chip.onClick}
-                      className="inline-flex items-center gap-1 px-2 py-[4px] text-[11px] font-medium text-[#4e4e4e] cursor-pointer transition-colors hover:bg-[#f5f2ef]"
-                      style={{
-                        borderRadius: "9999px",
-                        backgroundColor: "rgba(245,242,239,0.5)",
-                        boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
-                        letterSpacing: "0.14px",
-                      }}
-                    >
-                      {chip.icon}
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
               )}
 
               <button

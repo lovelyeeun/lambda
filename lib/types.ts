@@ -107,6 +107,8 @@ export interface Folder {
   icon: string;          // lucide icon name hint
   productIds: string[];
   description?: string;
+  /** 하위 폴더 (1단계 중첩 가정) */
+  children?: Folder[];
 }
 
 /* ─── 공급기업 ─── */

@@ -40,6 +40,8 @@ interface ChatContextSidebarProps {
   context: ContextInfo;
   onProductClick?: (product: SourcedProduct) => void;
   onOpenFlow?: () => void;
+  /** 플로우 진행 상태에 확인하지 않은 변화가 있을 때 "진행 상황" 섹션에 알림 dot 표시 */
+  progressNotification?: boolean;
 }
 
 /* ═══════════════════════════════════════
@@ -74,6 +76,7 @@ export default function ChatContextSidebar({
   context,
   onProductClick,
   onOpenFlow,
+  progressNotification = false,
 }: ChatContextSidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<GroupKey, boolean>>({
     ongoing: true,
@@ -89,9 +92,6 @@ export default function ChatContextSidebar({
     ? Math.round((context.budget.used / context.budget.monthly) * 100)
     : 0;
   const budgetRemaining = context.budget.monthly - context.budget.used;
-  const cartTotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
-  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
-
   const hasSearch = searchRecords.length > 0;
   const hasProducts = extractedProducts.length > 0 || candidateProducts.length > 0;
   const hasCart = cart.length > 0;
@@ -119,6 +119,19 @@ export default function ChatContextSidebar({
             {currentPhase !== "idle" && (
               <SubGroup
                 title="진행 상황"
+                titleBadge={
+                  progressNotification ? (
+                    <span
+                      className="w-1.5 h-1.5 shrink-0"
+                      style={{
+                        borderRadius: "9999px",
+                        backgroundColor: "#ef4444",
+                        boxShadow: "rgba(239,68,68,0.3) 0px 0px 0px 2px",
+                      }}
+                      aria-label="확인하지 않은 진행 상황 변화"
+                    />
+                  ) : undefined
+                }
                 rightAction={
                   onOpenFlow && (
                     <button
@@ -149,6 +162,10 @@ export default function ChatContextSidebar({
                             : isActive
                             ? "#6366f1"
                             : "rgba(0,0,0,0.05)",
+                          // 현재 단계를 두꺼운 링으로 강조 (스피너 대체)
+                          boxShadow: isActive
+                            ? "rgba(99,102,241,0.25) 0px 0px 0px 3px"
+                            : undefined,
                         }}
                       >
                         {isDone ? (
@@ -178,13 +195,14 @@ export default function ChatContextSidebar({
                         >
                           {step.label}
                         </span>
-                        {isActive && !isClickable && (
-                          <Loader2
-                            size={10}
-                            strokeWidth={2}
-                            color="#6366f1"
-                            className="ml-auto animate-spin"
-                          />
+                        {isActive && isClickable && (
+                          <span
+                            className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ letterSpacing: "0.14px" }}
+                          >
+                            상세보기
+                            <ArrowRight size={10} strokeWidth={2} />
+                          </span>
                         )}
                       </>
                     );
@@ -193,12 +211,21 @@ export default function ChatContextSidebar({
                       <button
                         key={step.key}
                         onClick={onOpenFlow}
-                        className="group flex items-center gap-2 py-1 px-1 -mx-1 cursor-pointer rounded-[6px] transition-colors hover:bg-[rgba(99,102,241,0.06)]"
+                        className="group flex items-center gap-2 py-1.5 px-2 -mx-1 cursor-pointer rounded-[6px] transition-colors"
+                        style={{
+                          backgroundColor: "rgba(99,102,241,0.06)",
+                        }}
                       >
                         {row}
                       </button>
                     ) : (
-                      <div key={step.key} className="flex items-center gap-2 py-1">
+                      <div
+                        key={step.key}
+                        className="flex items-center gap-2 py-1.5 px-2 -mx-1 rounded-[6px]"
+                        style={{
+                          backgroundColor: isActive ? "rgba(99,102,241,0.06)" : undefined,
+                        }}
+                      >
                         {row}
                       </div>
                     );
@@ -284,31 +311,7 @@ export default function ChatContextSidebar({
               </SubGroup>
             )}
 
-            {/* ── 장바구니 (휘발성) ── */}
-            {hasCart && (
-              <SubGroup title="장바구니" count={cartCount}>
-                <div className="flex flex-col gap-0.5">
-                  {cart.map((item) => (
-                    <div key={item.product.id} className="flex items-center justify-between py-0.5">
-                      <span className="text-[11px] text-[#4e4e4e] truncate max-w-[150px]" style={{ letterSpacing: "0.14px" }}>
-                        {item.product.name}
-                      </span>
-                      <span className="text-[11px] text-[#999] shrink-0 ml-2">×{item.quantity}</span>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between pt-1.5 mt-0.5"
-                    style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}
-                  >
-                    <span className="text-[10px] text-[#999]" style={{ letterSpacing: "0.14px" }}>
-                      합계
-                    </span>
-                    <span className="text-[12px] font-semibold text-[#111]" style={{ letterSpacing: "0.14px" }}>
-                      {cartTotal.toLocaleString()}원
-                    </span>
-                  </div>
-                </div>
-              </SubGroup>
-            )}
+            {/* 장바구니 섹션은 제거 — 플로팅 장바구니 버튼 + '진행 상황' 단계 강조로 대체 */}
           </div>
         )}
       </GroupSection>
@@ -485,11 +488,13 @@ function SubGroup({
   title,
   count,
   rightAction,
+  titleBadge,
   children,
 }: {
   title: string;
   count?: number;
   rightAction?: React.ReactNode;
+  titleBadge?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -501,6 +506,7 @@ function SubGroup({
         >
           {title}
         </span>
+        {titleBadge}
         {count != null && count > 0 && (
           <span
             className="text-[9px] font-medium text-[#999]"

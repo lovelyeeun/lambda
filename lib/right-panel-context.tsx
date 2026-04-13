@@ -2,17 +2,11 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
-export interface PanelChip {
-  label: string;
-  onClick: () => void;
-  icon?: ReactNode;
-}
-
 export interface PanelMeta {
-  /** 패널 헤더에 표시할 현재 모드 라벨 */
+  /** 현재 페이지 라벨 — 자식 페이지일 때 표시 (예: "장바구니", "품의 진행") */
   label?: string;
-  /** 라벨 옆에 노출할 빠른 전환 chip들 (1~2개 권장) */
-  chips?: PanelChip[];
+  /** 루트로 돌아가는 콜백 — 제공되면 자식 페이지로 취급되어 헤더에 "← 구매 컨텍스트" 백 버튼 노출 */
+  onBack?: () => void;
 }
 
 /** Work Item 칩 스위처 — 패널 최상단에 모드와 무관하게 항상 떠 있음 */
@@ -82,3 +76,4 @@ export function useRightPanel() {
   if (!ctx) throw new Error("useRightPanel must be used within RightPanelProvider");
   return ctx;
 }
+
