@@ -122,7 +122,7 @@ function SettingsOverlayInner() {
           </div>
         ) : (
           <>
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden bg-[#f5f5f5]">
               <SettingsChat />
             </div>
 
@@ -135,7 +135,7 @@ function SettingsOverlayInner() {
             />
 
             <div
-              className="shrink-0 overflow-y-auto bg-[#fafafa] transition-all duration-300"
+              className="shrink-0 overflow-y-auto bg-white transition-all duration-300"
               style={{ width: `${expandedWidth}px` }}
             >
               {activeCardPanel ? (
@@ -241,7 +241,8 @@ function FormPanelWrapper({
     <div className="px-5 pt-14 pb-5 relative">
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 mb-4 text-[13px] text-[#777] cursor-pointer transition-colors hover:text-[#333] group"
+        className="flex items-center gap-1.5 mb-4 text-[13px] text-[#777169] cursor-pointer transition-colors hover:text-[#000] group"
+        style={{ letterSpacing: "0.14px" }}
       >
         <ArrowLeft size={15} strokeWidth={1.5} className="transition-transform group-hover:-translate-x-0.5" />
         카드 목록으로
@@ -250,11 +251,12 @@ function FormPanelWrapper({
       {/* 채팅에서 액션 발생 시 알림 배너 */}
       {chatPulse && (
         <div
-          className="mb-3 flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-[#6366f1] animate-pulse"
+          className="mb-3 flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-[#000] animate-pulse"
           style={{
             borderRadius: "8px",
-            backgroundColor: "rgba(99,102,241,0.06)",
-            border: "1px solid rgba(99,102,241,0.15)",
+            backgroundColor: "rgba(245,242,239,0.8)",
+            boxShadow: "rgba(0,0,0,0.075) 0px 0px 0px 0.5px inset, rgba(78,50,23,0.04) 0px 6px 16px",
+            letterSpacing: "0.14px",
           }}
         >
           <Check size={13} strokeWidth={2} />
@@ -264,7 +266,10 @@ function FormPanelWrapper({
 
       <div
         className="bg-white p-5 overflow-hidden"
-        style={{ borderRadius: "12px", boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px" }}
+        style={{
+          borderRadius: "16px",
+          boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px, rgba(0,0,0,0.04) 0px 2px 4px",
+        }}
         onClick={handleFormClick}
         onChange={handleFormChange}
       >

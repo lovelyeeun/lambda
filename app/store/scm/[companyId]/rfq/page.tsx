@@ -141,7 +141,10 @@ export default function RFQPage() {
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              onKeyDown={(e) => {
+                if ((e.nativeEvent as KeyboardEvent).isComposing || e.keyCode === 229) return;
+                if (e.key === "Enter") handleSend();
+              }}
               placeholder={steps[stepIdx]?.placeholder ?? "입력..."}
               className="flex-1 text-[14px] outline-none bg-transparent placeholder:text-[#999]"
             />

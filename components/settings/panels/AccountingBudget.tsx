@@ -2,25 +2,15 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-
-const departments = [
-  { name: "경영지원", annual: 36000000, used: 14200000 },
-  { name: "마케팅", annual: 48000000, used: 22800000 },
-  { name: "디자인", annual: 24000000, used: 11500000 },
-  { name: "개발", annual: 12000000, used: 5100000 },
-];
+import { useSettingsStore } from "@/lib/settings-store";
 
 function formatPrice(n: number) { return (n / 10000).toLocaleString() + "만원"; }
 
 export default function AccountingBudget() {
+  const { budget, setCarryOver, setRenewPeriod, totalAnnual, totalUsed } = useSettingsStore();
   const [expanded, setExpanded] = useState<string | null>("경영지원");
-  const [carryOver, setCarryOver] = useState(false);
-  const [renewPeriod, setRenewPeriod] = useState("매월 1일");
   const [toast, setToast] = useState<string | null>(null);
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
-
-  const totalAnnual = 120000000;
-  const totalUsed = departments.reduce((s, d) => s + d.used, 0);
 
   return (
     <div className="max-w-[520px]">
@@ -30,7 +20,7 @@ export default function AccountingBudget() {
       <div className="p-4 mb-4" style={{ borderRadius: "14px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }}>
         <div className="flex justify-between text-[13px] mb-2"><span className="text-[#777]">연간 총 예산</span><span className="font-semibold text-[16px]">{formatPrice(totalAnnual)}</span></div>
         <div className="h-2.5 bg-[#f5f5f5] rounded-full overflow-hidden mb-1">
-          <div className="h-full rounded-full bg-[#000]" style={{ width: `${(totalUsed / totalAnnual) * 100}%` }} />
+          <div className="h-full rounded-full bg-[#000]" style={{ width: `${totalAnnual > 0 ? (totalUsed / totalAnnual) * 100 : 0}%` }} />
         </div>
         <div className="flex justify-between text-[11px] text-[#999]"><span>사용 {formatPrice(totalUsed)}</span><span>잔여 {formatPrice(totalAnnual - totalUsed)}</span></div>
       </div>
@@ -38,8 +28,8 @@ export default function AccountingBudget() {
       {/* Departments tree */}
       <p className="text-[12px] text-[#999] mb-2">부서별 예산</p>
       <div className="flex flex-col gap-2 mb-5">
-        {departments.map((d) => {
-          const pct = Math.round((d.used / d.annual) * 100);
+        {budget.departments.map((d) => {
+          const pct = d.annual > 0 ? Math.round((d.used / d.annual) * 100) : 0;
           const isExpanded = expanded === d.name;
           return (
             <div key={d.name} className="overflow-hidden" style={{ borderRadius: "12px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }}>
@@ -73,14 +63,14 @@ export default function AccountingBudget() {
           <p className="text-[12px] text-[#999] mb-1">이월 규칙</p>
           <div className="flex items-center justify-between p-3" style={{ borderRadius: "10px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }}>
             <span className="text-[13px] text-[#444]">미사용 예산 이월</span>
-            <button onClick={() => setCarryOver(!carryOver)} className="w-[40px] h-[22px] rounded-full cursor-pointer relative" style={{ backgroundColor: carryOver ? "#000" : "#e5e5e5" }}>
-              <span className="absolute top-[2px] w-[18px] h-[18px] rounded-full bg-white transition-all" style={{ left: carryOver ? "20px" : "2px", boxShadow: "rgba(0,0,0,0.1) 0px 1px 2px" }} />
+            <button onClick={() => setCarryOver(!budget.carryOver)} className="w-[40px] h-[22px] rounded-full cursor-pointer relative" style={{ backgroundColor: budget.carryOver ? "#000" : "#e5e5e5" }}>
+              <span className="absolute top-[2px] w-[18px] h-[18px] rounded-full bg-white transition-all" style={{ left: budget.carryOver ? "20px" : "2px", boxShadow: "rgba(0,0,0,0.1) 0px 1px 2px" }} />
             </button>
           </div>
         </div>
         <div className="flex-1">
           <p className="text-[12px] text-[#999] mb-1">갱신 시점</p>
-          <select value={renewPeriod} onChange={(e) => setRenewPeriod(e.target.value)} className="w-full px-3 py-2.5 text-[13px] bg-white cursor-pointer" style={{ borderRadius: "10px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px", border: "none", outline: "none" }}>
+          <select value={budget.renewPeriod} onChange={(e) => setRenewPeriod(e.target.value)} className="w-full px-3 py-2.5 text-[13px] bg-white cursor-pointer" style={{ borderRadius: "10px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px", border: "none", outline: "none" }}>
             <option>매월 1일</option><option>매분기</option><option>매년</option>
           </select>
         </div>

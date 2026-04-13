@@ -198,6 +198,7 @@ export default function CostIntelPage() {
   }, [isTyping]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.nativeEvent as KeyboardEvent).isComposing || e.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend(inputValue);

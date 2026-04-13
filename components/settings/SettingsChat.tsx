@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { useSettings, type SettingsSection } from "@/lib/settings-context";
 import { useSettingsEmit, useLastFormEvent } from "@/lib/settings-events";
+import { useSettingsStore, type SettingsPatch } from "@/lib/settings-store";
+import ShippingAddressModal, { type ShippingDraft } from "@/components/settings/ShippingAddressModal";
+import { PlannedTooltip } from "@/components/ui/Tooltip";
 
 /* ═══════════════════════════════════════
    타입 정의
@@ -32,12 +35,31 @@ interface ChatMessage {
   /** 접히는 추론 블록 */
   thinking?: ThinkingStep[];
   /** 설정 변경 diff 카드 */
-  diff?: { title: string; items: DiffItem[]; applied?: boolean };
+  diff?: { title: string; items: DiffItem[]; applied?: boolean; patches?: SettingsPatch[] };
+  /** 배송지 추가/수정 인라인 폼 카드 (diff 대신 편집 가능한 카드) */
+  shippingForm?: { title: string; draft: ShippingDraft; applied?: boolean };
   /** 영향 분석 경고 */
   impact?: { warning: string; details: string[] };
   /** 컨텍스트 힌트 (우측 패널 업데이트용) */
   contextHint?: string;
 }
+
+/* ═══════════════════════════════════════
+   contextHint → SettingsSection 매핑
+   채팅에서 "예산 얘기" 나오면 우측 패널도 자동 전환
+   ═══════════════════════════════════════ */
+
+const contextHintToSection: Record<string, SettingsSection> = {
+  "budget": "accounting-budget",
+  "approval": "approval-rules",
+  "team": "company-team",
+  "agent-policy": "agent-policy",
+  "shipping": "company-shipping",
+  "payment": "accounting-payment",
+  "description": "accounting-description",
+  "company-info": "company-info-edit",
+  // "overview" 는 대시보드 유지 (전환 없음)
+};
 
 /* ═══════════════════════════════════════
    시나리오 (더미 대화)
@@ -152,6 +174,9 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
               { field: "연간 합계", before: "45,600,000원", after: "60,000,000원" },
               { field: "전사 비중", before: "9.5%", after: "12.5%" },
             ],
+            patches: [
+              { target: "budget.dept.annual", dept: "마케팅", annual: 60000000 },
+            ],
           },
           contextHint: "budget",
         },
@@ -187,8 +212,8 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
     };
   }
 
-  /* 팀원 추가 */
-  if (t.includes("팀원") || t.includes("초대") || t.includes("추가")) {
+  /* 팀원 추가 — "추가" 단독은 너무 광범위 (배송지/결제수단도 걸림) */
+  if (t.includes("팀원") || t.includes("초대")) {
     return {
       messages: [
         {
@@ -249,7 +274,38 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
     };
   }
 
-  /* 배송지 */
+  /* 배송지 — 추가 (인라인 편집 카드) */
+  if (t.includes("배송") && (t.includes("분당") || t.includes("추가"))) {
+    return {
+      messages: [
+        {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: "분당 지사 배송지를 초안으로 준비했어요. 아래 카드에서 내용을 확인·수정하고 적용하세요.",
+          thinking: [
+            { label: "현재 배송지 조회", detail: "3개 등록 (본사 3층 기본)" },
+            { label: "중복 확인", detail: "분당 관련 주소: 물류센터 (판교로 256) 존재 — 별도 지사 등록 가능" },
+            { label: "초안 구성", detail: "이름·도로명 주소는 채워뒀고, 수령인·연락처는 직접 입력 필요" },
+          ],
+          shippingForm: {
+            title: "새 배송지 등록",
+            draft: {
+              name: "분당 지사",
+              receiver: "",
+              phone: "",
+              zipcode: "13529",
+              address: "경기도 성남시 분당구 정자일로 45",
+              detailAddress: "3층",
+              deliveryNote: "",
+            },
+          },
+          contextHint: "shipping",
+        },
+      ],
+    };
+  }
+
+  /* 배송지 — 일반 조회 */
   if (t.includes("배송")) {
     return {
       messages: [
@@ -258,7 +314,7 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
           role: "ai",
           content: "배송지를 설정해볼게요. 배송지 이름, 주소, 수령인 정보를 알려주세요.",
           thinking: [
-            { label: "현재 배송지 조회", detail: "1개 등록: 본사 (서울 강남구 테헤란로 152)" },
+            { label: "현재 배송지 조회", detail: "3개 등록 (본사 3층 기본)" },
           ],
           suggestions: [
             "본사 주소 변경하고 싶어",
@@ -287,6 +343,10 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
             items: [
               { field: "업종", before: "(미입력)", after: "소프트웨어 개발업" },
               { field: "업태", before: "(미입력)", after: "정보통신업" },
+            ],
+            patches: [
+              { target: "company.field", field: "industry", value: "소프트웨어 개발업" },
+              { target: "company.field", field: "businessType", value: "정보통신업" },
             ],
           },
           contextHint: "company-info",
@@ -574,6 +634,207 @@ function ImpactCard({ impact }: { impact: NonNullable<ChatMessage["impact"]> }) 
 }
 
 /* ═══════════════════════════════════════
+   서브 컴포넌트: 배송지 인라인 편집 카드
+   ═══════════════════════════════════════ */
+
+function ShippingFormCard({
+  title,
+  draft,
+  applied,
+  onApply,
+  onReject,
+}: {
+  title: string;
+  draft: ShippingDraft;
+  applied?: boolean;
+  onApply: (d: ShippingDraft) => void;
+  onReject: () => void;
+}) {
+  const [local, setLocal] = useState<ShippingDraft>(draft);
+  const [modalOpen, setModalOpen] = useState(false);
+  const ready = local.name.trim() && local.receiver.trim() && local.phone.trim() && local.address.trim();
+
+  const field = <K extends keyof ShippingDraft>(k: K, v: ShippingDraft[K]) =>
+    setLocal((p) => ({ ...p, [k]: v }));
+
+  return (
+    <>
+      <div
+        className="mt-2"
+        style={{
+          borderRadius: "12px",
+          boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+          overflow: "hidden",
+          backgroundColor: "#fff",
+        }}
+      >
+        <div
+          className="px-3 py-2 flex items-center justify-between"
+          style={{ backgroundColor: "#fafafa", borderBottom: "1px solid rgba(0,0,0,0.04)" }}
+        >
+          <div className="flex items-center gap-2">
+            <ArrowRight size={12} strokeWidth={1.5} color="#666" />
+            <span className="text-[12px] font-semibold text-[#333]">{title}</span>
+          </div>
+          {!applied && (
+            <button
+              onClick={() => setModalOpen(true)}
+              className="text-[11px] text-[#6366f1] hover:underline cursor-pointer"
+            >
+              자세히 수정
+            </button>
+          )}
+        </div>
+
+        <div className="px-3 py-3 flex flex-col gap-2">
+          <FormRow label="이름" required>
+            <input
+              value={local.name}
+              onChange={(e) => field("name", e.target.value)}
+              disabled={applied}
+              placeholder="예: 분당 지사"
+              className="w-full px-2.5 py-1.5 text-[12px] outline-none bg-white disabled:bg-[#fafafa]"
+              style={inlineInputStyle}
+            />
+          </FormRow>
+          <div className="flex gap-2">
+            <FormRow label="수령인" required className="flex-1">
+              <input
+                value={local.receiver}
+                onChange={(e) => field("receiver", e.target.value)}
+                disabled={applied}
+                placeholder="수령인"
+                className="w-full px-2.5 py-1.5 text-[12px] outline-none bg-white disabled:bg-[#fafafa]"
+                style={inlineInputStyle}
+              />
+            </FormRow>
+            <FormRow label="연락처" required className="flex-1">
+              <input
+                value={local.phone}
+                onChange={(e) => field("phone", e.target.value)}
+                disabled={applied}
+                placeholder="010-0000-0000"
+                className="w-full px-2.5 py-1.5 text-[12px] outline-none bg-white disabled:bg-[#fafafa]"
+                style={inlineInputStyle}
+              />
+            </FormRow>
+          </div>
+          <FormRow label="주소" required>
+            <div className="flex gap-1.5">
+              <input
+                value={local.zipcode}
+                onChange={(e) => field("zipcode", e.target.value)}
+                readOnly
+                placeholder="우편번호"
+                className="w-[100px] px-2.5 py-1.5 text-[12px] outline-none bg-[#fafafa] text-[#777]"
+                style={inlineInputStyle}
+              />
+              <PlannedTooltip description="우편번호·주소 검색 연동 (다음 주소 API)">
+                <button
+                  type="button"
+                  disabled={applied}
+                  className="px-2.5 py-1.5 text-[11px] font-medium text-white bg-black rounded-md cursor-pointer hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  주소 검색
+                </button>
+              </PlannedTooltip>
+            </div>
+            <input
+              value={local.address}
+              onChange={(e) => field("address", e.target.value)}
+              disabled={applied}
+              placeholder="도로명 주소"
+              className="w-full mt-1.5 px-2.5 py-1.5 text-[12px] outline-none bg-white disabled:bg-[#fafafa]"
+              style={inlineInputStyle}
+            />
+            <input
+              value={local.detailAddress}
+              onChange={(e) => field("detailAddress", e.target.value)}
+              disabled={applied}
+              placeholder="상세주소 (동, 호수 등)"
+              className="w-full mt-1.5 px-2.5 py-1.5 text-[12px] outline-none bg-white disabled:bg-[#fafafa]"
+              style={inlineInputStyle}
+            />
+          </FormRow>
+          <FormRow label="요청사항">
+            <input
+              value={local.deliveryNote}
+              onChange={(e) => field("deliveryNote", e.target.value)}
+              disabled={applied}
+              placeholder="배송시 요청사항 (선택)"
+              className="w-full px-2.5 py-1.5 text-[12px] outline-none bg-white disabled:bg-[#fafafa]"
+              style={inlineInputStyle}
+            />
+          </FormRow>
+        </div>
+
+        {!applied ? (
+          <div className="px-3 py-2 flex items-center gap-2" style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }}>
+            <button
+              onClick={() => ready && onApply(local)}
+              disabled={!ready}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white rounded-md transition-opacity"
+              style={{
+                backgroundColor: ready ? "#111" : "#ccc",
+                cursor: ready ? "pointer" : "not-allowed",
+              }}
+            >
+              <Check size={12} strokeWidth={2} />적용
+            </button>
+            <button
+              onClick={onReject}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[#999] cursor-pointer hover:text-[#555] hover:bg-[#f5f5f5] transition-colors rounded-md"
+            >
+              <X size={12} strokeWidth={1.5} />취소
+            </button>
+          </div>
+        ) : (
+          <div className="px-3 py-2 flex items-center gap-1.5 text-[12px] text-[#22c55e] font-medium" style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }}>
+            <Check size={12} strokeWidth={2} />적용 완료
+          </div>
+        )}
+      </div>
+
+      <ShippingAddressModal
+        open={modalOpen}
+        mode="add"
+        initial={local}
+        onClose={() => setModalOpen(false)}
+        onSubmit={(d) => { setLocal(d); setModalOpen(false); }}
+      />
+    </>
+  );
+}
+
+const inlineInputStyle = {
+  borderRadius: "6px",
+  boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px",
+  border: "none",
+} as const;
+
+function FormRow({
+  label,
+  required,
+  className,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={className}>
+      <label className="block text-[11px] font-medium text-[#555] mb-1">
+        {required && <span className="text-[#ef4444] mr-0.5">*</span>}
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
    메인 컴포넌트
    ═══════════════════════════════════════ */
 
@@ -581,6 +842,7 @@ export default function SettingsChat() {
   const { section, setSection } = useSettings();
   const emit = useSettingsEmit();
   const lastFormEvent = useLastFormEvent();
+  const { applyPatches, addShipping } = useSettingsStore();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -600,6 +862,8 @@ export default function SettingsChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const prevSectionRef = useRef<SettingsSection | null>(null);
   const lastFormEventIdRef = useRef<string | null>(null);
+  /** 채팅에서 setSection을 유발한 경우 플래그 — 섹션 useEffect가 진입 메시지를 중복 주입하지 않도록 */
+  const chatDrivenSectionRef = useRef(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -629,20 +893,25 @@ export default function SettingsChat() {
     }, 600);
   }, [lastFormEvent]);
 
-  /* 카드 클릭 → 채팅에 시작 메시지 주입 */
+  /* 카드 클릭 → 채팅에 시작 메시지 주입
+     단, 채팅이 스스로 setSection을 호출한 경우엔 중복 방지 */
   useEffect(() => {
     if (section && section !== "company-info" && section !== prevSectionRef.current) {
-      const entryMsg = getCardEntryMessage(section);
-      if (entryMsg) {
-        setMessages((prev) => [
-          ...prev,
-          { id: `nav-${Date.now()}`, role: "system", content: `📂 ${section} 열림` },
-        ]);
-        setIsTyping(true);
-        setTimeout(() => {
-          setMessages((prev) => [...prev, entryMsg]);
-          setIsTyping(false);
-        }, 500);
+      if (chatDrivenSectionRef.current) {
+        chatDrivenSectionRef.current = false;
+      } else {
+        const entryMsg = getCardEntryMessage(section);
+        if (entryMsg) {
+          setMessages((prev) => [
+            ...prev,
+            { id: `nav-${Date.now()}`, role: "system", content: `📂 ${section} 열림` },
+          ]);
+          setIsTyping(true);
+          setTimeout(() => {
+            setMessages((prev) => [...prev, entryMsg]);
+            setIsTyping(false);
+          }, 500);
+        }
       }
     }
     prevSectionRef.current = section;
@@ -660,18 +929,23 @@ export default function SettingsChat() {
       setMessages((prev) => [...prev, ...aiMsgs]);
       setIsTyping(false);
 
-      // 채팅 액션 → 폼에 이벤트 발행
+      // 채팅 액션 → 폼에 이벤트 발행 + 우측 패널 자동 전환
       const contextHint = aiMsgs[0]?.contextHint;
       if (contextHint) {
+        const targetSection = contextHintToSection[contextHint];
+        if (targetSection && targetSection !== section) {
+          chatDrivenSectionRef.current = true;
+          setSection(targetSection);
+        }
         emit({
           source: "chat",
-          panel: section ?? "company-info",
+          panel: targetSection ?? section ?? "company-info",
           action: text.slice(0, 30),
           detail: text,
         });
       }
     }, 800);
-  }, [emit, section]);
+  }, [emit, section, setSection]);
 
   const handleApplyDiff = useCallback((msgId: string) => {
     setMessages((prev) =>
@@ -680,9 +954,12 @@ export default function SettingsChat() {
       )
     );
 
-    // diff 적용 → 폼에 이벤트 발행
+    // diff 적용 → 실제 store 업데이트 + 폼에 이벤트 발행
     const msg = messages.find((m) => m.id === msgId);
     if (msg?.diff) {
+      if (msg.diff.patches && msg.diff.patches.length > 0) {
+        applyPatches(msg.diff.patches);
+      }
       emit({
         source: "chat",
         panel: section ?? "company-info",
@@ -695,7 +972,44 @@ export default function SettingsChat() {
       id: `applied-${Date.now()}`, role: "ai" as const,
       content: "적용했어요! 우측 패널에서 변경된 내용을 확인하실 수 있습니다.",
     }]);
-  }, [emit, section, messages]);
+  }, [emit, section, messages, applyPatches]);
+
+  const handleApplyShippingForm = useCallback((msgId: string, finalDraft: ShippingDraft) => {
+    addShipping({
+      name: finalDraft.name.trim(),
+      receiver: finalDraft.receiver.trim(),
+      phone: finalDraft.phone.trim(),
+      address: finalDraft.address.trim(),
+      zipcode: finalDraft.zipcode.trim() || undefined,
+      detailAddress: finalDraft.detailAddress.trim() || undefined,
+      deliveryNote: finalDraft.deliveryNote.trim() || undefined,
+    });
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId && m.shippingForm
+          ? { ...m, shippingForm: { ...m.shippingForm, draft: finalDraft, applied: true } }
+          : m
+      )
+    );
+    emit({
+      source: "chat",
+      panel: "company-shipping",
+      action: "배송지 추가",
+      detail: `${finalDraft.name} 추가됨`,
+    });
+    setMessages((prev) => [...prev, {
+      id: `applied-${Date.now()}`, role: "ai" as const,
+      content: `${finalDraft.name}이(가) 추가되었어요. 우측 배송지 관리에서 확인하실 수 있습니다.`,
+    }]);
+  }, [addShipping, emit]);
+
+  const handleRejectShippingForm = useCallback(() => {
+    setMessages((prev) => [...prev, {
+      id: `sys-${Date.now()}`, role: "ai" as const,
+      content: "배송지 추가를 취소했어요.",
+      suggestions: ["다른 배송지 추가할게", "전체 현황 알려줘"],
+    }]);
+  }, []);
 
   const handleRejectDiff = useCallback((msgId: string) => {
     setMessages((prev) => [...prev, {
@@ -709,9 +1023,9 @@ export default function SettingsChat() {
     <>
       {/* 헤더 */}
       <div className="shrink-0 px-6 py-4 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-        <Sparkles size={16} strokeWidth={1.5} color="#6366f1" />
-        <span className="text-[14px] font-medium text-[#333]">설정 어시스턴트</span>
-        <span className="text-[12px] text-[#999] ml-1">— 대화로 설정하세요</span>
+        <Sparkles size={16} strokeWidth={1.5} color="#000" />
+        <span className="text-[14px] font-medium text-[#000]" style={{ letterSpacing: "0.14px" }}>설정 어시스턴트</span>
+        <span className="text-[12px] text-[#777169] ml-1" style={{ letterSpacing: "0.14px" }}>— 대화로 설정하세요</span>
       </div>
 
       {/* 메시지 영역 */}
@@ -720,7 +1034,15 @@ export default function SettingsChat() {
           if (msg.role === "system") {
             return (
               <div key={msg.id} className="flex justify-center">
-                <span className="text-[11px] text-[#bbb] px-3 py-1" style={{ borderRadius: "8px", backgroundColor: "#fafafa" }}>
+                <span
+                  className="text-[11px] text-[#777169] px-3 py-1"
+                  style={{
+                    borderRadius: "8px",
+                    backgroundColor: "#ffffff",
+                    boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+                    letterSpacing: "0.14px",
+                  }}
+                >
                   {msg.content}
                 </span>
               </div>
@@ -738,11 +1060,16 @@ export default function SettingsChat() {
                   style={{
                     padding: "12px 16px",
                     borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                    backgroundColor: msg.role === "user" ? "#111" : "#f5f5f5",
-                    color: msg.role === "user" ? "#fff" : "#333",
+                    backgroundColor: msg.role === "user" ? "#000" : "#ffffff",
+                    color: msg.role === "user" ? "#fff" : "#4e4e4e",
                     fontSize: "14px",
                     lineHeight: "1.6",
+                    letterSpacing: "0.14px",
                     whiteSpace: "pre-line",
+                    boxShadow:
+                      msg.role === "user"
+                        ? "none"
+                        : "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
                   }}
                 >
                   {msg.content}
@@ -754,6 +1081,17 @@ export default function SettingsChat() {
                     diff={msg.diff}
                     onApply={() => handleApplyDiff(msg.id)}
                     onReject={() => handleRejectDiff(msg.id)}
+                  />
+                )}
+
+                {/* 배송지 인라인 폼 */}
+                {msg.shippingForm && (
+                  <ShippingFormCard
+                    title={msg.shippingForm.title}
+                    draft={msg.shippingForm.draft}
+                    applied={msg.shippingForm.applied}
+                    onApply={(d) => handleApplyShippingForm(msg.id, d)}
+                    onReject={handleRejectShippingForm}
                   />
                 )}
 
@@ -771,8 +1109,13 @@ export default function SettingsChat() {
               <button
                 key={s}
                 onClick={() => handleSend(s)}
-                className="px-3.5 py-[7px] text-[13px] text-[#555] cursor-pointer transition-all hover:bg-[#eee]"
-                style={{ borderRadius: "20px", backgroundColor: "#f5f5f5", border: "1px solid rgba(0,0,0,0.06)" }}
+                className="px-3.5 py-[7px] text-[13px] text-[#4e4e4e] cursor-pointer transition-all hover:bg-[rgba(245,242,239,0.8)]"
+                style={{
+                  borderRadius: "9999px",
+                  backgroundColor: "#ffffff",
+                  boxShadow: "rgba(0,0,0,0.4) 0px 0px 1px, rgba(0,0,0,0.04) 0px 4px 4px",
+                  letterSpacing: "0.14px",
+                }}
               >
                 {s}
               </button>
@@ -783,9 +1126,16 @@ export default function SettingsChat() {
         {/* 타이핑 인디케이터 */}
         {isTyping && (
           <div className="flex justify-start">
-            <div className="flex items-center gap-2 px-4 py-3" style={{ borderRadius: "16px 16px 16px 4px", backgroundColor: "#f5f5f5" }}>
-              <Loader2 size={14} strokeWidth={1.5} color="#999" className="animate-spin" />
-              <span className="text-[13px] text-[#999]">분석 중...</span>
+            <div
+              className="flex items-center gap-2 px-4 py-3"
+              style={{
+                borderRadius: "16px 16px 16px 4px",
+                backgroundColor: "#ffffff",
+                boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
+              }}
+            >
+              <Loader2 size={14} strokeWidth={1.5} color="#777169" className="animate-spin" />
+              <span className="text-[13px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>분석 중...</span>
             </div>
           </div>
         )}
@@ -795,7 +1145,11 @@ export default function SettingsChat() {
       <div className="shrink-0 px-5 pb-5 pt-2">
         <div
           className="flex items-center gap-2 px-4 py-3"
-          style={{ borderRadius: "14px", backgroundColor: "#f8f8f8", boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px" }}
+          style={{
+            borderRadius: "14px",
+            backgroundColor: "#ffffff",
+            boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px, rgba(0,0,0,0.04) 0px 2px 4px",
+          }}
         >
           <input
             ref={inputRef}
@@ -803,6 +1157,9 @@ export default function SettingsChat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
+              // 한글 IME 조합 중 Enter는 무시 (조합 확정 + 전송 이중 발사 방지)
+              // nativeEvent.isComposing: 표준 / keyCode 229: Safari·구버전 대응
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSend(input);

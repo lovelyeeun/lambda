@@ -25,6 +25,8 @@ export default function ChatInput({ onSend, disabled = false, placeholder }: Cha
   }, [value, disabled, onSend]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // 한글 IME 조합 중 Enter 무시 (조합 확정과 전송이 이중 발사되는 문제 방지)
+    if ((e.nativeEvent as KeyboardEvent).isComposing || e.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
