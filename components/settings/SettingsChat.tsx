@@ -69,87 +69,57 @@ const contextHintToSection: Record<string, SettingsSection> = {
 
 /* ═══════════════════════════════════════
    폼 UI 액션 → 채팅 반응 메시지 생성
+
+   원칙:
+   - 추론 블록은 채팅으로 들어온 요청에서만 생성 (실제 의도 분석/영향 계산이 발생할 때)
+   - 폼 액션은 우측 패널 토스트로 즉각 피드백되므로 채팅에는 의미 있는 변화만 가벼운 ack
+   - input 타이핑·토글·일반 편집은 무음 (null 반환)
+   - 저장·추가·삭제처럼 의미 있는 액션만 짧은 ack + follow-up suggestions
    ═══════════════════════════════════════ */
 
-function buildFormActionResponse(panel: string, action: string, detail: string): ChatMessage {
+function buildFormActionResponse(_panel: string, action: string, detail: string): ChatMessage | null {
   const d = detail.toLowerCase();
+  const cleanDetail = detail.replace(/^\[.*?\]\s*/, "");
 
-  /* 토글 변경 */
-  if (action === "toggle") {
+  /* 무음: input 타이핑 — 너무 시끄러움 */
+  if (action === "input-change") return null;
+
+  /* 무음: 단순 토글·편집·선택 — 우측 토스트로 충분 */
+  if (action === "toggle") return null;
+  if (
+    !d.includes("저장") && !d.includes("적용") && !d.includes("완료") &&
+    !d.includes("추가") && !d.includes("생성") && !d.includes("등록") && !d.includes("새") &&
+    !d.includes("삭제") && !d.includes("제거") && !d.includes("해제") && !d.includes("회수")
+  ) {
+    return null;
+  }
+
+  /* 저장 / 완료 / 적용 — 가벼운 ack + follow-up */
+  if (d.includes("저장") || d.includes("완료") || d.includes("적용")) {
     return {
       id: `ai-form-${Date.now()}`, role: "ai",
-      content: `설정을 변경했어요. ${detail.replace(/^\[.*?\]\s*/, "")}`,
-      thinking: [
-        { label: "설정 변경 감지", detail },
-        { label: "영향 범위 확인", detail: "현재 팀 전체에 적용됩니다" },
-      ],
+      content: "저장했어요. 다른 설정도 도와드릴까요?",
+      suggestions: ["전체 현황 알려줘", "다른 설정 보여줘"],
     };
   }
 
-  /* 저장 / 완료 / 적용 */
-  if (d.includes("저장") || d.includes("완료") || d.includes("적용") || d.includes("확인")) {
-    return {
-      id: `ai-form-${Date.now()}`, role: "ai",
-      content: "변경사항이 저장되었어요! 다른 설정도 수정할까요?",
-      thinking: [
-        { label: "저장 처리", detail },
-        { label: "데이터 검증", detail: "정상적으로 반영되었습니다" },
-      ],
-      suggestions: ["다른 설정 볼래", "전체 현황 알려줘", "채팅으로 돌아갈래"],
-    };
-  }
-
-  /* 추가 / 생성 / 등록 */
+  /* 추가 / 등록 */
   if (d.includes("추가") || d.includes("생성") || d.includes("등록") || d.includes("새")) {
     return {
       id: `ai-form-${Date.now()}`, role: "ai",
-      content: `새 항목을 추가하셨네요. ${detail.replace(/^\[.*?\]\s*/, "")}`,
-      thinking: [
-        { label: "항목 추가 감지", detail },
-        { label: "유효성 확인", detail: "정상 추가됨" },
-      ],
+      content: `추가했어요. ${cleanDetail ? `(${cleanDetail})` : ""}`.trim(),
     };
   }
 
-  /* 삭제 / 제거 */
+  /* 삭제 / 제거 / 해제 */
   if (d.includes("삭제") || d.includes("제거") || d.includes("해제") || d.includes("회수")) {
     return {
       id: `ai-form-${Date.now()}`, role: "ai",
-      content: "항목이 제거되었어요. 관련 설정에 영향이 없는지 확인했어요.",
-      thinking: [
-        { label: "제거 처리", detail },
-        { label: "연관 설정 확인", detail: "다른 설정에 영향 없음" },
-      ],
+      content: "삭제했어요. 관련 설정에 영향이 있다면 알려드릴게요.",
     };
   }
 
-  /* 편집 / 수정 / 변경 */
-  if (d.includes("편집") || d.includes("수정") || d.includes("변경") || d.includes("선택")) {
-    return {
-      id: `ai-form-${Date.now()}`, role: "ai",
-      content: `수정하셨네요. ${detail.replace(/^\[.*?\]\s*/, "")}`,
-      thinking: [
-        { label: "변경 감지", detail },
-      ],
-    };
-  }
-
-  /* input 값 변경 (debounce 효과를 위해 간결하게) */
-  if (action === "input-change") {
-    return {
-      id: `ai-form-${Date.now()}`, role: "ai",
-      content: `입력값을 확인했어요. ${detail.replace(/^\[.*?\]\s*/, "")}`,
-    };
-  }
-
-  /* 기본 */
-  return {
-    id: `ai-form-${Date.now()}`, role: "ai",
-    content: `확인했어요. ${detail.replace(/^\[.*?\]\s*/, "")}`,
-    thinking: [
-      { label: "액션 감지", detail },
-    ],
-  };
+  return null;
 }
 
 function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?: number } {
@@ -423,87 +393,57 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
 }
 
 /* ═══════════════════════════════════════
-   카드 클릭 시 시작 메시지
+   카드 클릭 시 시작 메시지 — 짧은 인사 + 다음 액션 제안 (추론 없음)
    ═══════════════════════════════════════ */
 
 function getCardEntryMessage(section: SettingsSection): ChatMessage | null {
   const map: Record<string, ChatMessage> = {
     "company-info-edit": {
       id: `entry-${Date.now()}`, role: "ai",
-      content: "회사 정보를 수정할게요. 변경할 항목을 말씀해주세요.",
-      thinking: [
-        { label: "현재 회사 정보 로드", detail: "주식회사 로랩스, 142-87-01234, 서울 강남구" },
-        { label: "미입력 항목 확인", detail: "업종, 업태 미입력" },
-      ],
+      content: "회사 정보 화면이에요. 어떤 항목을 수정할까요?",
       suggestions: ["업종/업태 추가해줘", "주소 변경할게", "대표자 정보 수정"],
       contextHint: "company-info",
     },
     "company-team": {
       id: `entry-${Date.now()}`, role: "ai",
-      content: "팀원 관리 화면이에요. 현재 5명이 등록되어 있어요.",
-      thinking: [
-        { label: "팀원 현황 조회", detail: "관리자 1, 구매담당 2, 뷰어 2 — 총 5명" },
-        { label: "라이선스 확인", detail: "10명 중 5명 사용, 5석 여유" },
-      ],
-      suggestions: ["새 팀원 추가할게", "권한 변경하고 싶어", "팀원 목록 보여줘"],
+      content: "팀원 관리 화면이에요.",
+      suggestions: ["새 팀원 추가할게", "권한 변경하고 싶어"],
       contextHint: "team",
     },
     "company-shipping": {
       id: `entry-${Date.now()}`, role: "ai",
-      content: "배송지 설정이에요. 현재 본사 1곳이 등록되어 있어요.",
-      thinking: [
-        { label: "배송지 현황", detail: "본사: 서울 강남구 테헤란로 152, 7층" },
-      ],
-      suggestions: ["새 배송지 추가할게", "본사 주소 변경", "기본 배송지 바꿔줘"],
+      content: "배송지 설정이에요.",
+      suggestions: ["분당 지사 배송지 추가해줘", "기본 배송지 바꿔줘"],
       contextHint: "shipping",
     },
     "accounting-payment": {
       id: `entry-${Date.now()}`, role: "ai",
-      content: "결제수단 관리에요. 현재 법인카드 1개가 등록되어 있어요.",
-      thinking: [
-        { label: "결제수단 현황", detail: "법인카드 신한 ****-1234 등록" },
-        { label: "미연동 항목", detail: "BNPL 미연동, 후불카드 미등록" },
-      ],
-      suggestions: ["카드 추가 등록할게", "BNPL 연동하고 싶어", "결제수단 목록 보여줘"],
+      content: "결제수단 관리에요.",
+      suggestions: ["카드 추가 등록할게", "BNPL 연동하고 싶어"],
       contextHint: "payment",
     },
     "accounting-budget": {
       id: `entry-${Date.now()}`, role: "ai",
-      content: "예산 설정이에요. 연간 1.2억이 설정되어 있고, 일부 부서는 월별 한도가 미설정이에요.",
-      thinking: [
-        { label: "예산 현황 조회", detail: "연간 120,000,000원, 4개 부서 배분" },
-        { label: "미설정 항목", detail: "디자인팀, 개발팀 월별 한도 미설정" },
-      ],
-      suggestions: ["마케팅팀 예산 수정할게", "전체 부서 월별 한도 설정해줘", "예산 현황 보여줘"],
+      content: "예산 설정이에요.",
+      suggestions: ["마케팅팀 예산 500만원으로 올려줘", "전체 부서 월별 한도 설정해줘"],
       contextHint: "budget",
     },
     "agent-policy": {
       id: `entry-${Date.now()}`, role: "ai",
-      content: "에이전트 정책 설정이에요. 현재 추천 모드로 운영 중이에요.",
-      thinking: [
-        { label: "현재 정책 조회", detail: "추천 모드, 외부 포함 탐색, 전사 일괄 적용" },
-        { label: "사용 패턴", detail: "최근 30일 추천 후 구매 12건, 자동 구매 3건" },
-      ],
-      suggestions: ["자동구매 모드로 바꿔줘", "등록 상품만 검색하게 해줘", "유저별 설정할래"],
+      content: "에이전트 정책 설정이에요.",
+      suggestions: ["자동구매 모드로 바꿔줘", "등록 상품만 검색하게 해줘"],
       contextHint: "agent-policy",
     },
     "approval-rules": {
       id: `entry-${Date.now()}`, role: "ai",
-      content: "승인 체계 설정이에요. 현재 4개 결재 라인이 있어요.",
-      thinking: [
-        { label: "결재 라인 현황", detail: "기본 + 영업팀 + 마케팅·운영 + 개발팀" },
-        { label: "승인 소요시간 분석", detail: "평균 2.3시간, 마케팅·운영이 가장 느림 (8시간)" },
-      ],
-      suggestions: ["새 결재 라인 추가할게", "자동승인 한도 변경해줘", "조직도 보여줘"],
+      content: "승인 체계 설정이에요.",
+      suggestions: ["새 결재 라인 추가할게", "자동승인 한도 변경해줘"],
       contextHint: "approval",
     },
     "accounting-description": {
       id: `entry-${Date.now()}`, role: "ai",
-      content: "적요 설정이에요. AI 자동적요가 켜져있고 7개 규칙이 설정되어 있어요.",
-      thinking: [
-        { label: "적요 설정 현황", detail: "AI 자동적요 ON, 카테고리 매핑 7개 규칙" },
-      ],
-      suggestions: ["새 규칙 추가할게", "AI 적요 끄고 싶어", "규칙 목록 보여줘"],
+      content: "적요 설정이에요.",
+      suggestions: ["새 규칙 추가할게", "AI 적요 끄고 싶어"],
       contextHint: "description",
     },
   };
@@ -936,30 +876,29 @@ export default function SettingsChat() {
     }
   }, [messages, isTyping]);
 
-  /* 폼 UI 이벤트 수신 → 채팅에 반응 메시지 생성 */
+  /* 폼 UI 이벤트 수신 → 의미 있는 액션만 가벼운 ack 생성
+     원칙: 시스템 칩 (🖱) 표시 안 함, 추론 블록 만들지 않음, 무음 액션은 완전 스킵 */
   useEffect(() => {
     if (!lastFormEvent || lastFormEvent.id === lastFormEventIdRef.current) return;
     lastFormEventIdRef.current = lastFormEvent.id;
 
-    const detail = lastFormEvent.detail ?? lastFormEvent.action;
+    const response = buildFormActionResponse(
+      lastFormEvent.panel,
+      lastFormEvent.action,
+      lastFormEvent.detail ?? ""
+    );
+    if (!response) return; // 무음 액션 — 채팅에 아무 변화 없음
 
-    // 유저 액션을 시스템 메시지로 표시
-    setMessages((prev) => [
-      ...prev,
-      { id: `form-${Date.now()}`, role: "system", content: `🖱 ${detail}` },
-    ]);
-
-    // AI가 반응하는 메시지 생성
     setIsTyping(true);
-    setTimeout(() => {
-      const response = buildFormActionResponse(lastFormEvent.panel, lastFormEvent.action, lastFormEvent.detail ?? "");
+    const t = setTimeout(() => {
       setMessages((prev) => [...prev, response]);
       setIsTyping(false);
-    }, 600);
+    }, 400);
+    return () => clearTimeout(t);
   }, [lastFormEvent]);
 
-  /* 카드 클릭 → 채팅에 시작 메시지 주입
-     단, 채팅이 스스로 setSection을 호출한 경우엔 중복 방지 */
+  /* 카드 클릭 → 가벼운 진입 인사 (시스템 칩·추론 없이)
+     채팅이 스스로 setSection을 호출한 경우엔 중복 방지 */
   useEffect(() => {
     if (section && section !== "company-info" && section !== prevSectionRef.current) {
       if (chatDrivenSectionRef.current) {
@@ -967,15 +906,12 @@ export default function SettingsChat() {
       } else {
         const entryMsg = getCardEntryMessage(section);
         if (entryMsg) {
-          setMessages((prev) => [
-            ...prev,
-            { id: `nav-${Date.now()}`, role: "system", content: `📂 ${section} 열림` },
-          ]);
           setIsTyping(true);
-          setTimeout(() => {
+          const t = setTimeout(() => {
             setMessages((prev) => [...prev, entryMsg]);
             setIsTyping(false);
-          }, 500);
+          }, 350);
+          return () => clearTimeout(t);
         }
       }
     }
