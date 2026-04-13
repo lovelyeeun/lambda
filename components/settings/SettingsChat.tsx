@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useSettings, type SettingsSection } from "@/lib/settings-context";
 import { useSettingsEmit, useLastFormEvent, useFocusEmit } from "@/lib/settings-events";
-import { useSettingsStore, type SettingsPatch } from "@/lib/settings-store";
+import { useSettingsStore, patchToFocusKey, type SettingsPatch } from "@/lib/settings-store";
 import ShippingAddressModal, { type ShippingDraft } from "@/components/settings/ShippingAddressModal";
 import { PlannedTooltip } from "@/components/ui/Tooltip";
 
@@ -293,6 +293,100 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
             "분당 지사 배송지 추가해줘",
           ],
           contextHint: "shipping",
+        },
+      ],
+    };
+  }
+
+  /* 결제수단 — BNPL 연동 (소모품 구매용 활성화) */
+  if ((t.includes("bnpl") || t.includes("후불")) && (t.includes("연동") || t.includes("활성") || t.includes("켜"))) {
+    return {
+      messages: [
+        {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: "BNPL '소모품 구매' 결제수단을 활성화할게요. 적용하면 소모품 카테고리 주문에 우선 사용됩니다.",
+          thinking: [
+            { label: "현재 결제수단 조회", detail: "법인카드 2개 사용중, BNPL 3개 미연동", focusKey: "payment.list" },
+            { label: "사용 패턴 분석", detail: "최근 30일 소모품 주문 비중 38% — BNPL 적합", focusKey: "payment.pm-6" },
+            { label: "한도/연체 확인", detail: "현재 미결제 잔액 0원, 가용 한도 충분" },
+          ],
+          diff: {
+            title: "BNPL 결제수단 활성화",
+            items: [
+              { field: "소모품 구매 BNPL", before: "미사용", after: "사용중" },
+              { field: "우선 적용 카테고리", before: "—", after: "소모품" },
+            ],
+            patches: [
+              { target: "payment.setActive", id: "pm-6", active: true },
+            ],
+          },
+          contextHint: "payment",
+        },
+      ],
+    };
+  }
+
+  /* 결제수단 — 법인카드 월 한도 변경 */
+  if ((t.includes("카드") || t.includes("법인")) && t.includes("한도")) {
+    return {
+      messages: [
+        {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: "법인카드 '종법기명_신한 (1)' 의 월 한도를 200만원으로 올릴게요.",
+          thinking: [
+            { label: "현재 카드 한도 조회", detail: "월 100만원 (신한 ****-850*)", focusKey: "payment.pm-1" },
+            { label: "최근 사용 추이", detail: "최근 2개월 평균 92만원 — 한도 근접" },
+            { label: "변경 후 영향", detail: "월 200만원 → 자동승인 한도(50만원)는 별도 유지" },
+          ],
+          diff: {
+            title: "법인카드 월 한도 변경",
+            items: [
+              { field: "종법기명_신한 (1)", before: "1,000,000원", after: "2,000,000원" },
+            ],
+            patches: [
+              { target: "payment.setLimit", id: "pm-1", monthlyLimit: 2000000 },
+            ],
+          },
+          contextHint: "payment",
+        },
+      ],
+    };
+  }
+
+  /* 결제수단 — 일반 조회 */
+  if (t.includes("결제수단") || (t.includes("카드") && (t.includes("등록") || t.includes("추가") || t.includes("연동")))) {
+    return {
+      messages: [
+        {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: "결제수단 현황이에요. 어떤 작업을 도와드릴까요?",
+          thinking: [
+            { label: "결제수단 현황", detail: "법인카드 3개 (사용중 2), BNPL 3개 (미연동)", focusKey: "payment.list" },
+          ],
+          suggestions: ["BNPL 연동해줘", "법인카드 월 한도 200만원으로 올려줘"],
+          contextHint: "payment",
+        },
+      ],
+    };
+  }
+
+  /* 팀원 — 안전 안내 (실제 데이터 변경은 우측 패널 모달에서) */
+  if (t.includes("팀원") || t.includes("초대")) {
+    return {
+      messages: [
+        {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: "팀원 추가는 우측 '팀원 초대' 버튼에서 진행하시면 돼요. 이름·이메일·부서·역할만 있으면 초대 메일이 발송됩니다.",
+          thinking: [
+            { label: "현재 팀원 현황", detail: "5명 등록 (관리자 1, 구매담당 2, 뷰어 2)", focusKey: "team.list" },
+            { label: "가용 라이선스", detail: "10명 중 5명 사용 — 여유 5석" },
+          ],
+          suggestions: ["전체 현황 알려줘", "권한 체계 확인해줘"],
+          contextHint: "team",
         },
       ],
     };
@@ -955,11 +1049,14 @@ export default function SettingsChat() {
       )
     );
 
-    // diff 적용 → 실제 store 업데이트 + 폼에 이벤트 발행
+    // diff 적용 → 실제 store 업데이트 + 적용 후 강조 (펄스 재발사)
     const msg = messages.find((m) => m.id === msgId);
     if (msg?.diff) {
       if (msg.diff.patches && msg.diff.patches.length > 0) {
         applyPatches(msg.diff.patches);
+        // 적용 후 200ms 뒤 영향받은 행 펄스 — 유저 시선 유도
+        const keys = Array.from(new Set(msg.diff.patches.map(patchToFocusKey)));
+        setTimeout(() => keys.forEach((k) => focus(k)), 200);
       }
       emit({
         source: "chat",
@@ -973,7 +1070,7 @@ export default function SettingsChat() {
       id: `applied-${Date.now()}`, role: "ai" as const,
       content: "적용했어요! 우측 패널에서 변경된 내용을 확인하실 수 있습니다.",
     }]);
-  }, [emit, section, messages, applyPatches]);
+  }, [emit, section, messages, applyPatches, focus]);
 
   const handleApplyShippingForm = useCallback((msgId: string, finalDraft: ShippingDraft) => {
     addShipping({
@@ -998,11 +1095,13 @@ export default function SettingsChat() {
       action: "배송지 추가",
       detail: `${finalDraft.name} 추가됨`,
     });
+    // 적용 후 강조: 새 행은 ID를 알 수 없으니 list 단위로 펄스
+    setTimeout(() => focus("shipping.list"), 200);
     setMessages((prev) => [...prev, {
       id: `applied-${Date.now()}`, role: "ai" as const,
       content: `${finalDraft.name}이(가) 추가되었어요. 우측 배송지 관리에서 확인하실 수 있습니다.`,
     }]);
-  }, [addShipping, emit]);
+  }, [addShipping, emit, focus]);
 
   const handleRejectShippingForm = useCallback(() => {
     setMessages((prev) => [...prev, {

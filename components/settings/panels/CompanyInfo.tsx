@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSettingsStore, type CompanyField } from "@/lib/settings-store";
-import { useFocusPulse } from "@/lib/settings-events";
+import { useFocusPulse, useScrollOnFocus } from "@/lib/settings-events";
 
 const PULSE_RING = "rgba(99,102,241,0.55) 0px 0px 0px 2px";
 
@@ -82,8 +82,10 @@ function CompanyFieldRow({
   onChange: (v: string) => void;
 }) {
   const pulse = useFocusPulse(`company.field.${fieldKey}`);
+  const ref = useRef<HTMLDivElement>(null);
+  useScrollOnFocus(`company.field.${fieldKey}`, ref);
   return (
-    <div>
+    <div ref={ref} className="scroll-mt-16">
       <label className="block text-[12px] text-[#999] mb-1">{label}</label>
       <input
         type="text"

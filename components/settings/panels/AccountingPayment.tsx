@@ -1,19 +1,18 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   CreditCard, Plus, X, Check, Clock, MoreHorizontal, Settings,
 } from "lucide-react";
+import { useSettingsStore, type PaymentMethod as StorePaymentMethod } from "@/lib/settings-store";
+import { useFocusPulse, useScrollOnFocus } from "@/lib/settings-events";
 
 /* ═══════════════════════════════════════
-   Dummy Data
+   Panel-side enriched row shape — store 의 (active, monthlyLimit) 에
+   관측 메트릭 (spent, usagePercent, resetCycle) 을 덧붙여 표시.
    ═══════════════════════════════════════ */
 
-interface PaymentMethod {
-  id: string;
-  type: "카드결제" | "BNPL";
-  name: string;
-  subLabel: string;
+interface PaymentRow extends StorePaymentMethod {
   budgetStatus: "사용중" | "미사용";
   budgetAmount: string;
   spent: string;
@@ -21,48 +20,18 @@ interface PaymentMethod {
   resetCycle: string;
 }
 
-const initialMethods: PaymentMethod[] = [
-  {
-    id: "pm-1", type: "카드결제", name: "종법기명_신한 (1)",
-    subLabel: "[신한카드법인] 5525-76**-****-850*",
-    budgetStatus: "사용중", budgetAmount: "1,000,000원", spent: "-", usagePercent: "0%", resetCycle: "매월 1일",
-  },
-  {
-    id: "pm-2", type: "카드결제", name: "종법기명_신한",
-    subLabel: "[신한카드법인] 5525-76**-****-850*",
-    budgetStatus: "사용중", budgetAmount: "1,000,000원", spent: "-", usagePercent: "0%", resetCycle: "매월 1일",
-  },
-  {
-    id: "pm-3", type: "카드결제", name: "김원균 (1) (1)",
-    subLabel: "[신한카드법인] 5525-76**-****-586*",
-    budgetStatus: "미사용", budgetAmount: "-", spent: "-", usagePercent: "-", resetCycle: "-",
-  },
-  {
-    id: "pm-4", type: "카드결제", name: "김원균 (1)",
-    subLabel: "[신한카드법인] 5525-76**-****-586*",
-    budgetStatus: "미사용", budgetAmount: "-", spent: "-", usagePercent: "-", resetCycle: "-",
-  },
-  {
-    id: "pm-5", type: "카드결제", name: "김원균",
-    subLabel: "[신한카드법인] 5525-76**-****-586*",
-    budgetStatus: "미사용", budgetAmount: "-", spent: "-", usagePercent: "-", resetCycle: "-",
-  },
-  {
-    id: "pm-6", type: "BNPL", name: "소모품 구매",
-    subLabel: "[로랩스] 2948701037",
-    budgetStatus: "미사용", budgetAmount: "-", spent: "-", usagePercent: "-", resetCycle: "-",
-  },
-  {
-    id: "pm-7", type: "BNPL", name: "자산 구매용",
-    subLabel: "[로랩스] 2948701037",
-    budgetStatus: "미사용", budgetAmount: "-", spent: "-", usagePercent: "-", resetCycle: "-",
-  },
-  {
-    id: "pm-8", type: "BNPL", name: "간식 결제용",
-    subLabel: "[로랩스] 2948701037",
-    budgetStatus: "미사용", budgetAmount: "-", spent: "-", usagePercent: "-", resetCycle: "-",
-  },
-];
+const PULSE_SHADOW = "rgba(99,102,241,0.5) 0px 0px 0px 2px, rgba(99,102,241,0.15) 0px 6px 20px";
+
+function toRow(m: StorePaymentMethod): PaymentRow {
+  return {
+    ...m,
+    budgetStatus: m.active ? "사용중" : "미사용",
+    budgetAmount: m.monthlyLimit ? `${m.monthlyLimit.toLocaleString()}원` : "-",
+    spent: "-",
+    usagePercent: m.active ? "0%" : "-",
+    resetCycle: m.active ? "매월 1일" : "-",
+  };
+}
 
 const businessInfo = {
   ceo: "김원균",
@@ -76,7 +45,8 @@ const businessInfo = {
    ═══════════════════════════════════════ */
 
 export default function AccountingPayment() {
-  const [methods] = useState<PaymentMethod[]>(initialMethods);
+  const { payments } = useSettingsStore();
+  const methods = useMemo<PaymentRow[]>(() => payments.map(toRow), [payments]);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [bnplAddModalOpen, setBnplAddModalOpen] = useState(false);
@@ -210,61 +180,15 @@ export default function AccountingPayment() {
 
         {/* Table rows */}
         {methods.map((m) => (
-          <div
+          <PaymentRowView
             key={m.id}
-            className="grid items-center px-5 py-3.5 text-[13px] transition-colors hover:bg-[#fafafa] relative"
-            style={{
-              gridTemplateColumns: "100px 1fr 110px 130px 100px 110px 110px 40px",
-              borderBottom: "1px solid rgba(0,0,0,0.04)",
-            }}
-          >
-            <span className="text-[12px] text-[#999]">{m.type}</span>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium text-[#222]">{m.name}</span>
-                <span className="w-4 h-4 rounded-full bg-[#f5f5f5] flex items-center justify-center text-[10px] text-[#bbb] cursor-pointer">i</span>
-              </div>
-              <p className="text-[12px] text-[#bbb] mt-0.5">{m.subLabel}</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: m.budgetStatus === "사용중" ? "#f59e0b" : "#ddd" }}
-              />
-              <span style={{ color: m.budgetStatus === "사용중" ? "#444" : "#bbb" }}>{m.budgetStatus}</span>
-            </div>
-            <span style={{ color: m.budgetAmount === "-" ? "#ddd" : "#444" }}>{m.budgetAmount}</span>
-            <span style={{ color: m.spent === "-" ? "#ddd" : "#444" }}>{m.spent}</span>
-            <span style={{ color: m.usagePercent === "-" ? "#ddd" : "#444" }}>{m.usagePercent}</span>
-            <span style={{ color: m.resetCycle === "-" ? "#ddd" : "#444" }}>{m.resetCycle}</span>
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(menuOpen === m.id ? null : m.id)}
-                className="w-7 h-7 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0f0f0] transition-colors"
-              >
-                <MoreHorizontal size={16} strokeWidth={1.5} color="#bbb" />
-              </button>
-              {menuOpen === m.id && (
-                <div
-                  className="absolute right-0 top-full mt-1 w-[140px] bg-white py-1 z-20"
-                  style={{ borderRadius: "8px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.06) 0px 4px 12px" }}
-                >
-                  <button
-                    onClick={() => { setMenuOpen(null); showToast("설정이 열렸습니다"); }}
-                    className="w-full text-left px-3 py-2 text-[12px] text-[#444] cursor-pointer hover:bg-[#f5f5f5] flex items-center gap-2"
-                  >
-                    <Settings size={13} strokeWidth={1.5} /> 설정
-                  </button>
-                  <button
-                    onClick={() => { setMenuOpen(null); showToast("삭제되었습니다"); }}
-                    className="w-full text-left px-3 py-2 text-[12px] text-[#ef4444] cursor-pointer hover:bg-[#f5f5f5] flex items-center gap-2"
-                  >
-                    <X size={13} strokeWidth={1.5} /> 삭제
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+            row={m}
+            menuOpen={menuOpen === m.id}
+            onMenuToggle={() => setMenuOpen(menuOpen === m.id ? null : m.id)}
+            onMenuClose={() => setMenuOpen(null)}
+            onSettings={() => { setMenuOpen(null); showToast("설정이 열렸습니다"); }}
+            onDelete={() => { setMenuOpen(null); showToast("삭제되었습니다"); }}
+          />
         ))}
       </div>
 
@@ -302,6 +226,92 @@ export default function AccountingPayment() {
           <Check size={14} strokeWidth={2} />{toast}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   Payment Row View — focus pulse 적용
+   ═══════════════════════════════════════ */
+
+function PaymentRowView({
+  row: m,
+  menuOpen,
+  onMenuToggle,
+  onMenuClose: _onMenuClose,
+  onSettings,
+  onDelete,
+}: {
+  row: PaymentRow;
+  menuOpen: boolean;
+  onMenuToggle: () => void;
+  onMenuClose: () => void;
+  onSettings: () => void;
+  onDelete: () => void;
+}) {
+  const idPulse = useFocusPulse(`payment.${m.id}`);
+  const listPulse = useFocusPulse("payment.list");
+  const pulse = idPulse || listPulse;
+  const ref = useRef<HTMLDivElement>(null);
+  useScrollOnFocus(`payment.${m.id}`, ref);
+
+  return (
+    <div
+      ref={ref}
+      className="grid items-center px-5 py-3.5 text-[13px] transition-all duration-300 hover:bg-[#fafafa] relative scroll-mt-16"
+      style={{
+        gridTemplateColumns: "100px 1fr 110px 130px 100px 110px 110px 40px",
+        borderBottom: "1px solid rgba(0,0,0,0.04)",
+        boxShadow: pulse ? PULSE_SHADOW : undefined,
+        borderRadius: pulse ? "10px" : undefined,
+      }}
+    >
+      <span className="text-[12px] text-[#999]">{m.type}</span>
+      <div>
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-[#222]">{m.name}</span>
+          <span className="w-4 h-4 rounded-full bg-[#f5f5f5] flex items-center justify-center text-[10px] text-[#bbb] cursor-pointer">i</span>
+        </div>
+        <p className="text-[12px] text-[#bbb] mt-0.5">{m.subLabel}</p>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: m.budgetStatus === "사용중" ? "#f59e0b" : "#ddd" }}
+        />
+        <span style={{ color: m.budgetStatus === "사용중" ? "#444" : "#bbb" }}>{m.budgetStatus}</span>
+      </div>
+      <span style={{ color: m.budgetAmount === "-" ? "#ddd" : "#444" }}>{m.budgetAmount}</span>
+      <span style={{ color: m.spent === "-" ? "#ddd" : "#444" }}>{m.spent}</span>
+      <span style={{ color: m.usagePercent === "-" ? "#ddd" : "#444" }}>{m.usagePercent}</span>
+      <span style={{ color: m.resetCycle === "-" ? "#ddd" : "#444" }}>{m.resetCycle}</span>
+      <div className="relative">
+        <button
+          onClick={onMenuToggle}
+          className="w-7 h-7 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0f0f0] transition-colors"
+        >
+          <MoreHorizontal size={16} strokeWidth={1.5} color="#bbb" />
+        </button>
+        {menuOpen && (
+          <div
+            className="absolute right-0 top-full mt-1 w-[140px] bg-white py-1 z-20"
+            style={{ borderRadius: "8px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.06) 0px 4px 12px" }}
+          >
+            <button
+              onClick={onSettings}
+              className="w-full text-left px-3 py-2 text-[12px] text-[#444] cursor-pointer hover:bg-[#f5f5f5] flex items-center gap-2"
+            >
+              <Settings size={13} strokeWidth={1.5} /> 설정
+            </button>
+            <button
+              onClick={onDelete}
+              className="w-full text-left px-3 py-2 text-[12px] text-[#ef4444] cursor-pointer hover:bg-[#f5f5f5] flex items-center gap-2"
+            >
+              <X size={13} strokeWidth={1.5} /> 삭제
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

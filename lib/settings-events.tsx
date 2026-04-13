@@ -164,3 +164,23 @@ export function useFocusPulse(keyOrPrefix: string, durationMs = 1400): boolean {
   }, [last, keyOrPrefix, durationMs]);
   return active;
 }
+
+/**
+ * focus 신호가 매칭되면 ref 가 가리키는 element 를 부드럽게 스크롤.
+ * 펄스가 화면 밖에 있을 때도 보이도록 보장.
+ */
+export function useScrollOnFocus(keyOrPrefix: string, ref: React.RefObject<HTMLElement | null>) {
+  const last = useLastFocus();
+  useEffect(() => {
+    if (!last || !ref.current) return;
+    const matches = keyOrPrefix.endsWith("*")
+      ? last.key.startsWith(keyOrPrefix.slice(0, -1))
+      : last.key === keyOrPrefix;
+    if (!matches) return;
+    // requestAnimationFrame 으로 펄스 적용 후 다음 프레임에 스크롤
+    const id = requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [last, keyOrPrefix, ref]);
+}

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useSettingsStore } from "@/lib/settings-store";
-import { useFocusPulse, useLastFocus } from "@/lib/settings-events";
+import { useFocusPulse, useLastFocus, useScrollOnFocus } from "@/lib/settings-events";
 
 function formatPrice(n: number) { return (n / 10000).toLocaleString() + "만원"; }
 
@@ -15,6 +15,8 @@ export default function AccountingBudget() {
   const [toast, setToast] = useState<string | null>(null);
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
   const totalPulse = useFocusPulse("budget.total");
+  const totalRef = useRef<HTMLDivElement>(null);
+  useScrollOnFocus("budget.total", totalRef);
   const lastFocus = useLastFocus();
 
   // focus 가 budget.dept.{name} 으로 들어오면 해당 행 자동 펼침
@@ -30,7 +32,8 @@ export default function AccountingBudget() {
 
       {/* Total */}
       <div
-        className="p-4 mb-4 transition-all duration-300"
+        ref={totalRef}
+        className="p-4 mb-4 transition-all duration-300 scroll-mt-16"
         style={{
           borderRadius: "14px",
           boxShadow: totalPulse ? PULSE_SHADOW : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
@@ -94,11 +97,14 @@ function DepartmentRow({
   onToggle: () => void;
 }) {
   const pulse = useFocusPulse(`budget.dept.${dept.name}`);
+  const ref = useRef<HTMLDivElement>(null);
+  useScrollOnFocus(`budget.dept.${dept.name}`, ref);
   const pct = dept.annual > 0 ? Math.round((dept.used / dept.annual) * 100) : 0;
 
   return (
     <div
-      className="overflow-hidden transition-all duration-300"
+      ref={ref}
+      className="overflow-hidden transition-all duration-300 scroll-mt-16"
       style={{
         borderRadius: "12px",
         boxShadow: pulse ? PULSE_SHADOW : "rgba(0,0,0,0.06) 0px 0px 0px 1px",

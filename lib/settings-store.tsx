@@ -120,6 +120,23 @@ export type SettingsPatch =
   | { target: "payment.setLimit"; id: string; monthlyLimit: number }
   | { target: "payment.add"; method: Omit<PaymentMethod, "id"> };
 
+/** 패치가 영향을 주는 우측 패널의 focus key 로 변환 (적용 후 강조용) */
+export function patchToFocusKey(patch: SettingsPatch): string {
+  switch (patch.target) {
+    case "budget.dept.annual": return `budget.dept.${patch.dept}`;
+    case "budget.carryOver":
+    case "budget.renewPeriod": return "budget.total";
+    case "company.field": return `company.field.${patch.field}`;
+    case "shipping.add": return "shipping.list";
+    case "shipping.remove": return "shipping.list";
+    case "shipping.setDefault":
+    case "shipping.update": return `shipping.${patch.id}`;
+    case "payment.setActive":
+    case "payment.setLimit": return `payment.${patch.id}`;
+    case "payment.add": return "payment.list";
+  }
+}
+
 /* ───────── Store ───────── */
 
 interface SettingsStore {

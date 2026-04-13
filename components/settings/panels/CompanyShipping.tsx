@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useSettingsStore } from "@/lib/settings-store";
-import { useFocusPulse } from "@/lib/settings-events";
+import { useFocusPulse, useScrollOnFocus } from "@/lib/settings-events";
 import ShippingAddressModal, {
   addressToDraft,
   emptyShippingDraft,
@@ -104,9 +104,12 @@ function ShippingRow({
   const idPulse = useFocusPulse(`shipping.${id}`);
   const listPulse = useFocusPulse("shipping.list");
   const pulse = idPulse || listPulse;
+  const ref = useRef<HTMLDivElement>(null);
+  useScrollOnFocus(`shipping.${id}`, ref);
   return (
     <div
-      className="flex items-start gap-3 p-4 transition-all duration-300"
+      ref={ref}
+      className="flex items-start gap-3 p-4 transition-all duration-300 scroll-mt-16"
       style={{
         borderRadius: "12px",
         boxShadow: pulse ? PULSE_SHADOW : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
