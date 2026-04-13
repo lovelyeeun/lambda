@@ -3,10 +3,12 @@
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
 
 export interface PanelMeta {
-  /** 현재 페이지 라벨 — 자식 페이지일 때 표시 (예: "장바구니", "품의 진행") */
+  /** 현재 페이지 라벨 — 헤더에 표시 (예: "작업 현황", "장바구니", "품의 진행"). 생략 시 빈 헤더 */
   label?: string;
-  /** 루트로 돌아가는 콜백 — 제공되면 자식 페이지로 취급되어 헤더에 "← 구매 컨텍스트" 백 버튼 노출 */
+  /** 루트로 돌아가는 콜백 — 제공되면 자식 페이지로 취급되어 헤더에 "← {backLabel}" 백 버튼 노출 */
   onBack?: () => void;
+  /** 백 버튼에 표시할 루트 라벨 (예: "작업 현황"). `onBack`과 함께 사용. 생략 시 "뒤로" */
+  backLabel?: string;
 }
 
 /** Work Item 칩 스위처 — 패널 최상단에 모드와 무관하게 항상 떠 있음 */
@@ -84,7 +86,7 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <RightPanelContext.Provider value={{ open, content, contentKey, meta, workItemStrip, openPanel, closePanel, togglePanel, setWorkItemStrip }}>
+    <RightPanelContext.Provider value={{ open, content, contentKey, meta, workItemStrip, openPanel, closePanel, togglePanel, setWorkItemStrip, registerDefaultOpener }}>
       {children}
     </RightPanelContext.Provider>
   );

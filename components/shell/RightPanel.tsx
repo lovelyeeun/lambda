@@ -89,8 +89,8 @@ export default function RightPanel() {
             )}
 
             {/* Header — 계층 내비게이션:
-                루트(구매 컨텍스트): "구매 컨텍스트" 라벨만 표시
-                자식 페이지: [← 구매 컨텍스트] 백 버튼 + "/" + 현재 페이지 라벨 */}
+                루트: meta.label만 표시 (없으면 빈 헤더)
+                자식 페이지: [← meta.backLabel] 백 버튼 + "/" + 현재 페이지 라벨 */}
             <div
               className="flex items-center gap-2 px-3 h-[44px] shrink-0"
               style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
@@ -101,10 +101,10 @@ export default function RightPanel() {
                     onClick={meta!.onBack}
                     className="inline-flex items-center gap-0.5 text-[12px] font-medium text-[#777169] cursor-pointer transition-colors hover:text-[#000] -ml-1 px-1 py-0.5 rounded-md hover:bg-[#f5f2ef]"
                     style={{ letterSpacing: "0.14px" }}
-                    aria-label="구매 컨텍스트로 돌아가기"
+                    aria-label={`${meta?.backLabel ?? "뒤로"} 돌아가기`}
                   >
                     <ChevronLeft size={14} strokeWidth={1.75} />
-                    구매 컨텍스트
+                    {meta?.backLabel ?? "뒤로"}
                   </button>
                   <span className="text-[#d4d4d4] text-[12px]">/</span>
                   <span
@@ -115,12 +115,14 @@ export default function RightPanel() {
                   </span>
                 </>
               ) : (
-                <span
-                  className="text-[13px] font-medium text-[#000]"
-                  style={{ letterSpacing: "0.14px" }}
-                >
-                  {meta?.label ?? "구매 컨텍스트"}
-                </span>
+                meta?.label && (
+                  <span
+                    className="text-[13px] font-medium text-[#000]"
+                    style={{ letterSpacing: "0.14px" }}
+                  >
+                    {meta.label}
+                  </span>
+                )
               )}
 
               <button
