@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { Product } from "@/lib/types";
-import { FolderPlus, Check, X, Folder, Truck } from "lucide-react";
+import { FolderPlus, Check, Truck, ShoppingCart } from "lucide-react";
 import { folders } from "@/data/folders";
 
 interface ProductDetailPanelProps {
@@ -15,19 +15,51 @@ function formatPrice(n: number) {
 }
 
 export default function ProductDetailPanel({ product, onAddToCart }: ProductDetailPanelProps) {
-  const [showFolderModal, setShowFolderModal] = useState(false);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [folderDropdownOpen, setFolderDropdownOpen] = useState(false);
+  const [pickedFolderIds, setPickedFolderIds] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const folderWrapRef = useRef<HTMLDivElement>(null);
 
-  const handleConfirmFolder = () => {
-    if (!selectedFolderId) return;
-    const folder = folders.find((f) => f.id === selectedFolderId);
-    if (folder) {
-      setToast(`${folder.name} 폴더에 상품담기 완료`);
-      setTimeout(() => setToast(null), 2500);
-    }
-    setShowFolderModal(false);
-    setSelectedFolderId(null);
+  useEffect(() => {
+    if (!folderDropdownOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (folderWrapRef.current && !folderWrapRef.current.contains(e.target as Node)) {
+        setFolderDropdownOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFolderDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [folderDropdownOpen]);
+
+  const toggleFolderPick = (id: string) => {
+    setPickedFolderIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const handleConfirmFolders = () => {
+    if (pickedFolderIds.length === 0) return;
+    const names = folders
+      .filter((f) => pickedFolderIds.includes(f.id))
+      .map((f) => f.name)
+      .join(", ");
+    setToast(`${names} 폴더에 담았어요`);
+    setTimeout(() => setToast(null), 2500);
+    setFolderDropdownOpen(false);
+    setPickedFolderIds([]);
+  };
+
+  const handleAddToCartClick = () => {
+    onAddToCart();
+    setToast(`${product.name} 장바구니에 담았어요`);
+    setTimeout(() => setToast(null), 2500);
   };
 
   return (
@@ -102,80 +134,97 @@ export default function ProductDetailPanel({ product, onAddToCart }: ProductDeta
         <span className="text-[13px] text-[#22c55e] font-medium">재고 있음</span>
       </div>
 
-      {/* Add to folder button */}
-      <button
-        onClick={() => { setShowFolderModal(true); setSelectedFolderId(null); }}
-        className="flex items-center justify-center gap-2 w-full py-[11px] text-[14px] font-medium text-white bg-black rounded-xl cursor-pointer transition-opacity hover:opacity-80"
-      >
-        <FolderPlus size={16} strokeWidth={1.5} />
-        폴더에 담기
-      </button>
+      {/* Actions — 장바구니 담기 (primary) + 폴더에 담기 (secondary w/ dropdown) */}
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={handleAddToCartClick}
+          className="flex items-center justify-center gap-2 w-full py-[11px] text-[14px] font-medium text-white bg-black rounded-xl cursor-pointer transition-opacity hover:opacity-80"
+        >
+          <ShoppingCart size={16} strokeWidth={1.5} />
+          장바구니 담기
+        </button>
 
-      {/* ── 폴더 선택 모달 ── */}
-      {showFolderModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center">
-          <div className="absolute inset-0 cursor-pointer" style={{ backgroundColor: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }} onClick={() => setShowFolderModal(false)} />
-          <div className="relative w-[340px] bg-white" style={{ borderRadius: "18px", boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px, rgba(0,0,0,0.15) 0px 16px 48px" }}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <h3 className="text-[16px] font-semibold text-[#111]">폴더에 담기</h3>
-              <button onClick={() => setShowFolderModal(false)} className="flex items-center justify-center w-7 h-7 rounded-full cursor-pointer hover:bg-[#f0f0f0]">
-                <X size={15} strokeWidth={1.5} color="#888" />
-              </button>
-            </div>
+        <div ref={folderWrapRef} className="relative">
+          <button
+            onClick={() => {
+              setFolderDropdownOpen((v) => !v);
+              setPickedFolderIds([]);
+            }}
+            className="flex items-center justify-center gap-2 w-full py-[11px] text-[14px] font-medium text-[#1a1a1a] bg-white rounded-xl cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px" }}
+          >
+            <FolderPlus size={16} strokeWidth={1.5} />
+            폴더에 담기
+          </button>
 
-            {/* Product summary */}
-            <div className="mx-5 mb-3 p-3 flex items-center gap-3" style={{ borderRadius: "10px", backgroundColor: "#fafafa" }}>
-              <div className="w-10 h-10 bg-[#f0f0f0] rounded-lg flex items-center justify-center text-[9px] text-[#999] shrink-0">{product.brand}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-medium text-[#333] truncate">{product.name}</p>
-                <p className="text-[12px] text-[#777]">{formatPrice(product.price)}</p>
-              </div>
-            </div>
-
-            {/* Folder list */}
-            <div className="px-5 pb-2 max-h-[240px] overflow-y-auto">
-              <div className="flex flex-col gap-1">
-                {folders.map((folder) => {
-                  const isSelected = selectedFolderId === folder.id;
+          {folderDropdownOpen && (
+            <div
+              className="absolute bottom-full mb-1.5 left-0 right-0 bg-white py-1.5 z-50"
+              style={{
+                borderRadius: "10px",
+                boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 8px, rgba(0,0,0,0.04) 0px 8px 20px",
+              }}
+            >
+              <p className="px-3 pt-1 pb-1.5 text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                여러 폴더를 선택할 수 있어요
+              </p>
+              <div className="max-h-[200px] overflow-y-auto">
+                {folders.map((f) => {
+                  const picked = pickedFolderIds.includes(f.id);
                   return (
                     <button
-                      key={folder.id}
-                      onClick={() => setSelectedFolderId(folder.id)}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+                      key={f.id}
+                      onClick={(e) => { e.stopPropagation(); toggleFolderPick(f.id); }}
+                      className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-[12px] cursor-pointer transition-colors"
                       style={{
-                        backgroundColor: isSelected ? "#f0f7ff" : "transparent",
-                        boxShadow: isSelected ? "inset 0 0 0 1.5px #4285f4" : "none",
+                        color: picked ? "#000" : "#444",
+                        backgroundColor: picked ? "#f5f2ef" : "transparent",
+                        fontWeight: picked ? 500 : 400,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!picked) e.currentTarget.style.backgroundColor = "#fafafa";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!picked) e.currentTarget.style.backgroundColor = "transparent";
                       }}
                     >
-                      <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0" style={{ backgroundColor: isSelected ? "#e8f0fe" : "#f5f5f5" }}>
-                        <Folder size={14} strokeWidth={1.5} color={isSelected ? "#4285f4" : "#999"} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium" style={{ color: isSelected ? "#1a73e8" : "#333" }}>{folder.name}</p>
-                        <p className="text-[11px] text-[#999]">{folder.description}</p>
-                      </div>
-                      {isSelected && <Check size={16} strokeWidth={2} color="#4285f4" />}
+                      <span
+                        className="flex items-center justify-center w-4 h-4 rounded-[4px] shrink-0"
+                        style={{
+                          backgroundColor: picked ? "#000" : "transparent",
+                          boxShadow: picked ? "none" : "rgba(0,0,0,0.15) 0px 0px 0px 1px inset",
+                        }}
+                      >
+                        {picked && <Check size={10} strokeWidth={3} color="#fff" />}
+                      </span>
+                      {f.name}
                     </button>
                   );
                 })}
               </div>
+              <div className="flex items-center gap-1.5 px-2 pt-1.5 pb-1" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFolderDropdownOpen(false); }}
+                  className="flex-1 px-2 py-1.5 text-[12px] text-[#777169] rounded-[6px] cursor-pointer hover:bg-[#fafafa]"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleConfirmFolders(); }}
+                  disabled={pickedFolderIds.length === 0}
+                  className="flex-1 px-2 py-1.5 text-[12px] font-medium rounded-[6px] cursor-pointer transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: pickedFolderIds.length > 0 ? "#000" : "#e5e5e5",
+                    color: pickedFolderIds.length > 0 ? "#fff" : "#999",
+                  }}
+                >
+                  담기{pickedFolderIds.length > 0 ? ` (${pickedFolderIds.length})` : ""}
+                </button>
+              </div>
             </div>
-
-            {/* Confirm */}
-            <div className="px-5 pb-5 pt-3">
-              <button
-                onClick={handleConfirmFolder}
-                disabled={!selectedFolderId}
-                className="w-full py-2.5 text-[14px] font-medium text-white rounded-xl cursor-pointer transition-opacity hover:opacity-80"
-                style={{ backgroundColor: selectedFolderId ? "#111" : "#ccc" }}
-              >
-                확인
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Toast */}
       {toast && (

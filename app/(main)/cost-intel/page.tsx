@@ -8,7 +8,7 @@ import {
 import { expenses } from "@/data/expenses";
 import type { Expense } from "@/lib/types";
 import ExportMenu from "@/components/ui/ExportMenu";
-import ResizableHandle from "@/components/ui/ResizableHandle";
+import { useRightPanel } from "@/lib/right-panel-context";
 
 /* ─── Helpers ─── */
 function formatPrice(n: number) { return n.toLocaleString("ko-KR") + "원"; }
@@ -150,9 +150,9 @@ export default function CostIntelPage() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [activeGUIs, setActiveGUIs] = useState<GUIPanel[]>([]);
-  const [guiWidth, setGuiWidth] = useState(420);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { openPanel, closePanel } = useRightPanel();
 
   // Initial AI greeting
   const hasGreeted = useRef(false);
@@ -212,6 +212,26 @@ export default function CostIntelPage() {
       el.style.height = Math.min(el.scrollHeight, 120) + "px";
     }
   };
+
+  /* ── 우측 분석 패널을 RightPanel context로 송출 ──
+     마운트 시 자동 오픈, activeGUIs 변화 시 갱신, 언마운트 시 닫기.
+     이 페이지 루트 패널이므로 onBack 없음. */
+  useEffect(() => {
+    openPanel(
+      <CostIntelAnalysisPanel
+        activeGUIs={activeGUIs}
+        onRemoveGUI={(g) => setActiveGUIs((prev) => prev.length > 1 ? prev.filter((p) => p !== g) : prev)}
+        onReset={() => setActiveGUIs(["summary"])}
+        onDrill={handleSend}
+      />,
+      "cost-intel-analysis",
+      { label: "비용 분석" },
+    );
+  }, [activeGUIs, openPanel, handleSend]);
+
+  useEffect(() => {
+    return () => { closePanel(); };
+  }, [closePanel]);
 
   return (
     <div className="h-full flex flex-col">
@@ -396,70 +416,77 @@ export default function CostIntelPage() {
           </div>
         </div>
 
-        {/* ── Resize Handle ── */}
-        <ResizableHandle
-          panelWidth={guiWidth}
-          onResize={setGuiWidth}
-          minWidth={320}
-          maxWidth={560}
-          side="left"
-        />
+      </div>
+    </div>
+  );
+}
 
-        {/* ── Right: Dynamic GUI ── */}
-        <div className="shrink-0 overflow-y-auto bg-[#fafafa]" style={{ width: `${guiWidth}px` }}>
-          <div className="p-5">
-            {/* 활성 조건 태그 */}
-            {activeGUIs.length > 0 && (
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-medium text-[#999]">
-                    분석 조건 ({activeGUIs.length}개 조합)
-                  </span>
-                  <button
-                    onClick={() => setActiveGUIs(["summary"])}
-                    className="text-[11px] text-[#999] cursor-pointer hover:text-[#444] transition-colors"
-                  >
-                    초기화
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {activeGUIs.map((g) => (
-                    <span
-                      key={g}
-                      className="inline-flex items-center gap-1 px-2.5 py-[4px] text-[11px] font-medium text-[#444] bg-white cursor-pointer transition-colors hover:bg-[#f0f0f0] group"
-                      style={{ borderRadius: "9999px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }}
-                      onClick={() => setActiveGUIs((prev) => prev.length > 1 ? prev.filter((p) => p !== g) : prev)}
-                    >
-                      {guiLabels[g]}
-                      {activeGUIs.length > 1 && (
-                        <X size={10} strokeWidth={2} className="text-[#bbb] group-hover:text-[#666] transition-colors" />
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+/* ═══════════════════════════════════════
+   Right Panel — 분석 GUI 집합
+   ═══════════════════════════════════════ */
 
-            {/* 누적된 GUI 패널들 */}
-            {activeGUIs.length === 0 && <GUIEmpty />}
-            <div className="flex flex-col gap-5">
-              {activeGUIs.includes("summary") && <GUISummary onDrill={handleSend} />}
-              {activeGUIs.includes("monthly") && <GUIMonthly onDrill={handleSend} />}
-              {activeGUIs.includes("category") && <GUICategory onDrill={handleSend} />}
-              {activeGUIs.includes("team") && <GUITeam onDrill={handleSend} />}
-              {activeGUIs.includes("budget") && <GUIBudget />}
-              {activeGUIs.includes("saving") && <GUISaving />}
-            </div>
-
-            {/* Export always at bottom */}
-            {activeGUIs.length > 0 && (
-              <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                <ExportMenu />
-              </div>
-            )}
+function CostIntelAnalysisPanel({
+  activeGUIs,
+  onRemoveGUI,
+  onReset,
+  onDrill,
+}: {
+  activeGUIs: GUIPanel[];
+  onRemoveGUI: (g: GUIPanel) => void;
+  onReset: () => void;
+  onDrill: (text: string) => void;
+}) {
+  return (
+    <div>
+      {/* 활성 조건 태그 */}
+      {activeGUIs.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-medium text-[#999]">
+              분석 조건 ({activeGUIs.length}개 조합)
+            </span>
+            <button
+              onClick={onReset}
+              className="text-[11px] text-[#999] cursor-pointer hover:text-[#444] transition-colors"
+            >
+              초기화
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {activeGUIs.map((g) => (
+              <span
+                key={g}
+                className="inline-flex items-center gap-1 px-2.5 py-[4px] text-[11px] font-medium text-[#444] bg-white cursor-pointer transition-colors hover:bg-[#f0f0f0] group"
+                style={{ borderRadius: "9999px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }}
+                onClick={() => onRemoveGUI(g)}
+              >
+                {guiLabels[g]}
+                {activeGUIs.length > 1 && (
+                  <X size={10} strokeWidth={2} className="text-[#bbb] group-hover:text-[#666] transition-colors" />
+                )}
+              </span>
+            ))}
           </div>
         </div>
+      )}
+
+      {/* 누적된 GUI 패널들 */}
+      {activeGUIs.length === 0 && <GUIEmpty />}
+      <div className="flex flex-col gap-5">
+        {activeGUIs.includes("summary") && <GUISummary onDrill={onDrill} />}
+        {activeGUIs.includes("monthly") && <GUIMonthly onDrill={onDrill} />}
+        {activeGUIs.includes("category") && <GUICategory onDrill={onDrill} />}
+        {activeGUIs.includes("team") && <GUITeam onDrill={onDrill} />}
+        {activeGUIs.includes("budget") && <GUIBudget />}
+        {activeGUIs.includes("saving") && <GUISaving />}
       </div>
+
+      {/* Export always at bottom */}
+      {activeGUIs.length > 0 && (
+        <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <ExportMenu />
+        </div>
+      )}
     </div>
   );
 }

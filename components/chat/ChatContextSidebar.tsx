@@ -120,7 +120,7 @@ export default function ChatContextSidebar({
       >
         {showOngoingEmpty ? (
           <p className="text-[11px] text-[#aaa] py-2 px-1" style={{ letterSpacing: "0.14px" }}>
-            구매 요청을 시작하면 여기에 표시됩니다
+            채팅에 구매와 관련된 질문을 입력해보세요. 진행상황이 표시됩니다
           </p>
         ) : (
           <div className="flex flex-col gap-4">

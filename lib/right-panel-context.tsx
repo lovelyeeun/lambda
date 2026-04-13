@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
 
 export interface PanelMeta {
   /** 현재 페이지 라벨 — 자식 페이지일 때 표시 (예: "장바구니", "품의 진행") */
@@ -34,6 +34,9 @@ interface RightPanelState {
   closePanel: () => void;
   togglePanel: () => void;
   setWorkItemStrip: (strip: WorkItemStrip | null) => void;
+  /** 페이지별 "루트 콘텐츠 복구" 콜백 등록 — 패널이 콘텐츠 없이 열릴 때 호출됨.
+   *  반환된 함수를 cleanup 시 호출하면 해제됨. */
+  registerDefaultOpener: (fn: () => void) => () => void;
 }
 
 const RightPanelContext = createContext<RightPanelState | null>(null);
@@ -44,6 +47,7 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
   const [contentKey, setContentKey] = useState<string | null>(null);
   const [meta, setMeta] = useState<PanelMeta | null>(null);
   const [workItemStrip, setWorkItemStripState] = useState<WorkItemStrip | null>(null);
+  const defaultOpenerRef = useRef<(() => void) | null>(null);
 
   const openPanel = useCallback((node: ReactNode, key?: string, m?: PanelMeta) => {
     setContent(node);
@@ -57,7 +61,22 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const togglePanel = useCallback(() => {
-    setOpen((prev) => !prev);
+    setOpen((prev) => {
+      const willOpen = !prev;
+      // 열려고 하는데 아직 콘텐츠가 없으면 등록된 기본 오프너로 루트 복원
+      if (willOpen && !content && defaultOpenerRef.current) {
+        // state 업데이트 중엔 직접 호출하지 않고 마이크로태스크로 지연
+        queueMicrotask(() => defaultOpenerRef.current?.());
+      }
+      return willOpen;
+    });
+  }, [content]);
+
+  const registerDefaultOpener = useCallback((fn: () => void) => {
+    defaultOpenerRef.current = fn;
+    return () => {
+      if (defaultOpenerRef.current === fn) defaultOpenerRef.current = null;
+    };
   }, []);
 
   const setWorkItemStrip = useCallback((strip: WorkItemStrip | null) => {

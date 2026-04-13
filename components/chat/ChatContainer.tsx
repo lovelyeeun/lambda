@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";
 import ProductRecommendCard from "./ProductRecommendCard";
+import ExpenseSummaryCard from "./ExpenseSummaryCard";
 import SourcedProductCard, {
   type SourcedProduct,
   type ScrapingStatus,
@@ -350,6 +351,19 @@ function detectPurchaseIntent(text: string): WorkItemIntent | null {
     }
   }
   return null;
+}
+
+/* ─── 비용 분석 질문 감지 ─── */
+const costAnalysisKeywords = [
+  "지출", "비용", "예산 분석", "예산 얼마", "얼마 썼",
+  "카테고리별", "팀별 지출", "부서별 지출",
+  "비용 분석", "지출 분석", "지출 리포트", "지출 현황", "지출 요약",
+  "절감", "절약",
+];
+
+function detectCostAnalysisQuery(text: string): boolean {
+  const lower = text.toLowerCase();
+  return costAnalysisKeywords.some((kw) => lower.includes(kw));
 }
 
 /* ─── Fallback responses ─── */
@@ -897,6 +911,23 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const handleSend = useCallback((text: string) => {
     addMsg({ role: "user", content: text });
 
+    /* ── 비용 분석 질문 감지 — 짧은 답 + 비용 인텔리전스 카드 ──
+       채팅에서 깊이 다루지 않고 /cost-intel으로 유도. Work Item 생성도 안 함. */
+    if (detectCostAnalysisQuery(text)) {
+      setIsTyping(true);
+      setTimeout(() => {
+        addMsg({
+          role: "assistant",
+          content:
+            "4월 누적 지출이 전월 대비 12% 감소했어요.\n\n카테고리별 · 팀별 상세, 절감 제안은 비용 인텔리전스에서 확인할 수 있어요.",
+          agent: "분석",
+          cardType: "expense-summary",
+        });
+        setIsTyping(false);
+      }, 600);
+      return;
+    }
+
     /* ── Work Item 자동 생성 — 키워드 매칭 ──
        1) 활성 WI가 없으면 → 첫 WI 생성 (타이틀/색은 키워드로 결정, 못 찾으면 "구매 요청")
        2) 활성 WI가 있고, 새 키워드가 현재와 다른 구매 의도면 → 새 WI 생성 후 활성화 */
@@ -1056,10 +1087,13 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     });
   }, [workItems, activeWorkItemId, deriveStatus, switchWorkItem, setWorkItemStrip]);
 
-  // 언마운트 시 strip 정리
+  // 언마운트 시 패널 정리 — 다른 페이지로 이동해도 구매 컨텍스트가 따라가지 않도록
   useEffect(() => {
-    return () => setWorkItemStrip(null);
-  }, [setWorkItemStrip]);
+    return () => {
+      setWorkItemStrip(null);
+      closePanel();
+    };
+  }, [setWorkItemStrip, closePanel]);
 
   // 마운트 시 1회 자동 오픈
   const contextOpenedRef = useRef(false);
@@ -1140,6 +1174,11 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
                   <div className="max-w-[520px]">
                     <ProductRecommendCard productIds={msg.productIds} onViewProduct={viewProduct} onAddToCart={handleAddToCart} />
                   </div>
+                </div>
+              )}
+              {msg.cardType === "expense-summary" && (
+                <div className="flex justify-start mb-1 mt-1">
+                  <ExpenseSummaryCard />
                 </div>
               )}
             </div>

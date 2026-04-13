@@ -57,7 +57,7 @@ export const chats: Chat[] = [
     tags: ["비용분석"],
     messages: [
       { id: "m-004-1", role: "user", content: "4월 지출 현황 정리해줘", timestamp: "2026-04-09T15:00:00" },
-      { id: "m-004-2", role: "assistant", content: "4월 누적 지출 분석입니다:\n\n총 지출: 5,089,000원 (전월 대비 12% 감소)\n가구 카테고리가 전체의 약 49%를 차지하고 있습니다.", timestamp: "2026-04-09T15:30:00" },
+      { id: "m-004-2", role: "assistant", content: "4월 누적 지출이 전월 대비 12% 감소했어요.\n\n카테고리별 · 팀별 상세, 절감 제안은 비용 인텔리전스에서 확인할 수 있어요.", timestamp: "2026-04-09T15:30:00", agent: "분석", cardType: "expense-summary" },
     ],
   },
   {
