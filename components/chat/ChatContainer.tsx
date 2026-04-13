@@ -653,13 +653,35 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
      기존 구매 플로우 (approval, payment, shipping)
      ═══════════════════════════════════════ */
 
+  // 토스트 메시지 — 품의 승인 완료 등 짧은 시스템 알림
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastMsg(null), 3500);
+  }, []);
+
   const advanceFlow = useCallback(() => {
     if (timelinePhase === "approval" && approvalStep === "대기") {
+      // 품의 승인 완료 — 구매 요청자에겐 결제 권한이 없는 경우가 대부분이므로 결제 단계 스킵.
+      // 토스트 + 주문 접수 메시지 + 배송 단계로 자동 진입.
       setApprovalStep("승인");
       setApprovalDate("2026-04-10");
       addSys("김지현 매니저가 품의를 승인했습니다.");
-      addAI("승인 완료! 결제를 진행합니다.", "주문");
-      setTimeout(() => { setTimelinePhase("payment"); }, 600);
+      addAI(
+        `승인이 완료되었어요. 주문이 접수되었습니다.\n\n총 **${frozenTotal.toLocaleString()}원** — 관리자 결제 처리 후 배송이 시작됩니다.`,
+        "주문",
+      );
+      showToast("승인이 완료되었어요. 주문이 접수되었습니다");
+      setTimeout(() => {
+        // 결제 스킵 → 배송 접수 단계로 진입
+        setPaymentMethod("관리자 결제 처리");
+        setPaymentDate("2026-04-10");
+        setTimelinePhase("shipping");
+        setShippingStep("접수");
+        setCart([]);
+      }, 600);
     } else if (timelinePhase === "shipping") {
       const order: ShippingStep[] = ["접수", "준비", "배송중", "배송완료"];
       const ci = order.indexOf(shippingStep);
@@ -675,22 +697,38 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         if (next === "배송완료") setTimelinePhase("complete");
       }
     }
-  }, [timelinePhase, approvalStep, shippingStep, addSys, addAI]);
+  }, [timelinePhase, approvalStep, shippingStep, addSys, addAI, frozenTotal, showToast]);
 
-  /* 품의 검토 패널 → 제출 시 실제 플로우 진입 */
+  /* 품의 검토 패널 → 제출 시 실제 플로우 진입.
+     승인 완료(자동/수동 모두) → 구매 요청자는 결제 권한 없음을 가정하고 결제 단계 스킵 →
+     토스트 알림 + 배송 접수 단계로 직접 진입. */
   const submitApproval = useCallback(() => {
     setFrozenCart([...cart]); setFrozenTotal(totalPrice); setFlowActive(true);
     const isAuto = totalPrice <= AUTO_APPROVE_LIMIT;
     setIsAutoApproved(isAuto);
     if (isAuto) {
-      setApprovalStep("자동승인"); setApprovalDate("2026-04-10"); setTimelinePhase("payment");
-      addAI(`총 ${totalPrice.toLocaleString()}원은 소액 자동승인 대상입니다.`, "주문");
+      // 자동 승인 → 결제 스킵 → 배송으로 직행
+      setApprovalStep("자동승인");
+      setApprovalDate("2026-04-10");
+      addAI(
+        `총 ${totalPrice.toLocaleString()}원은 소액 자동승인 대상입니다. 주문이 접수되었어요 — 관리자 결제 처리 후 배송이 시작됩니다.`,
+        "주문",
+      );
+      showToast("자동 승인되었어요. 주문이 접수되었습니다");
+      setTimeout(() => {
+        setPaymentMethod("관리자 결제 처리");
+        setPaymentDate("2026-04-10");
+        setTimelinePhase("shipping");
+        setShippingStep("접수");
+        setCart([]);
+      }, 600);
     } else {
+      // 수동 승인 → 품의 요청 접수 → (김지현 매니저 대기) → advanceFlow에서 승인 후 배송 진입
       setApprovalStep("요청"); setTimelinePhase("approval");
       addAI(`품의 요청을 올렸습니다. 총 ${totalPrice.toLocaleString()}원 — **김지현 매니저**님의 승인을 기다리고 있습니다.`, "주문");
       setTimeout(() => setApprovalStep("대기"), 500);
     }
-  }, [cart, totalPrice, addAI]);
+  }, [cart, totalPrice, addAI, showToast]);
 
   /* 장바구니에서 "품의 요청" 클릭 → 품의 검토 패널 열기 */
   const startApproval = useCallback(() => {
@@ -1159,6 +1197,22 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   return (
     <div className="flex h-full">
       <style dangerouslySetInnerHTML={{ __html: animStyles }} />
+
+      {/* 토스트 — 품의 승인 등 짧은 시스템 알림 */}
+      {toastMsg && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-white"
+          style={{
+            borderRadius: "9999px",
+            backgroundColor: "#000",
+            boxShadow: "rgba(0,0,0,0.25) 0px 8px 24px",
+            letterSpacing: "0.14px",
+          }}
+        >
+          <Check size={14} strokeWidth={2} />
+          {toastMsg}
+        </div>
+      )}
 
       {/* ── 메인 채팅 영역 ── */}
       <div className="flex-1 flex flex-col h-full min-w-0">
