@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cockpit Prototype — Project Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #0a0a0a;
+    color: #e5e5e5;
+    min-height: 100vh;
+    padding: 32px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 300;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+  .header p {
+    font-size: 14px;
+    color: #777;
+    margin-top: 8px;
+  }
+
+  /* Progress Overview */
+  .progress-overview {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto 40px;
+  }
+  .stat-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .stat-card .number {
+    font-size: 36px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .stat-card .label {
+    font-size: 13px;
+    color: #888;
+    margin-top: 4px;
+  }
+  .stat-card.highlight .number { color: #7fffff; }
+
+  /* Phase Timeline */
+  .section-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 20px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 4px;
+  }
+
+  .phase-timeline {
+    display: flex;
+    gap: 12px;
+    max-width: 1200px;
+    margin: 0 auto 48px;
+    overflow-x: auto;
+  }
+  .phase-card {
+    flex: 1;
+    min-width: 150px;
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+  }
+  .phase-card.done { border-color: #2a5a3a; }
+  .phase-card.active { border-color: #7fffff; box-shadow: 0 0 20px rgba(127,255,255,0.05); }
+  .phase-card.pending { opacity: 0.5; }
+  .phase-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #555;
+    margin-bottom: 8px;
+  }
+  .phase-card.done .phase-label { color: #4ade80; }
+  .phase-card.active .phase-label { color: #7fffff; }
+  .phase-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #ccc;
+    margin-bottom: 12px;
+  }
+  .phase-bar {
+    height: 4px;
+    background: #222;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .phase-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+  .phase-card.done .phase-bar-fill { background: #4ade80; width: 100%; }
+  .phase-card.active .phase-bar-fill { background: #7fffff; }
+  .phase-card.pending .phase-bar-fill { background: #333; width: 0%; }
+
+  /* Module Map */
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto 48px;
+  }
+  .module-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 24px;
+    transition: border-color 0.2s;
+  }
+  .module-card:hover { border-color: #333; }
+  .module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .module-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .module-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-done { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .badge-progress { background: rgba(127,255,255,0.15); color: #7fffff; }
+  .badge-pending { background: rgba(255,255,255,0.05); color: #666; }
+  .module-desc {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .screen-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .screen-chip {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #aaa;
+    cursor: default;
+    transition: all 0.15s;
+  }
+  .screen-chip:hover { border-color: #444; color: #ccc; }
+  .screen-chip.impl { background: #1a2a1a; border-color: #2a4a2a; color: #6fcf6f; }
+  .screen-chip.wip { background: #1a2a2a; border-color: #2a4a4a; color: #7fffff; }
+
+  /* File Tree */
+  .tree-section {
+    max-width: 1200px;
+    margin: 0 auto 48px;
+  }
+  .tree-container {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .tree-col h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #7fffff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #222;
+  }
+  .tree-item {
+    font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    padding: 3px 0;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tree-item .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-green { background: #4ade80; }
+  .dot-cyan { background: #7fffff; }
+  .dot-gray { background: #444; }
+
+  /* Issues */
+  .issues-section {
+    max-width: 1200px;
+    margin: 0 auto 48px;
+  }
+  .issue-list {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .issue-group-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ff9f43;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .issue-group-title::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff9f43;
+  }
+  .issue-item {
+    font-size: 13px;
+    color: #999;
+    padding: 6px 0 6px 20px;
+    border-left: 1px solid #2a2a2a;
+    margin-left: 3px;
+  }
+  .issue-divider {
+    height: 1px;
+    background: #222;
+    margin: 16px 0;
+  }
+
+  /* Tech Stack */
+  .tech-bar {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .tech-tag {
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #888;
+  }
+
+  .footer {
+    text-align: center;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid #1a1a1a;
+    font-size: 12px;
+    color: #444;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #888;
+  }
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Cockpit Prototype</h1>
+  <p>기업 구매대행 AI 에이전트 — 프로젝트 현황 대시보드 (2026-04-10)</p>
+</div>
+
+<div class="tech-bar">
+  <span class="tech-tag">Next.js 16</span>
+  <span class="tech-tag">TypeScript</span>
+  <span class="tech-tag">Tailwind CSS v4</span>
+  <span class="tech-tag">React 19</span>
+  <span class="tech-tag">Lucide React</span>
+</div>
+
+<!-- Stats -->
+<div class="progress-overview">
+  <div class="stat-card highlight">
+    <div class="number">75</div>
+    <div class="label">Total .tsx Files</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">21</div>
+    <div class="label">Routes Registered</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">47</div>
+    <div class="label">Total Screens</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">~25%</div>
+    <div class="label">Overall Progress</div>
+  </div>
+</div>
+
+<!-- Phase Timeline -->
+<div class="section-title">Phase Timeline</div>
+<div class="phase-timeline">
+  <div class="phase-card done">
+    <div class="phase-label">Phase 1</div>
+    <div class="phase-name">공유 레이어</div>
+    <div class="phase-bar"><div class="phase-bar-fill"></div></div>
+  </div>
+  <div class="phase-card done">
+    <div class="phase-label">Phase 2</div>
+    <div class="phase-name">메인 채팅</div>
+    <div class="phase-bar"><div class="phase-bar-fill"></div></div>
+  </div>
+  <div class="phase-card active">
+    <div class="phase-label">Fix-1</div>
+    <div class="phase-name">레이아웃 수정</div>
+    <div class="phase-bar"><div class="phase-bar-fill" style="width:30%"></div></div>
+  </div>
+  <div class="phase-card pending">
+    <div class="phase-label">Fix-2</div>
+    <div class="phase-name">아코디언 타임라인</div>
+    <div class="phase-bar"><div class="phase-bar-fill"></div></div>
+  </div>
+  <div class="phase-card pending">
+    <div class="phase-label">Phase 3</div>
+    <div class="phase-name">사이드바 메뉴</div>
+    <div class="phase-bar"><div class="phase-bar-fill"></div></div>
+  </div>
+  <div class="phase-card pending">
+    <div class="phase-label">Phase 4</div>
+    <div class="phase-name">스토어</div>
+    <div class="phase-bar"><div class="phase-bar-fill"></div></div>
+  </div>
+  <div class="phase-card pending">
+    <div class="phase-label">Phase 5</div>
+    <div class="phase-name">설정</div>
+    <div class="phase-bar"><div class="phase-bar-fill"></div></div>
+  </div>
+  <div class="phase-card pending">
+    <div class="phase-label">Phase 6</div>
+    <div class="phase-name">온보딩</div>
+    <div class="phase-bar"><div class="phase-bar-fill"></div></div>
+  </div>
+  <div class="phase-card pending">
+    <div class="phase-label">Phase 7</div>
+    <div class="phase-name">통합 검증</div>
+    <div class="phase-bar"><div class="phase-bar-fill"></div></div>
+  </div>
+</div>
+
+<!-- Module Map -->
+<div class="section-title">Module Map — 화면 인벤토리</div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> 구현 완료</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7fffff"></div> 작업 중</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#444"></div> 미착수</div>
+</div>
+
+<div class="module-grid">
+  <!-- Module B -->
+  <div class="module-card">
+    <div class="module-header">
+      <span class="module-title">Module B: 메인 채팅 + 우측 GUI</span>
+      <span class="module-badge badge-done">Done</span>
+    </div>
+    <div class="module-desc">서비스 코어. 채팅 → 상품추천 → 장바구니 → 승인 → 결제 → 배송 → 구매확정 플로우</div>
+    <div class="screen-list">
+      <span class="screen-chip impl">B-1 메인 채팅</span>
+      <span class="screen-chip impl">B-2 상품 추천</span>
+      <span class="screen-chip impl">B-3 장바구니</span>
+      <span class="screen-chip impl">B-4 품의 승인</span>
+      <span class="screen-chip impl">B-5 직접 구매</span>
+      <span class="screen-chip impl">B-6 결제 완료</span>
+      <span class="screen-chip impl">B-7 배송 추적</span>
+      <span class="screen-chip impl">B-8 구매확정</span>
+    </div>
+  </div>
+
+  <!-- Module C -->
+  <div class="module-card">
+    <div class="module-header">
+      <span class="module-title">Module C: 사이드바 {회사명}</span>
+      <span class="module-badge badge-progress">WIP</span>
+    </div>
+    <div class="module-desc">좌측 사이드바 메뉴별 라우트. 상품폴더, 주문내역, CS, 채팅리스트, 비용인텔리전스</div>
+    <div class="screen-list">
+      <span class="screen-chip wip">C-1 폴더 목록</span>
+      <span class="screen-chip wip">C-2 폴더 상품</span>
+      <span class="screen-chip wip">C-3 내 주문</span>
+      <span class="screen-chip">C-4 주문 상세</span>
+      <span class="screen-chip wip">C-5 회사 주문</span>
+      <span class="screen-chip wip">C-6 CS 채팅</span>
+      <span class="screen-chip wip">C-7 매뉴얼</span>
+      <span class="screen-chip wip">C-8 채팅 리스트</span>
+      <span class="screen-chip wip">C-9 채팅 전체보기</span>
+      <span class="screen-chip">C-10 구매요청서</span>
+      <span class="screen-chip">C-11 주문관리</span>
+      <span class="screen-chip wip">C-12a 지출통계</span>
+      <span class="screen-chip">C-12b 분석모드</span>
+      <span class="screen-chip">C-12c 데이터업로드</span>
+      <span class="screen-chip">C-12d 내보내기</span>
+    </div>
+  </div>
+
+  <!-- Module D -->
+  <div class="module-card">
+    <div class="module-header">
+      <span class="module-title">Module D: 스토어</span>
+      <span class="module-badge badge-progress">Scaffold</span>
+    </div>
+    <div class="module-desc">소모품 스토어, 앱(렌탈/화환/주문제작), SCM 공급기업 관리</div>
+    <div class="screen-list">
+      <span class="screen-chip wip">D-1 스토어 메인</span>
+      <span class="screen-chip wip">D-2 상품 상세</span>
+      <span class="screen-chip wip">D-3 렌탈</span>
+      <span class="screen-chip wip">D-4 화환</span>
+      <span class="screen-chip wip">D-5 주문제작</span>
+      <span class="screen-chip wip">D-6 SCM 탐색</span>
+      <span class="screen-chip wip">D-7 기업 상세</span>
+      <span class="screen-chip wip">D-8 RFQ</span>
+      <span class="screen-chip">D-9 계약/서명</span>
+      <span class="screen-chip">D-10 공급기업 관리</span>
+    </div>
+  </div>
+
+  <!-- Module E -->
+  <div class="module-card">
+    <div class="module-header">
+      <span class="module-title">Module E: 설정 (오버레이)</span>
+      <span class="module-badge badge-progress">Scaffold</span>
+    </div>
+    <div class="module-desc">전체 오버레이 모달. 개인설정, 회사설정, 회계규칙, 앱/알림 관리</div>
+    <div class="screen-list">
+      <span class="screen-chip wip">E-1 일반</span>
+      <span class="screen-chip wip">E-2 플랜</span>
+      <span class="screen-chip wip">E-3 커넥터</span>
+      <span class="screen-chip wip">E-4 회사정보</span>
+      <span class="screen-chip wip">E-5 팀원관리</span>
+      <span class="screen-chip wip">E-6 회사지식</span>
+      <span class="screen-chip wip">E-7 배송지</span>
+      <span class="screen-chip wip">E-8 결제수단</span>
+      <span class="screen-chip wip">E-9 적요설정</span>
+      <span class="screen-chip wip">E-10 예산설정</span>
+      <span class="screen-chip wip">E-11 상품관리</span>
+      <span class="screen-chip wip">E-12 앱관리</span>
+      <span class="screen-chip wip">E-13 알림설정</span>
+    </div>
+  </div>
+
+  <!-- Module A -->
+  <div class="module-card">
+    <div class="module-header">
+      <span class="module-title">Module A: 온보딩</span>
+      <span class="module-badge badge-progress">Scaffold</span>
+    </div>
+    <div class="module-desc">랜딩, 회원가입, 온보딩 채팅, 로그인</div>
+    <div class="screen-list">
+      <span class="screen-chip wip">A-1 랜딩</span>
+      <span class="screen-chip wip">A-2 회원가입</span>
+      <span class="screen-chip wip">A-3 온보딩 채팅</span>
+      <span class="screen-chip wip">A-4 로그인</span>
+    </div>
+  </div>
+
+  <!-- Shared Components -->
+  <div class="module-card">
+    <div class="module-header">
+      <span class="module-title">공유 컴포넌트</span>
+      <span class="module-badge badge-done">Done</span>
+    </div>
+    <div class="module-desc">AppShell, ChatUI, RightPanel, 커머스 트래커, UI 기본 요소</div>
+    <div class="screen-list">
+      <span class="screen-chip impl">AppShell</span>
+      <span class="screen-chip impl">TopBar</span>
+      <span class="screen-chip impl">MainSidebar</span>
+      <span class="screen-chip impl">RightPanel</span>
+      <span class="screen-chip impl">ChatContainer</span>
+      <span class="screen-chip impl">ChatBubble</span>
+      <span class="screen-chip impl">ChatInput</span>
+      <span class="screen-chip impl">ProductCard</span>
+      <span class="screen-chip impl">CartPanel</span>
+      <span class="screen-chip impl">ApprovalTracker</span>
+      <span class="screen-chip impl">PaymentSelector</span>
+      <span class="screen-chip impl">ShippingTracker</span>
+      <span class="screen-chip impl">Button</span>
+      <span class="screen-chip impl">Badge</span>
+      <span class="screen-chip impl">Modal</span>
+      <span class="screen-chip impl">Tooltip</span>
+    </div>
+  </div>
+</div>
+
+<!-- File Structure -->
+<div class="section-title">File Structure (75 .tsx files)</div>
+<div class="tree-section">
+  <div class="tree-container">
+    <div class="tree-col">
+      <h3>App Routes (24 files)</h3>
+      <div class="tree-item"><div class="dot dot-green"></div> app/layout.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> app/page.tsx → /chat redirect</div>
+      <div class="tree-item"><div class="dot dot-green"></div> (main)/layout.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> (main)/chat/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> (main)/chat-list/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> (main)/cost-intel/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> (main)/cs/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> (main)/cs/manual/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> (main)/folders/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> (main)/folders/[folderId]/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> (main)/orders/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> onboarding/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> onboarding/login/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> onboarding/signup/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/layout.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/[productId]/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/rental/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/flowers/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/custom/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/scm/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/scm/[companyId]/page.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> store/scm/[companyId]/rfq/page.tsx</div>
+    </div>
+    <div class="tree-col">
+      <h3>Components (44 files)</h3>
+      <div class="tree-item"><div class="dot dot-green"></div> shell/AppShell.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> shell/TopBar.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> shell/MainSidebar.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> shell/RightPanel.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> shell/StoreSidebar.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> shell/ProfileMenu.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> chat/ChatContainer.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> chat/ChatBubble.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> chat/ChatInput.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> chat/AgentIndicator.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> chat/ProductRecommendCard.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> chat/ProductDetailPanel.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> chat/OnboardingChat.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> commerce/ProductCard.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> commerce/CartPanel.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> commerce/ApprovalTracker.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> commerce/PaymentSelector.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> commerce/ShippingTracker.tsx</div>
+      <div class="tree-item"><div class="dot dot-gray"></div> commerce/OrderTimeline.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> settings/SettingsOverlay.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> settings/SettingsNav.tsx</div>
+      <div class="tree-item"><div class="dot dot-cyan"></div> settings/panels/ ×15</div>
+      <div class="tree-item"><div class="dot dot-green"></div> ui/Button.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> ui/Badge.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> ui/Modal.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> ui/Tooltip.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> ui/Calendar.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> ui/Table.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> ui/ExportMenu.tsx</div>
+    </div>
+    <div class="tree-col">
+      <h3>Data & Lib (7 files)</h3>
+      <div class="tree-item"><div class="dot dot-green"></div> data/products.ts</div>
+      <div class="tree-item"><div class="dot dot-green"></div> data/orders.ts</div>
+      <div class="tree-item"><div class="dot dot-green"></div> data/chats.ts</div>
+      <div class="tree-item"><div class="dot dot-green"></div> data/companies.ts</div>
+      <div class="tree-item"><div class="dot dot-green"></div> data/users.ts</div>
+      <div class="tree-item"><div class="dot dot-green"></div> lib/types.ts</div>
+      <div class="tree-item"><div class="dot dot-green"></div> lib/settings-context.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> lib/right-panel-context.tsx</div>
+      <div class="tree-item"><div class="dot dot-green"></div> lib/sidebar-context.tsx</div>
+      <br>
+      <h3>Design Decisions</h3>
+      <div class="tree-item" style="color:#ccc">주문내역+주문관리 → "주문내역" 통합</div>
+      <div class="tree-item" style="color:#ccc">채팅리스트 → 최근채팅 옆 아이콘</div>
+      <div class="tree-item" style="color:#ccc">우측 GUI 아코디언 타임라인</div>
+      <div class="tree-item" style="color:#ccc">사이드바 2단계 접힘 (240↔56px)</div>
+      <div class="tree-item" style="color:#ccc">핵심 메뉴 그룹 배경색 영역</div>
+    </div>
+  </div>
+</div>
+
+<!-- Known Issues -->
+<div class="section-title">Known Issues</div>
+<div class="issues-section">
+  <div class="issue-list">
+    <div class="issue-group-title">fix-1: 상단바 + 사이드바 레이아웃 (진행 중)</div>
+    <div class="issue-item">상단바 3구간 레이아웃 (좌: 토글+내비 / 중: 로랩스·스토어 / 우: 패널토글)</div>
+    <div class="issue-item">사이드바 메뉴를 cockpit 고유 메뉴로 교체</div>
+    <div class="issue-item">채팅 리스트 → "최근 채팅" 라벨 옆 전체보기 아이콘</div>
+    <div class="issue-item">사이드바 접힘 시 아이콘 레일(56px) 유지</div>
+    <div class="issue-item">프로필 영역 좌측 사이드바 최하단 고정</div>
+    <div class="issue-item">회사명 "센트비" → "로랩스" 변경</div>
+    <div class="issue-item">이모지 → lucide-react 단색 라인 아이콘</div>
+
+    <div class="issue-divider"></div>
+
+    <div class="issue-group-title">fix-2: 우측 GUI 아코디언 타임라인 (미착수)</div>
+    <div class="issue-item">OrderTimeline 아코디언 컴포넌트 신규 추가</div>
+    <div class="issue-item">단계 전환 시 이전 단계 내용 유지 (접힘/펼침)</div>
+    <div class="issue-item">ApprovalTracker, ShippingTracker를 타임라인에 임베드</div>
+  </div>
+</div>
+
+<div class="footer">
+  Cockpit Prototype — 로랩스 · Last updated 2026-04-10
+</div>
+
+</body>
+</html>

@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* ============================================
+   Cockpit Design System — DESIGN.md tokens
+   ============================================ */
+
+@theme {
+  /* ---- Colors ---- */
+  --color-white: #ffffff;
+  --color-gray-light: #f5f5f5;
+  --color-gray-alt: #f6f6f6;
+  --color-warm-stone: #f5f2ef;
+  --color-black: #000000;
+  --color-gray-dark: #4e4e4e;
+  --color-warm-gray: #777169;
+  --color-border: #e5e5e5;
+  --color-border-subtle: rgba(0, 0, 0, 0.05);
+  --color-ring-blue: rgb(147 197 253 / 0.5);
+
+  /* ---- Shadows ---- */
+  --shadow-inset-border: rgba(0,0,0,0.075) 0px 0px 0px 0.5px inset, #fff 0px 0px 0px 0px inset;
+  --shadow-inset-dark: rgba(0,0,0,0.1) 0px 0px 0px 0.5px inset;
+  --shadow-outline-ring: rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px, rgba(0,0,0,0.04) 0px 2px 4px;
+  --shadow-soft: rgba(0,0,0,0.04) 0px 4px 4px;
+  --shadow-card: rgba(0,0,0,0.4) 0px 0px 1px, rgba(0,0,0,0.04) 0px 4px 4px;
+  --shadow-warm: rgba(78,50,23,0.04) 0px 6px 16px;
+  --shadow-edge: rgba(0,0,0,0.08) 0px 0px 0px 0.5px;
+
+  /* ---- Font families ---- */
+  --font-display: "Waldenburg", "Waldenburg Fallback", sans-serif;
+  --font-display-bold: "WaldenburgFH", "WaldenburgFH Fallback", sans-serif;
+  --font-body: "Inter", "Inter Fallback", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ---- Border Radius ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-comfortable: 12px;
+  --radius-card: 16px;
+  --radius-lg: 20px;
+  --radius-section: 24px;
+  --radius-warm: 30px;
+  --radius-pill: 9999px;
+}
+
+/* ---- Base ---- */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-gray-light);
+  color: var(--color-black);
+  letter-spacing: 0.16px;
+  line-height: 1.5;
+}
+
+/* ---- Selection ---- */
+::selection {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+/* ---- Scrollbar (subtle) ---- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
