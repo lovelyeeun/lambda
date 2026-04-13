@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { X, ArrowLeft, Check } from "lucide-react";
 import { useSettings, type SettingsSection } from "@/lib/settings-context";
 import { SettingsEventProvider, useSettingsEmit, useLastChatEvent } from "@/lib/settings-events";
@@ -65,13 +65,30 @@ export default function SettingsOverlay() {
 
 function SettingsOverlayInner() {
   const { closeSettings, section, setSection } = useSettings();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [rightWidth, setRightWidth] = useState(480);
+  const userResizedRef = useRef(false);
+
+  // 마운트 시 컨테이너 너비 측정 → (전체 - 네비 220) / 2 = 채팅과 우측 GUI 반반
+  useEffect(() => {
+    if (!containerRef.current || userResizedRef.current) return;
+    const total = containerRef.current.getBoundingClientRect().width;
+    const NAV_WIDTH = 220;
+    const half = Math.round((total - NAV_WIDTH) / 2);
+    if (half > 0) setRightWidth(half);
+  }, []);
+
+  const handleResize = useCallback((w: number) => {
+    userResizedRef.current = true;
+    setRightWidth(w);
+  }, []);
 
   const activeCardPanel = section ? companyFormPanels[section] : null;
   const isOtherForm = section ? !!otherFormPanels[section] : false;
   const OtherPanel = section && isOtherForm ? otherFormPanels[section] : null;
 
-  const expandedWidth = activeCardPanel ? Math.max(rightWidth, 560) : rightWidth;
+  // 반반이 기본이므로 카드 열렸을 때 강제 min(560) 제거 — 사용자 조정값 존중
+  const expandedWidth = rightWidth;
   const dashboardMinWidth = activeCardPanel ? 440 : 340;
   const dashboardMaxWidth = activeCardPanel ? 920 : 720;
 
@@ -83,6 +100,7 @@ function SettingsOverlayInner() {
         onClick={closeSettings}
       />
       <div
+        ref={containerRef}
         className="relative m-4 flex-1 bg-white overflow-hidden flex"
         style={{
           borderRadius: "16px",
@@ -110,7 +128,7 @@ function SettingsOverlayInner() {
 
             <ResizableHandle
               panelWidth={expandedWidth}
-              onResize={setRightWidth}
+              onResize={handleResize}
               minWidth={dashboardMinWidth}
               maxWidth={dashboardMaxWidth}
               side="left"
