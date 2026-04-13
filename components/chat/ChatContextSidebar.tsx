@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
-  Search, Package, Clock, Check, ChevronDown,
+  Search, Package, Check, ChevronDown,
   MapPin, CreditCard, PiggyBank, Bot, Sparkles, FileText,
-  TrendingDown, ShoppingCart, Loader2, Zap, ArrowRight, ArrowUpRight,
+  TrendingDown, ShoppingCart, Zap, ArrowRight, ArrowUpRight,
+  ShieldCheck, Unlock, Info,
 } from "lucide-react";
 import type { SourcedProduct } from "./SourcedProductCard";
 import type { CartItem } from "@/components/commerce/CartPanel";
@@ -29,6 +30,17 @@ export interface ContextInfo {
   agentMode: string;
   agentModeColor: string;
   recentOrders: number;
+  /** 승인 정책 — 승인체계 pill 호버 팝오버 내용 */
+  approvalPolicy?: {
+    autoApproveLimit: number;    // 원
+    canDirectPurchase: boolean;
+    aiRestricted: boolean;
+  };
+  /** 에이전트 정책 — 에이전트 정책 pill 호버 팝오버 내용 */
+  agentPolicy?: {
+    description: string;
+    agents: string[];
+  };
 }
 
 interface ChatContextSidebarProps {
@@ -42,11 +54,10 @@ interface ChatContextSidebarProps {
   onOpenFlow?: () => void;
   /** 플로우 진행 상태에 확인하지 않은 변화가 있을 때 "진행 상황" 섹션에 알림 dot 표시 */
   progressNotification?: boolean;
-  /** 외부 페이지 점프 핸들러 — 각각 /cost-intel / /orders / settings(deep link) 로 연결 */
+  /** 외부 페이지 점프 핸들러 — 각각 /cost-intel / settings(deep link) 로 연결 */
   onOpenBudget?: () => void;
   onOpenShipping?: () => void;
   onOpenPayment?: () => void;
-  onOpenOrders?: () => void;
 }
 
 /* ═══════════════════════════════════════
@@ -70,7 +81,7 @@ const phaseOrder: string[] = phaseSteps.map((s) => s.key);
    메인 컴포넌트 — 3개 상위 그룹
    ═══════════════════════════════════════ */
 
-type GroupKey = "ongoing" | "conditions" | "reference";
+type GroupKey = "ongoing" | "settings";
 
 export default function ChatContextSidebar({
   currentPhase,
@@ -85,13 +96,12 @@ export default function ChatContextSidebar({
   onOpenBudget,
   onOpenShipping,
   onOpenPayment,
-  onOpenOrders,
 }: ChatContextSidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<GroupKey, boolean>>({
     ongoing: true,
-    conditions: true,
-    reference: false,
+    settings: true,
   });
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const toggle = (key: GroupKey) =>
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -216,11 +226,10 @@ export default function ChatContextSidebar({
                       </>
                     );
 
-                    return isClickable ? (
+                    const stepNode = isClickable ? (
                       <button
-                        key={step.key}
                         onClick={onOpenFlow}
-                        className="group flex items-center gap-2 py-1.5 px-2 -mx-1 cursor-pointer rounded-[6px] transition-colors"
+                        className="group flex items-center gap-2 py-1.5 px-2 -mx-1 cursor-pointer rounded-[6px] transition-colors w-full"
                         style={{
                           backgroundColor: "rgba(99,102,241,0.06)",
                         }}
@@ -229,13 +238,87 @@ export default function ChatContextSidebar({
                       </button>
                     ) : (
                       <div
-                        key={step.key}
                         className="flex items-center gap-2 py-1.5 px-2 -mx-1 rounded-[6px]"
                         style={{
                           backgroundColor: isActive ? "rgba(99,102,241,0.06)" : undefined,
                         }}
                       >
                         {row}
+                      </div>
+                    );
+
+                    // 장바구니 단계가 active일 때 상세(총액/상품 요약)를 인라인 확장 블록으로 노출
+                    const showCartDetail = step.key === "cart" && isActive && hasCart;
+
+                    return (
+                      <div key={step.key} className="flex flex-col">
+                        {stepNode}
+                        {showCartDetail && (
+                          <div className="mt-1 ml-5 mb-1">
+                            <button
+                              onClick={onOpenFlow}
+                              disabled={!onOpenFlow}
+                              className="group/cart text-left w-full px-3 py-2.5 transition-all cursor-pointer hover:bg-[rgba(245,242,239,0.6)] disabled:cursor-default disabled:hover:bg-transparent"
+                              style={{
+                                borderRadius: "10px",
+                                backgroundColor: "#fff",
+                                boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
+                              }}
+                            >
+                              {/* 상단: 총 금액 / 상품 수 */}
+                              <div className="flex items-baseline justify-between mb-1.5">
+                                <div className="flex items-baseline gap-1">
+                                  <span
+                                    className="text-[14px] font-semibold text-[#000]"
+                                    style={{ letterSpacing: "-0.2px", lineHeight: 1.1 }}
+                                  >
+                                    {cart.reduce((s, i) => s + i.product.price * i.quantity, 0).toLocaleString()}
+                                  </span>
+                                  <span
+                                    className="text-[10px] text-[#777169]"
+                                    style={{ letterSpacing: "0.14px" }}
+                                  >
+                                    원
+                                  </span>
+                                </div>
+                                <span
+                                  className="text-[10px] text-[#777169]"
+                                  style={{ letterSpacing: "0.14px" }}
+                                >
+                                  {cart.length}종 · {cart.reduce((s, i) => s + i.quantity, 0)}개
+                                </span>
+                              </div>
+
+                              {/* 아이템 미리보기 (최대 2건) */}
+                              <div className="flex flex-col gap-0.5">
+                                {cart.slice(0, 2).map((item) => (
+                                  <div key={item.product.id} className="flex items-center justify-between gap-2">
+                                    <span
+                                      className="text-[11px] text-[#4e4e4e] truncate"
+                                      style={{ letterSpacing: "0.14px" }}
+                                    >
+                                      {item.product.name}
+                                    </span>
+                                    <span
+                                      className="text-[10px] text-[#777169] shrink-0"
+                                      style={{ letterSpacing: "0.14px" }}
+                                    >
+                                      ×{item.quantity}
+                                    </span>
+                                  </div>
+                                ))}
+                                {cart.length > 2 && (
+                                  <span
+                                    className="text-[10px] text-[#999] mt-0.5"
+                                    style={{ letterSpacing: "0.14px" }}
+                                  >
+                                    외 {cart.length - 2}종 더보기
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -320,22 +403,97 @@ export default function ChatContextSidebar({
               </SubGroup>
             )}
 
-            {/* 장바구니 섹션은 제거 — 플로팅 장바구니 버튼 + '진행 상황' 단계 강조로 대체 */}
           </div>
         )}
       </GroupSection>
 
       {/* ════════════════════════════════════════
-          Group 2: 구매 조건 (고정 전제)
-          그룹 카드 내부에서 subtle divider로 분리된 flow
+          Group 2: 설정값 — 정책 pill + 예산 + 세부 설정
           ════════════════════════════════════════ */}
       <GroupSection
-        title="구매 조건"
-        expanded={openGroups.conditions}
-        onToggle={() => toggle("conditions")}
+        title="설정값"
+        expanded={openGroups.settings}
+        onToggle={() => toggle("settings")}
+        lastGroup
       >
-        <div className="flex flex-col">
-          {/* ── 이번 달 예산 — 그룹 카드 내부 상단, 강조 블록. 클릭 시 /cost-intel ── */}
+        <div className="flex flex-col gap-3">
+          {/* ── 정책 pills (에이전트 모드 + 승인체계) ── */}
+          <div className="flex flex-wrap gap-1.5">
+            <PolicyPill
+              icon={<Bot size={11} strokeWidth={1.5} color={context.agentModeColor} />}
+              label={context.agentMode}
+              accentColor={context.agentModeColor}
+              popoverTitle="에이전트 정책"
+              popoverBody={
+                context.agentPolicy ? (
+                  <>
+                    <p className="text-[11px] text-[#4e4e4e] leading-[1.5]" style={{ letterSpacing: "0.14px" }}>
+                      {context.agentPolicy.description}
+                    </p>
+                    {context.agentPolicy.agents.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[10px] text-[#999] mb-1" style={{ letterSpacing: "0.14px" }}>
+                          활성 에이전트
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {context.agentPolicy.agents.map((a) => (
+                            <span
+                              key={a}
+                              className="inline-flex items-center px-1.5 py-[1px] text-[10px] font-medium text-[#4e4e4e]"
+                              style={{ borderRadius: "4px", backgroundColor: "#f5f2ef" }}
+                            >
+                              @{a}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                    AI의 답변·행동 자율성 정책
+                  </p>
+                )
+              }
+            />
+            <PolicyPill
+              icon={<ShieldCheck size={11} strokeWidth={1.75} color="#6366f1" />}
+              label={
+                context.approvalPolicy
+                  ? `자동승인 ≤ ${formatShortWon(context.approvalPolicy.autoApproveLimit)}`
+                  : "자동승인 미설정"
+              }
+              accentColor="#6366f1"
+              popoverTitle="승인체계 · 내 권한"
+              popoverBody={
+                context.approvalPolicy ? (
+                  <div className="flex flex-col gap-1.5">
+                    <PermRow
+                      label="자동승인 한도"
+                      value={`${formatShortWon(context.approvalPolicy.autoApproveLimit)} 이하`}
+                      positive
+                    />
+                    <PermRow
+                      label="직접 결제"
+                      value={context.approvalPolicy.canDirectPurchase ? "가능" : "승인 필요"}
+                      positive={context.approvalPolicy.canDirectPurchase}
+                    />
+                    <PermRow
+                      label="AI 답변 제한"
+                      value={context.approvalPolicy.aiRestricted ? "있음" : "없음"}
+                      positive={!context.approvalPolicy.aiRestricted}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                    승인 규정을 설정하면 여기에 표시됩니다
+                  </p>
+                )
+              }
+            />
+          </div>
+
+          {/* ── 이번 달 예산 — 유지 (AI 의사결정 근거) ── */}
           {(() => {
             const budgetContent = (
               <>
@@ -362,7 +520,6 @@ export default function ChatContextSidebar({
                   </span>
                 </div>
 
-                {/* 큰 숫자 */}
                 <div className="flex items-baseline gap-1 mb-2">
                   <span
                     className="text-[22px] font-semibold text-[#111]"
@@ -378,7 +535,6 @@ export default function ChatContextSidebar({
                   </span>
                 </div>
 
-                {/* 진행바 */}
                 <div className="h-[4px] bg-[rgba(0,0,0,0.06)] rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
@@ -397,71 +553,162 @@ export default function ChatContextSidebar({
             return onOpenBudget ? (
               <button
                 onClick={onOpenBudget}
-                className="group pb-3 mb-1 w-full text-left cursor-pointer transition-colors hover:bg-[rgba(99,102,241,0.03)] -mx-2 px-2 pt-1.5 rounded-[6px]"
-                style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}
+                className="group w-full text-left cursor-pointer transition-colors hover:bg-[rgba(99,102,241,0.03)] -mx-2 px-2 py-2 rounded-[6px]"
               >
                 {budgetContent}
               </button>
             ) : (
-              <div className="pb-3 mb-1" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                {budgetContent}
-              </div>
+              <div>{budgetContent}</div>
             );
           })()}
 
-          {/* ── 배송지 · 결제수단 — 설정 페이지 딥링크 ── */}
-          <ListRow
-            icon={MapPin}
-            label="배송지"
-            value={context.shippingAddress}
-            onClick={onOpenShipping}
-            actionHint="변경"
-          />
-          <div className="mx-1" style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }} />
-          <ListRow
-            icon={CreditCard}
-            label="결제수단"
-            value={context.paymentMethod}
-            onClick={onOpenPayment}
-            actionHint="변경"
-          />
-
-          {/* ── 에이전트 모드 — 카드 하단 메타 영역 ── */}
-          <div
-            className="flex items-center gap-1.5 px-1 pt-2.5 mt-1"
-            style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}
-          >
-            <Bot size={11} strokeWidth={1.5} color="#999" />
-            <span className="text-[10px] text-[#999]" style={{ letterSpacing: "0.14px" }}>
-              에이전트 모드
-            </span>
-            <span
-              className="ml-auto text-[10px] font-medium text-[#4e4e4e]"
-              style={{ letterSpacing: "0.14px" }}
+          {/* ── 세부 설정 (기본 접힘): 배송지, 결제수단 ── */}
+          <div className="pt-1" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+            <button
+              onClick={() => setDetailOpen((v) => !v)}
+              className="flex items-center gap-1 w-full px-0.5 py-1 cursor-pointer text-left"
             >
-              {context.agentMode}
-            </span>
+              <span
+                className="text-[10px] font-medium text-[#999]"
+                style={{ letterSpacing: "0.14px" }}
+              >
+                세부 설정
+              </span>
+              <ChevronDown
+                size={11}
+                strokeWidth={1.5}
+                color="#bbb"
+                className="transition-transform"
+                style={{ transform: detailOpen ? "rotate(0)" : "rotate(-90deg)" }}
+              />
+            </button>
+            {detailOpen && (
+              <div className="flex flex-col mt-1">
+                <ListRow
+                  icon={MapPin}
+                  label="배송지"
+                  value={context.shippingAddress}
+                  onClick={onOpenShipping}
+                  actionHint="변경"
+                />
+                <div className="mx-1" style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }} />
+                <ListRow
+                  icon={CreditCard}
+                  label="결제수단"
+                  value={context.paymentMethod}
+                  onClick={onOpenPayment}
+                  actionHint="변경"
+                />
+              </div>
+            )}
           </div>
         </div>
       </GroupSection>
+    </div>
+  );
+}
 
-      {/* ════════════════════════════════════════
-          Group 3: 참고 (과거 기록)
-          ════════════════════════════════════════ */}
-      <GroupSection
-        title="참고"
-        expanded={openGroups.reference}
-        onToggle={() => toggle("reference")}
-        lastGroup
+/* ─── 포맷 헬퍼 ─── */
+function formatShortWon(won: number): string {
+  if (won >= 10_000_000) return `${(won / 10_000_000).toFixed(0)}천만`;
+  if (won >= 10_000) return `${Math.round(won / 10_000)}만원`;
+  return `${won.toLocaleString()}원`;
+}
+
+/* ─── 권한 행 (팝오버 내부) ─── */
+function PermRow({ label, value, positive }: { label: string; value: string; positive: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+        {label}
+      </span>
+      <span
+        className="text-[11px] font-medium"
+        style={{
+          color: positive ? "#22c55e" : "#f59e0b",
+          letterSpacing: "0.14px",
+        }}
       >
-        <ListRow
-          icon={Clock}
-          label="이번 달 주문"
-          value={`${context.recentOrders}건`}
-          onClick={onOpenOrders}
-          actionHint="열기"
-        />
-      </GroupSection>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/* ─── PolicyPill: 배지 + hover 팝오버 ─── */
+function PolicyPill({
+  icon,
+  label,
+  accentColor,
+  popoverTitle,
+  popoverBody,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  accentColor: string;
+  popoverTitle: string;
+  popoverBody: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 px-2 py-[4px] text-[11px] font-medium cursor-pointer transition-all"
+        style={{
+          borderRadius: "9999px",
+          backgroundColor: open ? "#fff" : "rgba(245,242,239,0.5)",
+          boxShadow: open
+            ? `${accentColor}33 0px 0px 0px 1.5px`
+            : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+          color: "#1a1a1a",
+          letterSpacing: "0.14px",
+        }}
+      >
+        {icon}
+        {label}
+      </button>
+
+      {open && (
+        <div
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          className="absolute left-0 top-full mt-1.5 z-40 w-[220px] bg-white p-3"
+          style={{
+            borderRadius: "10px",
+            boxShadow:
+              "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 8px, rgba(0,0,0,0.04) 0px 8px 20px",
+          }}
+        >
+          <p
+            className="text-[10px] font-semibold uppercase text-[#4e4e4e] mb-2"
+            style={{ letterSpacing: "0.7px" }}
+          >
+            {popoverTitle}
+          </p>
+          {popoverBody}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Sparkles, Database, Building2, Globe, Zap, Search, Clock,
-  Check, Loader2, Package, Eye,
+  Check, Loader2, Package,
 } from "lucide-react";
 import type { ChatMessage, Product, WorkItem, WorkItemSnapshot, WorkItemStatus } from "@/lib/types";
 import { products } from "@/data/products";
@@ -21,6 +21,7 @@ import SourcedProductCard, {
 } from "./SourcedProductCard";
 import ProductDetailPanel from "./ProductDetailPanel";
 import CartPanel, { type CartItem } from "@/components/commerce/CartPanel";
+import ApprovalReviewPanel from "@/components/commerce/ApprovalReviewPanel";
 import PaymentSelector from "@/components/commerce/PaymentSelector";
 import OrderTimeline, { type TimelinePhase } from "@/components/commerce/OrderTimeline";
 import type { ApprovalStep } from "@/components/commerce/ApprovalTracker";
@@ -410,7 +411,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const [scrapingProduct, setScrapingProduct] = useState<SourcedProduct | null>(null);
   const [candidateProducts, setCandidateProducts] = useState<SourcedProduct[]>([]);
 
-  // 검색 기록 (구매 컨텍스트 패널에 송출)
+  // 검색 기록 (작업 현황 패널에 송출)
   const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([]);
 
   // Purchase flow state (기존)
@@ -434,7 +435,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const responseIdx = useRef(0);
-  const { openPanel, closePanel, open: panelOpen, contentKey, setWorkItemStrip } = useRightPanel();
+  const { openPanel, closePanel, open: panelOpen, contentKey, setWorkItemStrip, registerDefaultOpener } = useRightPanel();
   const { openSettings } = useSettings();
   const router = useRouter();
 
@@ -676,7 +677,8 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     }
   }, [timelinePhase, approvalStep, shippingStep, addSys, addAI]);
 
-  const startApproval = useCallback(() => {
+  /* 품의 검토 패널 → 제출 시 실제 플로우 진입 */
+  const submitApproval = useCallback(() => {
     setFrozenCart([...cart]); setFrozenTotal(totalPrice); setFlowActive(true);
     const isAuto = totalPrice <= AUTO_APPROVE_LIMIT;
     setIsAutoApproved(isAuto);
@@ -689,6 +691,19 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       setTimeout(() => setApprovalStep("대기"), 500);
     }
   }, [cart, totalPrice, addAI]);
+
+  /* 장바구니에서 "품의 요청" 클릭 → 품의 검토 패널 열기 */
+  const startApproval = useCallback(() => {
+    openPanel(
+      <ApprovalReviewPanel
+        items={cart}
+        autoApprovalLimit={AUTO_APPROVE_LIMIT}
+        onSubmit={() => submitApproval()}
+      />,
+      "approval-review",
+      { label: "품의 요청", onBack: () => openContextRef.current(), backLabel: "작업 현황" },
+    );
+  }, [cart, openPanel, submitApproval]);
 
   const startDirectPurchase = useCallback(() => {
     setFrozenCart([...cart]); setFrozenTotal(totalPrice); setFlowActive(true);
@@ -707,13 +722,14 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const requestReturn = useCallback(() => { setShippingStep("반품요청"); addSys("반품 요청이 접수되었습니다."); addAI("반품 요청이 접수되었습니다.", "주문"); }, [addSys, addAI]);
 
   /* ── Right panel sync — 계층 내비게이션 모델 ──
-     루트: 구매 컨텍스트 (chat-context)
+     루트: 작업 현황 (chat-context)
      자식: 장바구니 / 품의 진행 / 결제 / 배송 / 상품 상세
-     각 자식 페이지 헤더의 "← 구매 컨텍스트"로 루트 복귀. */
+     각 자식 페이지 헤더의 "← 작업 현황"로 루트 복귀. */
 
   // 상호 참조를 위한 ref (createWorkItem → openContext 순환, handleSourcedSelect → viewProduct forward ref)
   const openContextRef = useRef<() => void>(() => {});
   const openFlowRef = useRef<() => void>(() => {});
+  const openCartRef = useRef<() => void>(() => {});
   const viewProductRef = useRef<(p: Product) => void>(() => {});
 
   const phaseLabel =
@@ -733,7 +749,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       openPanel(
         <PaymentSelector totalPrice={frozenTotal} onConfirm={confirmPayment} />,
         "payment",
-        { label: "결제", onBack: backToContext },
+        { label: "결제", onBack: backToContext, backLabel: "작업 현황" },
       );
     } else {
       openPanel(
@@ -743,7 +759,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
           shippingStep={shippingStep} trackingNumber="CJ1234567890" estimatedDate="2026-04-14"
           onAdvance={advanceFlow} onConfirmPurchase={confirmPurchase} onRequestReturn={requestReturn} />,
         "order-timeline",
-        { label: phaseLabel, onBack: backToContext },
+        { label: phaseLabel, onBack: backToContext, backLabel: "작업 현황" },
       );
     }
     // drill-in = 사용자가 확인함 → 알림 dot 끔
@@ -755,7 +771,12 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   //  - 루트(chat-context) 또는 product-detail 등에 있으면 → dot 알림만 (drill-down은 사용자가 직접)
   useEffect(() => {
     if (!flowActive) return;
-    if (contentKey === "cart" || contentKey === "order-timeline" || contentKey === "payment") {
+    if (
+      contentKey === "cart" ||
+      contentKey === "order-timeline" ||
+      contentKey === "payment" ||
+      contentKey === "approval-review"
+    ) {
       openFlow();
       return;
     }
@@ -766,7 +787,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     openPanel(
       <CartPanel items={cart} onUpdateQuantity={updateQty} onRemove={removeItem} onRequestApproval={startApproval} onDirectPurchase={startDirectPurchase} />,
       "cart",
-      { label: "장바구니", onBack: () => openContextRef.current() },
+      { label: "장바구니", onBack: () => openContextRef.current(), backLabel: "작업 현황" },
     );
   }, [cart, openPanel, updateQty, removeItem, startApproval, startDirectPurchase]);
 
@@ -774,7 +795,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     openPanel(
       <ProductDetailPanel product={product} onAddToCart={() => { addToCart(product); addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`); }} />,
       "product-detail",
-      { label: "상품 상세", onBack: () => openContextRef.current() },
+      { label: "상품 상세", onBack: () => openContextRef.current(), backLabel: "작업 현황" },
     );
   }, [openPanel, addToCart, addSys]);
 
@@ -869,7 +890,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     loadSnapshot(target.snapshot);
     setActiveWorkItemId(targetId);
     setHasUnviewedProgress(false);
-    // WI 전환 시 루트(구매 컨텍스트)로 복귀 — 이전 자식 페이지가 떠있었다면 닫고 새 WI의 루트로
+    // WI 전환 시 루트(작업 현황)로 복귀 — 이전 자식 페이지가 떠있었다면 닫고 새 WI의 루트로
     openContextRef.current();
   }, [activeWorkItemId, workItems, buildSnapshot, deriveStatus, loadSnapshot]);
 
@@ -1005,7 +1026,9 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
      렌더
      ═══════════════════════════════════════ */
 
-  /* ── 컨텍스트 사이드바 Phase 매핑 ── */
+  /* ── 컨텍스트 사이드바 Phase 매핑 ──
+     플로우 비활성 상태에서 카트에 담긴 상품이 있으면 "cart" 단계로 advance.
+     (results → cart 자연스러운 진행. 이후 품의/결제 진입 시 flowActive 분기로 넘어감) */
   const sidebarPhase = flowActive
     ? (timelinePhase === "products" ? "cart" as const
       : timelinePhase === "approval" ? "approval" as const
@@ -1013,7 +1036,9 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       : timelinePhase === "shipping" ? "shipping" as const
       : timelinePhase === "complete" ? "complete" as const
       : "idle" as const)
-    : (searchPhase === "idle" ? (cart.length > 0 ? "cart" as const : "idle" as const) : searchPhase);
+    : cart.length > 0
+      ? "cart" as const
+      : searchPhase;
 
   const contextInfo: ContextInfo = {
     budget: { monthly: 10000000, used: 5089000, department: "개발팀" },
@@ -1022,9 +1047,18 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     agentMode: "오픈 모드",
     agentModeColor: "#22c55e",
     recentOrders: 8,
+    approvalPolicy: {
+      autoApproveLimit: AUTO_APPROVE_LIMIT,
+      canDirectPurchase: true,
+      aiRestricted: false,
+    },
+    agentPolicy: {
+      description: "AI가 자율적으로 검색·추천·답변합니다. 정해진 구매 규정 내에서 행동합니다.",
+      agents: ["주문", "배송", "권한", "분석"],
+    },
   };
 
-  /* ── 구매 컨텍스트(루트) 송출 ──
+  /* ── 작업 현황(루트) 송출 ──
      - 마운트 시 자동 오픈
      - chat-context가 활성 상태면 의존성 변화 시 콘텐츠 갱신
      - 자식 페이지(cart/payment/product-detail/order-timeline)가 떠 있을 땐 덮어쓰지 않음 */
@@ -1038,15 +1072,20 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         cart={cart}
         context={contextInfo}
         onProductClick={handleSourcedSelect}
-        onOpenFlow={flowActive ? () => openFlowRef.current() : undefined}
+        onOpenFlow={
+          flowActive
+            ? () => openFlowRef.current()
+            : cart.length > 0
+              ? () => openCartRef.current()
+              : undefined
+        }
         progressNotification={hasUnviewedProgress}
         onOpenBudget={() => router.push("/cost-intel")}
         onOpenShipping={() => openSettings("company-shipping")}
         onOpenPayment={() => openSettings("accounting-payment")}
-        onOpenOrders={() => router.push("/orders")}
       />,
       "chat-context",
-      { label: "구매 컨텍스트" },  // 루트 — onBack 없음
+      { label: "작업 현황" },  // 루트 — onBack 없음
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPanel, sidebarPhase, searchRecords, sourcedProducts, candidateProducts, cart, flowActive, hasUnviewedProgress, router, openSettings]);
@@ -1054,7 +1093,13 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   // ref 동기화 (순환 참조 / forward 참조 해소)
   useEffect(() => { openContextRef.current = openContext; }, [openContext]);
   useEffect(() => { openFlowRef.current = openFlow; }, [openFlow]);
+  useEffect(() => { openCartRef.current = openCart; }, [openCart]);
   useEffect(() => { viewProductRef.current = viewProduct; }, [viewProduct]);
+
+  /* ── TopBar 우측 패널 토글이 빈 상태에서 열릴 때 루트 컨텍스트로 복구 ── */
+  useEffect(() => {
+    return registerDefaultOpener(() => openContextRef.current());
+  }, [registerDefaultOpener]);
 
   /* ── Work Item 칩 스위처 등록 ──
      workItems 변화 / activeId 변화 시 우측 패널 최상단 스위처 갱신.
@@ -1087,7 +1132,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     });
   }, [workItems, activeWorkItemId, deriveStatus, switchWorkItem, setWorkItemStrip]);
 
-  // 언마운트 시 패널 정리 — 다른 페이지로 이동해도 구매 컨텍스트가 따라가지 않도록
+  // 언마운트 시 패널 정리 — 다른 페이지로 이동해도 작업 현황이 따라가지 않도록
   useEffect(() => {
     return () => {
       setWorkItemStrip(null);
@@ -1111,58 +1156,12 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sidebarPhase, searchRecords, sourcedProducts, candidateProducts, cart]);
 
-  const contextActive = panelOpen && contentKey === "chat-context";
-
   return (
     <div className="flex h-full">
       <style dangerouslySetInnerHTML={{ __html: animStyles }} />
 
       {/* ── 메인 채팅 영역 ── */}
       <div className="flex-1 flex flex-col h-full min-w-0">
-        {/* Cart floating badge — 카트 패널이 이미 떠있거나 플로우 진입 후엔 숨김 */}
-        {cart.length > 0 && !flowActive && !(panelOpen && contentKey === "cart") && (
-          <button
-            onClick={openCart}
-            className="fixed bottom-24 right-6 z-20 flex items-center gap-2 px-4 py-2.5 bg-black text-white text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-80"
-            style={{ borderRadius: "9999px", boxShadow: "rgba(0,0,0,0.2) 0px 4px 12px", letterSpacing: "0.14px" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
-              <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
-            </svg>
-            장바구니 ({cart.reduce((s, i) => s + i.quantity, 0)})
-          </button>
-        )}
-
-        {/* 사이드 패널 토글 — 3-state:
-            (a) 패널 닫힘          → 컨텍스트 열기
-            (b) 컨텍스트 열림      → 닫기
-            (c) 다른 모드 열림     → 컨텍스트로 전환 */}
-        <div className="flex items-center justify-end px-3 pt-2 shrink-0">
-          <button
-            onClick={() => {
-              if (!panelOpen) {
-                openContext();
-              } else if (contextActive) {
-                closePanel();
-              } else {
-                openContext();
-              }
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium cursor-pointer transition-all"
-            style={{
-              borderRadius: "9999px",
-              color: contextActive ? "#000" : "#777169",
-              backgroundColor: contextActive ? "rgba(245,242,239,0.8)" : "transparent",
-              boxShadow: contextActive ? "rgba(78,50,23,0.04) 0px 6px 16px, rgba(0,0,0,0.06) 0px 0px 0px 1px" : "none",
-              letterSpacing: "0.14px",
-            }}
-          >
-            <Eye size={13} strokeWidth={1.5} />
-            {contextActive ? "컨텍스트 닫기" : "구매 컨텍스트"}
-          </button>
-        </div>
-
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 pt-2" style={{ scrollbarGutter: "stable" }}>
         <div className="max-w-[720px] mx-auto flex flex-col gap-1">
