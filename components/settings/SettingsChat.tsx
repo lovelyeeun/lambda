@@ -111,16 +111,24 @@ function buildFormActionResponse(_panel: string, action: string, detail: string)
 
   /* 무음: 단순 토글·편집·선택 — 우측 토스트로 충분 */
   if (action === "toggle") return null;
+
+  /* 무음: 보조 버튼 — 탭 전환·행 조작 등은 의미 있는 액션 아님 */
   if (
-    !d.includes("저장") && !d.includes("적용") && !d.includes("완료") &&
-    !d.includes("추가") && !d.includes("생성") && !d.includes("등록") && !d.includes("새") &&
-    !d.includes("삭제") && !d.includes("제거") && !d.includes("해제") && !d.includes("회수")
+    detail.includes("메일로 초대") || detail.includes("엑셀로 초대") || // 모달 탭 버튼
+    detail.includes("행 추가") || detail.includes("행 삭제") ||           // 다중 입력 행 조작
+    detail.includes("파일 선택") || detail.includes("다운로드")           // 모달 보조 액션
   ) {
     return null;
   }
 
+  const matchSubmit = d.includes("저장") || d.includes("적용") || d.includes("완료");
+  const matchInvite = detail.includes("초대하기");
+  const matchAdd = d.includes("추가") || d.includes("생성") || d.includes("등록");
+  const matchRemove = d.includes("삭제") || d.includes("제거") || d.includes("해제") || d.includes("회수");
+  if (!matchSubmit && !matchInvite && !matchAdd && !matchRemove) return null;
+
   /* 저장 / 완료 / 적용 — 가벼운 ack + follow-up */
-  if (d.includes("저장") || d.includes("완료") || d.includes("적용")) {
+  if (matchSubmit) {
     return {
       id: `ai-form-${Date.now()}`, role: "ai",
       content: "저장했어요. 다른 설정도 도와드릴까요?",
@@ -128,8 +136,21 @@ function buildFormActionResponse(_panel: string, action: string, detail: string)
     };
   }
 
+  /* 초대 — 팀원 (단일/다중 모두 처리) */
+  if (matchInvite) {
+    const countMatch = detail.match(/\((\d+)명\)/);
+    const count = countMatch ? parseInt(countMatch[1], 10) : 1;
+    return {
+      id: `ai-form-${Date.now()}`, role: "ai",
+      content: count > 1
+        ? `${count}명에게 초대 메일을 발송했어요. 수락하면 활성 멤버로 합류합니다.`
+        : "초대 메일을 발송했어요. 수락하면 활성 멤버로 합류합니다.",
+      suggestions: ["초대 대기 현황 알려줘", "다른 설정 보여줘"],
+    };
+  }
+
   /* 추가 / 등록 */
-  if (d.includes("추가") || d.includes("생성") || d.includes("등록") || d.includes("새")) {
+  if (matchAdd) {
     return {
       id: `ai-form-${Date.now()}`, role: "ai",
       content: `추가했어요. ${cleanDetail ? `(${cleanDetail})` : ""}`.trim(),
@@ -137,7 +158,7 @@ function buildFormActionResponse(_panel: string, action: string, detail: string)
   }
 
   /* 삭제 / 제거 / 해제 */
-  if (d.includes("삭제") || d.includes("제거") || d.includes("해제") || d.includes("회수")) {
+  if (matchRemove) {
     return {
       id: `ai-form-${Date.now()}`, role: "ai",
       content: "삭제했어요. 관련 설정에 영향이 있다면 알려드릴게요.",
