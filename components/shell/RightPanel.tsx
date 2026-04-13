@@ -5,7 +5,7 @@ import { useRightPanel } from "@/lib/right-panel-context";
 import ResizableHandle from "@/components/ui/ResizableHandle";
 
 export default function RightPanel() {
-  const { open, content, meta, closePanel } = useRightPanel();
+  const { open, content, meta, workItemStrip, closePanel } = useRightPanel();
   const [width, setWidth] = useState(480);
 
   return (
@@ -32,6 +32,59 @@ export default function RightPanel() {
       >
         {open && (
           <div className="flex flex-col h-full" style={{ width: `${width}px` }}>
+            {/* Work Item 칩 스위처 — 2개 이상일 때만 노출 (모드와 무관하게 최상단 고정) */}
+            {workItemStrip && workItemStrip.items.length >= 2 && (
+              <div
+                className="flex items-center gap-1.5 px-3 py-2 shrink-0 overflow-x-auto"
+                style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
+              >
+                {workItemStrip.items.map((wi) => {
+                  const active = wi.id === workItemStrip.activeId;
+                  return (
+                    <button
+                      key={wi.id}
+                      onClick={() => workItemStrip.onSwitch(wi.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-[5px] cursor-pointer transition-all shrink-0"
+                      style={{
+                        borderRadius: "9999px",
+                        backgroundColor: active ? "#fff" : "rgba(245,242,239,0.4)",
+                        boxShadow: active
+                          ? `${wi.color}33 0px 0px 0px 1.5px, rgba(78,50,23,0.04) 0px 4px 10px`
+                          : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+                        letterSpacing: "0.14px",
+                      }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 shrink-0"
+                        style={{ borderRadius: "9999px", backgroundColor: wi.color }}
+                      />
+                      <span
+                        className="text-[12px]"
+                        style={{
+                          color: active ? "#000" : "#4e4e4e",
+                          fontWeight: active ? 600 : 500,
+                        }}
+                      >
+                        {wi.title}
+                      </span>
+                      {wi.statusLabel && (
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-[1px]"
+                          style={{
+                            borderRadius: "4px",
+                            backgroundColor: `${wi.color}14`,
+                            color: wi.color,
+                          }}
+                        >
+                          {wi.statusLabel}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Header — 현재 모드 라벨 + 빠른 전환 chips + 닫기 */}
             <div
               className="flex items-center gap-2 px-3 h-[44px] shrink-0"
@@ -79,7 +132,7 @@ export default function RightPanel() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 pb-4 pt-3">
+            <div className="flex-1 overflow-y-auto px-4 pb-4 pt-3" style={{ scrollbarGutter: "stable" }}>
               {content ?? (
                 <p className="text-[13px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
                   패널 내용이 여기에 표시됩니다

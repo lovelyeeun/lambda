@@ -306,9 +306,9 @@ export default function ChatContextSidebar({
           </>
         )}
 
-        {/* ═══ 4. 컨텍스트 ═══ */}
+        {/* ═══ 4. 채팅 컨텍스트 (Work Item 무관 공통) ═══ */}
         <SectionHeader
-          title="구매 컨텍스트"
+          title="채팅 컨텍스트"
           icon={<Bot size={12} strokeWidth={1.5} color="#333" />}
           expanded={expandedSections.context}
           onToggle={() => toggleSection("context")}

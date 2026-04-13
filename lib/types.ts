@@ -215,3 +215,55 @@ export interface UserPermissions {
   purchaseLimit: number;   // 원, 0 = 무제한
   aiRestricted: boolean;
 }
+
+/* ─── Work Item ───
+   한 채팅에서 여러 구매가 동시 진행될 때, 각 구매 여정을 독립 객체로 다룸.
+   (design-decision-work-item-separation.md 참조)
+   현재는 "구매" type만 first-class. 반품/CS/설정 등은 Phase 3.
+*/
+export type WorkItemStatus =
+  | "idle"        // 의도 감지됨, 아직 검색 전
+  | "analyzing"   // 의도 분석 중
+  | "searching"   // 상품 검색 중
+  | "results"     // 추천 결과 노출
+  | "cart"        // 장바구니 담김, 아직 플로우 전
+  | "approval"    // 품의 진행 중
+  | "payment"     // 결제 중
+  | "shipping"    // 배송 중
+  | "complete";   // 완료
+
+export interface WorkItem {
+  id: string;                    // 예: "wi-245"
+  title: string;                 // 사용자에게 보여줄 짧은 제목 — "청소기" / "토너" / "A4용지"
+  icon?: string;                 // lucide icon name hint (옵션)
+  color: string;                 // chip 색상 (hex)
+  status: WorkItemStatus;
+  createdAt: string;             // ISO datetime
+  /** 파이프라인 snapshot — 이 WI가 활성일 때 ChatContainer의 singleton state로 로드됨 */
+  snapshot: WorkItemSnapshot;
+}
+
+/** 각 Work Item의 구매 파이프라인 상태 — ChatContainer singleton state를 스냅샷으로 저장 */
+export interface WorkItemSnapshot {
+  // 검색 단계
+  searchPhase: "idle" | "analyzing" | "searching" | "results";
+  intentText: string | null;
+  // sourcedProducts / candidateProducts / searchRecords 는 any로 두어 ChatContainer 내부 타입 의존 최소화
+  // (런타임에서는 실제 형상이 유지되며, 이 문서는 현 시점 MVP용)
+  sourcedProducts: unknown[];
+  candidateProducts: unknown[];
+  searchRecords: unknown[];
+  // 카트
+  cart: unknown[];
+  // 플로우
+  flowActive: boolean;
+  timelinePhase: "products" | "approval" | "payment" | "shipping" | "complete";
+  approvalStep: "요청" | "대기" | "승인" | "반려" | "자동승인";
+  isAutoApproved: boolean;
+  approvalDate?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+  shippingStep: "접수" | "준비" | "배송중" | "배송완료" | "구매확정" | "반품요청";
+  frozenCart: unknown[];
+  frozenTotal: number;
+}

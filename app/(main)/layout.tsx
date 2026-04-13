@@ -18,8 +18,8 @@ export default function MainLayout({
         {/* Left sidebar */}
         <MainSidebar />
 
-        {/* Center content */}
-        <main className="flex-1 min-w-0 overflow-y-auto">
+        {/* Center content — scrollbar-gutter: stable로 스크롤바 유무에 따른 너비 shift 방지 */}
+        <main className="flex-1 min-w-0 overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
           {children}
         </main>
 

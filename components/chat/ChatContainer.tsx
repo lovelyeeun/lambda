@@ -5,7 +5,7 @@ import {
   Sparkles, Database, Building2, Globe, Zap, Search, Clock,
   Check, Loader2, Package, Eye,
 } from "lucide-react";
-import type { ChatMessage, Product } from "@/lib/types";
+import type { ChatMessage, Product, WorkItem, WorkItemSnapshot, WorkItemStatus } from "@/lib/types";
 import { products } from "@/data/products";
 import { chats } from "@/data/chats";
 import { useRightPanel, type PanelChip } from "@/lib/right-panel-context";
@@ -324,6 +324,32 @@ function findResearchCondition(text: string): ResearchCondition | null {
   return null;
 }
 
+/* ─── Work Item 의도 감지 — 키워드 → {title, color} 매핑 ───
+   데모용 하드코딩. 나중에 에이전트 분류기로 대체. */
+interface WorkItemIntent {
+  title: string;
+  color: string;
+}
+
+const workItemIntentMap: { keywords: string[]; title: string; color: string }[] = [
+  { keywords: ["청소기", "청소"],            title: "청소기",   color: "#6366f1" },
+  { keywords: ["토너", "프린터", "복합기"],   title: "토너",     color: "#ea580c" },
+  { keywords: ["a4", "용지"],                title: "A4용지",   color: "#8b5cf6" },
+  { keywords: ["데스크", "책상", "가구"],     title: "사무가구", color: "#059669" },
+  { keywords: ["정수기"],                    title: "정수기",   color: "#3b82f6" },
+  { keywords: ["포스트잇", "사무용품"],       title: "사무용품", color: "#f59e0b" },
+];
+
+function detectPurchaseIntent(text: string): WorkItemIntent | null {
+  const lower = text.toLowerCase();
+  for (const it of workItemIntentMap) {
+    if (it.keywords.some((kw) => lower.includes(kw))) {
+      return { title: it.title, color: it.color };
+    }
+  }
+  return null;
+}
+
 /* ─── Fallback responses ─── */
 
 const dummyResponses: { content: string; agent?: string }[] = [
@@ -383,9 +409,16 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const [frozenCart, setFrozenCart] = useState<CartItem[]>([]);
   const [frozenTotal, setFrozenTotal] = useState(0);
 
+  /* ── Work Item state ──
+     한 채팅에서 여러 구매가 동시 진행될 때, 각 구매 여정을 독립 객체로 다룸.
+     - singleton state(cart/flowActive/...)는 "현재 활성 WI의 live state"
+     - 다른 WI로 전환 시 현재 singleton을 activeId의 snapshot에 저장하고 target의 snapshot을 singleton으로 로드 */
+  const [workItems, setWorkItems] = useState<Record<string, WorkItem>>({});
+  const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const responseIdx = useRef(0);
-  const { openPanel, closePanel, open: panelOpen, contentKey } = useRightPanel();
+  const { openPanel, closePanel, open: panelOpen, contentKey, setWorkItemStrip } = useRightPanel();
 
   const totalPrice = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
 
@@ -714,11 +747,145 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const handleAddToCart = useCallback((product: Product) => { addToCart(product); addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`); }, [addToCart, addSys]);
 
   /* ═══════════════════════════════════════
+     Work Item 관리 — snapshot 저장/복원
+     ═══════════════════════════════════════ */
+
+  // 현재 singleton state를 snapshot으로 직렬화
+  const buildSnapshot = useCallback((): WorkItemSnapshot => ({
+    searchPhase, intentText,
+    sourcedProducts, candidateProducts, searchRecords,
+    cart,
+    flowActive, timelinePhase, approvalStep, isAutoApproved,
+    approvalDate, paymentMethod, paymentDate, shippingStep,
+    frozenCart, frozenTotal,
+  }), [searchPhase, intentText, sourcedProducts, candidateProducts, searchRecords, cart, flowActive, timelinePhase, approvalStep, isAutoApproved, approvalDate, paymentMethod, paymentDate, shippingStep, frozenCart, frozenTotal]);
+
+  // 현재 live state에서 Work Item의 상태 도출
+  const deriveStatus = useCallback((): WorkItemStatus => {
+    if (flowActive) {
+      if (timelinePhase === "approval") return "approval";
+      if (timelinePhase === "payment") return "payment";
+      if (timelinePhase === "shipping") return "shipping";
+      if (timelinePhase === "complete") return "complete";
+    }
+    if (cart.length > 0) return "cart";
+    if (searchPhase === "results") return "results";
+    if (searchPhase === "searching") return "searching";
+    if (searchPhase === "analyzing") return "analyzing";
+    return "idle";
+  }, [flowActive, timelinePhase, cart, searchPhase]);
+
+  // 빈 snapshot — 새 WI 생성 시 초기값
+  const emptySnapshot = useCallback((): WorkItemSnapshot => ({
+    searchPhase: "idle",
+    intentText: null,
+    sourcedProducts: [],
+    candidateProducts: [],
+    searchRecords: [],
+    cart: [],
+    flowActive: false,
+    timelinePhase: "products",
+    approvalStep: "요청",
+    isAutoApproved: false,
+    approvalDate: undefined,
+    paymentMethod: undefined,
+    paymentDate: undefined,
+    shippingStep: "접수",
+    frozenCart: [],
+    frozenTotal: 0,
+  }), []);
+
+  // snapshot을 singleton state로 로드
+  const loadSnapshot = useCallback((snap: WorkItemSnapshot) => {
+    setSearchPhase(snap.searchPhase);
+    setIntentText(snap.intentText);
+    setSourcedProducts(snap.sourcedProducts as SourcedProduct[]);
+    setCandidateProducts(snap.candidateProducts as SourcedProduct[]);
+    setSearchRecords(snap.searchRecords as SearchRecord[]);
+    setCart(snap.cart as CartItem[]);
+    setFlowActive(snap.flowActive);
+    setTimelinePhase(snap.timelinePhase);
+    setApprovalStep(snap.approvalStep);
+    setIsAutoApproved(snap.isAutoApproved);
+    setApprovalDate(snap.approvalDate);
+    setPaymentMethod(snap.paymentMethod);
+    setPaymentDate(snap.paymentDate);
+    setShippingStep(snap.shippingStep);
+    setFrozenCart(snap.frozenCart as CartItem[]);
+    setFrozenTotal(snap.frozenTotal);
+  }, []);
+
+  // WI 전환
+  const switchWorkItem = useCallback((targetId: string) => {
+    if (targetId === activeWorkItemId) return;
+    const target = workItems[targetId];
+    if (!target) return;
+
+    setWorkItems((prev) => {
+      const next = { ...prev };
+      if (activeWorkItemId && next[activeWorkItemId]) {
+        next[activeWorkItemId] = {
+          ...next[activeWorkItemId],
+          snapshot: buildSnapshot(),
+          status: deriveStatus(),
+        };
+      }
+      return next;
+    });
+    loadSnapshot(target.snapshot);
+    setActiveWorkItemId(targetId);
+  }, [activeWorkItemId, workItems, buildSnapshot, deriveStatus, loadSnapshot]);
+
+  // 새 WI 생성 (현재 live state는 이전 active에 저장, 새 WI는 빈 상태로 시작 + 활성화)
+  const createWorkItem = useCallback((title: string, color: string): string => {
+    const id = `wi-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newWI: WorkItem = {
+      id,
+      title,
+      color,
+      status: "idle",
+      createdAt: new Date().toISOString(),
+      snapshot: emptySnapshot(),
+    };
+    setWorkItems((prev) => {
+      const next = { ...prev };
+      if (activeWorkItemId && next[activeWorkItemId]) {
+        next[activeWorkItemId] = {
+          ...next[activeWorkItemId],
+          snapshot: buildSnapshot(),
+          status: deriveStatus(),
+        };
+      }
+      next[id] = newWI;
+      return next;
+    });
+    loadSnapshot(emptySnapshot());
+    setActiveWorkItemId(id);
+    return id;
+  }, [activeWorkItemId, buildSnapshot, deriveStatus, emptySnapshot, loadSnapshot]);
+
+  /* ═══════════════════════════════════════
      메시지 전송 핸들러
      ═══════════════════════════════════════ */
 
   const handleSend = useCallback((text: string) => {
     addMsg({ role: "user", content: text });
+
+    /* ── Work Item 자동 생성 — 키워드 매칭 ──
+       1) 활성 WI가 없으면 → 첫 WI 생성 (타이틀/색은 키워드로 결정, 못 찾으면 "구매 요청")
+       2) 활성 WI가 있고, 새 키워드가 현재와 다른 구매 의도면 → 새 WI 생성 후 활성화 */
+    const intentMatch = detectPurchaseIntent(text);
+    if (intentMatch) {
+      const needsNewWI =
+        !activeWorkItemId ||
+        (workItems[activeWorkItemId] && workItems[activeWorkItemId].title !== intentMatch.title);
+      if (needsNewWI) {
+        createWorkItem(intentMatch.title, intentMatch.color);
+      }
+    } else if (!activeWorkItemId) {
+      // 키워드 매칭 실패 + 아직 WI 없음 → 제네릭 WI 생성
+      createWorkItem("구매 요청", "#6366f1");
+    }
 
     // 1) 재검색 조건 감지 (이미 검색 결과가 있는 상태에서)
     if (searchPhase === "results" && lastScenario) {
@@ -765,7 +932,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       }
       setIsTyping(false);
     }, 800 + Math.random() * 1000);
-  }, [addMsg, searchPhase, lastScenario, handleResearch, startDbSearch]);
+  }, [addMsg, searchPhase, lastScenario, handleResearch, startDbSearch, activeWorkItemId, workItems, createWorkItem]);
 
   /* ── 시작 화면에서 넘어온 초기 쿼리 자동 전송 (마운트 1회) ── */
   const initialQuerySent = useRef(false);
@@ -837,6 +1004,42 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   useEffect(() => { openCartRef.current = openCart; }, [openCart]);
   useEffect(() => { openFlowRef.current = openFlow; }, [openFlow]);
 
+  /* ── Work Item 칩 스위처 등록 ──
+     workItems 변화 / activeId 변화 시 우측 패널 최상단 스위처 갱신.
+     상태 라벨은 현재 활성 WI는 live state에서 즉시 도출, 다른 WI는 snapshot에서 도출 */
+  useEffect(() => {
+    const statusLabelMap: Record<WorkItemStatus, string> = {
+      idle: "",
+      analyzing: "분석중",
+      searching: "검색중",
+      results: "추천중",
+      cart: "담김",
+      approval: "품의",
+      payment: "결제",
+      shipping: "배송",
+      complete: "완료",
+    };
+    const items = Object.values(workItems).map((wi) => {
+      const status = wi.id === activeWorkItemId ? deriveStatus() : wi.status;
+      return {
+        id: wi.id,
+        title: wi.title,
+        color: wi.color,
+        statusLabel: statusLabelMap[status] || undefined,
+      };
+    });
+    setWorkItemStrip({
+      items,
+      activeId: activeWorkItemId,
+      onSwitch: switchWorkItem,
+    });
+  }, [workItems, activeWorkItemId, deriveStatus, switchWorkItem, setWorkItemStrip]);
+
+  // 언마운트 시 strip 정리
+  useEffect(() => {
+    return () => setWorkItemStrip(null);
+  }, [setWorkItemStrip]);
+
   // 마운트 시 1회 자동 오픈
   const contextOpenedRef = useRef(false);
   useEffect(() => {
@@ -906,7 +1109,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 pt-2">
+        <div className="flex-1 overflow-y-auto px-4 pt-2" style={{ scrollbarGutter: "stable" }}>
         <div className="max-w-[720px] mx-auto flex flex-col gap-1">
           {messages.map((msg) => (
             <div key={msg.id}>

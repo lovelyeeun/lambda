@@ -15,14 +15,31 @@ export interface PanelMeta {
   chips?: PanelChip[];
 }
 
+/** Work Item 칩 스위처 — 패널 최상단에 모드와 무관하게 항상 떠 있음 */
+export interface WorkItemStripItem {
+  id: string;
+  title: string;
+  color: string;
+  /** 상태 나타내는 짧은 라벨 (예: "배송중", "완료") — 옵션 */
+  statusLabel?: string;
+}
+
+export interface WorkItemStrip {
+  items: WorkItemStripItem[];
+  activeId: string | null;
+  onSwitch: (id: string) => void;
+}
+
 interface RightPanelState {
   open: boolean;
   content: ReactNode | null;
   contentKey: string | null;
   meta: PanelMeta | null;
+  workItemStrip: WorkItemStrip | null;
   openPanel: (content: ReactNode, key?: string, meta?: PanelMeta) => void;
   closePanel: () => void;
   togglePanel: () => void;
+  setWorkItemStrip: (strip: WorkItemStrip | null) => void;
 }
 
 const RightPanelContext = createContext<RightPanelState | null>(null);
@@ -32,6 +49,7 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
   const [content, setContent] = useState<ReactNode | null>(null);
   const [contentKey, setContentKey] = useState<string | null>(null);
   const [meta, setMeta] = useState<PanelMeta | null>(null);
+  const [workItemStrip, setWorkItemStripState] = useState<WorkItemStrip | null>(null);
 
   const openPanel = useCallback((node: ReactNode, key?: string, m?: PanelMeta) => {
     setContent(node);
@@ -48,8 +66,12 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
     setOpen((prev) => !prev);
   }, []);
 
+  const setWorkItemStrip = useCallback((strip: WorkItemStrip | null) => {
+    setWorkItemStripState(strip);
+  }, []);
+
   return (
-    <RightPanelContext.Provider value={{ open, content, contentKey, meta, openPanel, closePanel, togglePanel }}>
+    <RightPanelContext.Provider value={{ open, content, contentKey, meta, workItemStrip, openPanel, closePanel, togglePanel, setWorkItemStrip }}>
       {children}
     </RightPanelContext.Provider>
   );
