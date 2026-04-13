@@ -137,7 +137,7 @@ export default function SettingsDashboard() {
   const progressPct = Math.round((doneCount / totalCount) * 100);
 
   return (
-    <div className="p-5 flex flex-col gap-4">
+    <div className="px-5 pt-14 pb-5 flex flex-col gap-4">
       {/* 전체 진행률 */}
       <div className="p-4" style={{ borderRadius: "12px", backgroundColor: "#fff", boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px" }}>
         <div className="flex items-center justify-between mb-2">

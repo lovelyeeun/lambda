@@ -65,15 +65,15 @@ export default function SettingsOverlay() {
 
 function SettingsOverlayInner() {
   const { closeSettings, section, setSection } = useSettings();
-  const [rightWidth, setRightWidth] = useState(380);
+  const [rightWidth, setRightWidth] = useState(480);
 
   const activeCardPanel = section ? companyFormPanels[section] : null;
   const isOtherForm = section ? !!otherFormPanels[section] : false;
   const OtherPanel = section && isOtherForm ? otherFormPanels[section] : null;
 
-  const expandedWidth = activeCardPanel ? Math.max(rightWidth, 520) : rightWidth;
-  const dashboardMinWidth = activeCardPanel ? 420 : 300;
-  const dashboardMaxWidth = activeCardPanel ? 700 : 500;
+  const expandedWidth = activeCardPanel ? Math.max(rightWidth, 560) : rightWidth;
+  const dashboardMinWidth = activeCardPanel ? 440 : 340;
+  const dashboardMaxWidth = activeCardPanel ? 920 : 720;
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -99,7 +99,7 @@ function SettingsOverlayInner() {
         <SettingsNav />
 
         {isOtherForm && OtherPanel ? (
-          <div className="flex-1 overflow-y-auto p-8 px-10">
+          <div className="flex-1 overflow-y-auto px-10 pt-14 pb-8">
             <OtherPanel />
           </div>
         ) : (
@@ -220,7 +220,7 @@ function FormPanelWrapper({
   }, [emit, panelKey, title]);
 
   return (
-    <div className="p-5 relative">
+    <div className="px-5 pt-14 pb-5 relative">
       <button
         onClick={onBack}
         className="flex items-center gap-1.5 mb-4 text-[13px] text-[#777] cursor-pointer transition-colors hover:text-[#333] group"
