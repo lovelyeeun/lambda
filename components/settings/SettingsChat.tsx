@@ -7,7 +7,7 @@ import {
   Brain, Loader2,
 } from "lucide-react";
 import { useSettings, type SettingsSection } from "@/lib/settings-context";
-import { useSettingsEmit, useLastFormEvent } from "@/lib/settings-events";
+import { useSettingsEmit, useLastFormEvent, useFocusEmit } from "@/lib/settings-events";
 import { useSettingsStore, type SettingsPatch } from "@/lib/settings-store";
 import ShippingAddressModal, { type ShippingDraft } from "@/components/settings/ShippingAddressModal";
 import { PlannedTooltip } from "@/components/ui/Tooltip";
@@ -19,6 +19,8 @@ import { PlannedTooltip } from "@/components/ui/Tooltip";
 interface ThinkingStep {
   label: string;
   detail?: string;
+  /** 이 스텝이 노출될 때 우측 패널에 펄스를 줄 대상 키 */
+  focusKey?: string;
 }
 
 interface DiffItem {
@@ -162,10 +164,10 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
           role: "ai",
           content: "마케팅팀 월 예산을 500만원으로 변경할게요. 아래 변경사항을 확인해주세요.",
           thinking: [
-            { label: "현재 마케팅팀 월 예산 조회", detail: "현재 설정: 월 380만원" },
-            { label: "최근 3개월 실 지출 분석", detail: "평균 352만원/월 (예산 대비 92.6% 소진)" },
-            { label: "변경 후 영향 계산", detail: "월 500만원 → 연간 6,000만원 → 전사 예산 대비 12.5%" },
-            { label: "자동승인 한도 확인", detail: "50만원 이하 자동승인 — 변경 불필요" },
+            { label: "현재 마케팅팀 월 예산 조회", detail: "현재 설정: 월 380만원", focusKey: "budget.dept.마케팅" },
+            { label: "최근 3개월 실 지출 분석", detail: "평균 352만원/월 (예산 대비 92.6% 소진)", focusKey: "budget.dept.마케팅" },
+            { label: "변경 후 영향 계산", detail: "월 500만원 → 연간 6,000만원 → 전사 예산 대비 12.5%", focusKey: "budget.total" },
+            { label: "자동승인 한도 확인", detail: "50만원 이하 자동승인 — 변경 불필요", focusKey: "approval-rules" },
           ],
           diff: {
             title: "마케팅팀 예산 변경",
@@ -283,9 +285,9 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
           role: "ai",
           content: "분당 지사 배송지를 초안으로 준비했어요. 아래 카드에서 내용을 확인·수정하고 적용하세요.",
           thinking: [
-            { label: "현재 배송지 조회", detail: "3개 등록 (본사 3층 기본)" },
-            { label: "중복 확인", detail: "분당 관련 주소: 물류센터 (판교로 256) 존재 — 별도 지사 등록 가능" },
-            { label: "초안 구성", detail: "이름·도로명 주소는 채워뒀고, 수령인·연락처는 직접 입력 필요" },
+            { label: "현재 배송지 조회", detail: "3개 등록 (본사 3층 기본)", focusKey: "shipping.list" },
+            { label: "중복 확인", detail: "분당 관련 주소: 물류센터 (판교로 256) 존재 — 별도 지사 등록 가능", focusKey: "shipping.addr-3" },
+            { label: "초안 구성", detail: "이름·도로명 주소는 채워뒀고, 수령인·연락처는 직접 입력 필요", focusKey: "shipping.list" },
           ],
           shippingForm: {
             title: "새 배송지 등록",
@@ -335,8 +337,8 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
           role: "ai",
           content: "회사 정보를 확인할게요.",
           thinking: [
-            { label: "등록된 회사 정보 조회", detail: "주식회사 로랩스, 사업자번호 142-87-01234" },
-            { label: "누락 항목 확인", detail: "업종, 업태 미입력 — 적요 자동생성에 영향 가능" },
+            { label: "등록된 회사 정보 조회", detail: "주식회사 로랩스, 사업자번호 142-87-01234", focusKey: "company.field.name" },
+            { label: "누락 항목 확인", detail: "업종, 업태 미입력 — 적요 자동생성에 영향 가능", focusKey: "company.field.industry" },
           ],
           diff: {
             title: "회사 정보 보완 제안",
@@ -512,8 +514,49 @@ function getCardEntryMessage(section: SettingsSection): ChatMessage | null {
    서브 컴포넌트: 추론 블록
    ═══════════════════════════════════════ */
 
-function ThinkingBlock({ steps }: { steps: ThinkingStep[] }) {
-  const [open, setOpen] = useState(false);
+function ThinkingBlock({
+  steps,
+  initialReveal,
+  onStepReveal,
+}: {
+  steps: ThinkingStep[];
+  /** true면 스텝을 한 번에 모두 노출 (이미 완료된 메시지). false면 progressive */
+  initialReveal?: boolean;
+  /** 각 스텝이 새로 드러날 때 호출 (사이드 이펙트용) */
+  onStepReveal?: (step: ThinkingStep, index: number) => void;
+}) {
+  const initial = initialReveal ? steps.length : 0;
+  const [revealed, setRevealed] = useState(initial);
+  const [open, setOpen] = useState(!initialReveal); // 스트리밍 중엔 자동 펼침
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const firedRef = useRef(new Set<number>());
+
+  useEffect(() => {
+    if (initialReveal) return;
+    // 한 스텝당 약 600ms 간격으로 순차 노출
+    const PER_STEP_MS = 600;
+    const FIRST_DELAY = 150;
+    timersRef.current = steps.map((_, i) =>
+      setTimeout(() => setRevealed((r) => Math.max(r, i + 1)), FIRST_DELAY + i * PER_STEP_MS)
+    );
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 스텝이 처음 드러나는 시점에 onStepReveal 호출
+  useEffect(() => {
+    for (let i = 0; i < revealed; i++) {
+      if (!firedRef.current.has(i)) {
+        firedRef.current.add(i);
+        onStepReveal?.(steps[i], i);
+      }
+    }
+  }, [revealed, steps, onStepReveal]);
+
+  const isStreaming = revealed < steps.length;
 
   return (
     <div
@@ -524,9 +567,13 @@ function ThinkingBlock({ steps }: { steps: ThinkingStep[] }) {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 w-full px-3 py-2 text-left cursor-pointer"
       >
-        <Brain size={13} strokeWidth={1.5} color="#6366f1" />
+        {isStreaming ? (
+          <Loader2 size={13} strokeWidth={1.5} color="#6366f1" className="animate-spin" />
+        ) : (
+          <Brain size={13} strokeWidth={1.5} color="#6366f1" />
+        )}
         <span className="text-[12px] font-medium text-[#6366f1]">
-          추론 과정 · {steps.length}단계
+          {isStreaming ? `추론 중 · ${revealed}/${steps.length}단계` : `추론 과정 · ${steps.length}단계`}
         </span>
         <ChevronDown
           size={12} strokeWidth={1.5} color="#6366f1"
@@ -535,8 +582,12 @@ function ThinkingBlock({ steps }: { steps: ThinkingStep[] }) {
       </button>
       {open && (
         <div className="px-3 pb-3 flex flex-col gap-1.5">
-          {steps.map((step, i) => (
-            <div key={i} className="flex items-start gap-2">
+          {steps.slice(0, revealed).map((step, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-2"
+              style={{ animation: "thinking-step-in 280ms ease-out both" }}
+            >
               <div className="mt-1 w-4 h-4 shrink-0 rounded-full flex items-center justify-center bg-[#6366f1] text-white text-[8px] font-bold">
                 {i + 1}
               </div>
@@ -546,8 +597,21 @@ function ThinkingBlock({ steps }: { steps: ThinkingStep[] }) {
               </div>
             </div>
           ))}
+          {isStreaming && (
+            <div className="flex items-center gap-2 pl-6 pt-0.5">
+              <span className="inline-block w-1 h-1 rounded-full bg-[#6366f1] opacity-60 animate-pulse" />
+              <span className="inline-block w-1 h-1 rounded-full bg-[#6366f1] opacity-40 animate-pulse" style={{ animationDelay: "150ms" }} />
+              <span className="inline-block w-1 h-1 rounded-full bg-[#6366f1] opacity-30 animate-pulse" style={{ animationDelay: "300ms" }} />
+            </div>
+          )}
         </div>
       )}
+      <style jsx>{`
+        @keyframes thinking-step-in {
+          from { opacity: 0; transform: translateY(-3px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -841,6 +905,7 @@ function FormRow({
 export default function SettingsChat() {
   const { section, setSection } = useSettings();
   const emit = useSettingsEmit();
+  const focus = useFocusEmit();
   const lastFormEvent = useLastFormEvent();
   const { applyPatches, addShipping } = useSettingsStore();
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -1052,8 +1117,15 @@ export default function SettingsChat() {
           return (
             <div key={msg.id} className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}>
               <div className="max-w-[90%]">
-                {/* 추론 블록 — 답변 위에 표시 (생각 → 답변 순서) */}
-                {msg.thinking && <ThinkingBlock steps={msg.thinking} />}
+                {/* 추론 블록 — progressive 노출 + 각 스텝에서 우측 패널 펄스 */}
+                {msg.thinking && (
+                  <ThinkingBlock
+                    steps={msg.thinking}
+                    onStepReveal={(step) => {
+                      if (step.focusKey) focus(step.focusKey);
+                    }}
+                  />
+                )}
 
                 {/* 메시지 버블 */}
                 <div

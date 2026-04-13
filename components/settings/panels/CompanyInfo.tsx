@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useSettingsStore, type CompanyField } from "@/lib/settings-store";
+import { useFocusPulse } from "@/lib/settings-events";
+
+const PULSE_RING = "rgba(99,102,241,0.55) 0px 0px 0px 2px";
 
 const FIELD_ORDER: { key: CompanyField; label: string }[] = [
   { key: "bizNumber", label: "사업자등록번호" },
@@ -39,23 +42,14 @@ export default function CompanyInfo() {
 
       <div className="flex flex-col gap-4">
         {FIELD_ORDER.map((f) => (
-          <div key={f.key}>
-            <label className="block text-[12px] text-[#999] mb-1">{f.label}</label>
-            <input
-              type="text"
-              value={editing ? draft[f.key] : company[f.key]}
-              onChange={(e) => setDraft((prev) => ({ ...prev, [f.key]: e.target.value }))}
-              readOnly={!editing}
-              className="w-full px-3.5 py-2.5 text-[14px] outline-none"
-              style={{
-                borderRadius: "10px",
-                boxShadow: editing ? "rgba(0,0,0,0.06) 0px 0px 0px 1px" : "rgba(0,0,0,0.04) 0px 0px 0px 1px",
-                backgroundColor: editing ? "#fff" : "#fafafa",
-                color: editing ? "#000" : "#444",
-                cursor: editing ? "text" : "default",
-              }}
-            />
-          </div>
+          <CompanyFieldRow
+            key={f.key}
+            fieldKey={f.key}
+            label={f.label}
+            editing={editing}
+            value={editing ? draft[f.key] : company[f.key]}
+            onChange={(v) => setDraft((prev) => ({ ...prev, [f.key]: v }))}
+          />
         ))}
       </div>
 
@@ -70,6 +64,45 @@ export default function CompanyInfo() {
         )}
       </div>
       {toast && <p className="text-[13px] text-[#22c55e] mt-3">저장되었습니다</p>}
+    </div>
+  );
+}
+
+function CompanyFieldRow({
+  fieldKey,
+  label,
+  editing,
+  value,
+  onChange,
+}: {
+  fieldKey: CompanyField;
+  label: string;
+  editing: boolean;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const pulse = useFocusPulse(`company.field.${fieldKey}`);
+  return (
+    <div>
+      <label className="block text-[12px] text-[#999] mb-1">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        readOnly={!editing}
+        className="w-full px-3.5 py-2.5 text-[14px] outline-none transition-all duration-300"
+        style={{
+          borderRadius: "10px",
+          boxShadow: pulse
+            ? PULSE_RING
+            : editing
+              ? "rgba(0,0,0,0.06) 0px 0px 0px 1px"
+              : "rgba(0,0,0,0.04) 0px 0px 0px 1px",
+          backgroundColor: editing ? "#fff" : "#fafafa",
+          color: editing ? "#000" : "#444",
+          cursor: editing ? "text" : "default",
+        }}
+      />
     </div>
   );
 }
