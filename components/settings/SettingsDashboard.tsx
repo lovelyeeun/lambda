@@ -18,20 +18,6 @@ interface SettingCard {
   items: { label: string; value: string }[];
 }
 
-const staticCards: SettingCard[] = [
-  {
-    id: "accounting-description",
-    icon: FileText,
-    title: "적요설정",
-    status: "done",
-    statusLabel: "설정 완료",
-    items: [
-      { label: "AI 자동적요", value: "ON" },
-      { label: "카테고리 매핑", value: "7개 규칙" },
-    ],
-  },
-];
-
 const statusConfig = {
   done: { color: "#000000", bg: "rgba(245,242,239,0.8)", icon: Check, label: "완료" },
   partial: { color: "#777169", bg: "rgba(245,242,239,0.8)", icon: Clock, label: "진행 중" },
@@ -64,7 +50,20 @@ export default function SettingsDashboard() {
     ],
   };
 
-  const { budget, totalAnnual, totalUsed, company, shipping, payments, defaultShipping, activePaymentsCount, invitedMembers } = useSettingsStore();
+  const { budget, totalAnnual, totalUsed, company, shipping, payments, defaultShipping, activePaymentsCount, invitedMembers, descriptionRules, descriptionRuleHistory, aiDescriptionEnabled } = useSettingsStore();
+
+  const descriptionCard: SettingCard = {
+    id: "accounting-description",
+    icon: FileText,
+    title: "적요설정",
+    status: descriptionRules.length > 0 ? "done" : "empty",
+    statusLabel: aiDescriptionEnabled ? "AI 추천 ON" : "AI 추천 OFF",
+    items: [
+      { label: "등록된 규칙", value: `${descriptionRules.length}개` },
+      { label: "최근 변경", value: descriptionRuleHistory.length > 0 ? `${descriptionRuleHistory.length}건 기록` : "—" },
+      { label: "ERP 연동", value: "더존 4자리" },
+    ],
+  };
 
   const activeCount = users.length;
   const pendingCount = invitedMembers.length;
@@ -155,7 +154,7 @@ export default function SettingsDashboard() {
     teamCard,
     shippingCard,
     paymentCard,
-    ...staticCards.filter((c) => c.id === "accounting-description"),
+    descriptionCard,
     budgetCard,
     agentPolicyCard,
     approvalRulesCard,

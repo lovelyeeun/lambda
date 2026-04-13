@@ -251,6 +251,102 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
     };
   }
 
+  /* 적요 — 단일 규칙 추가 (자연어 파싱)
+     예: "노트북은 비품 8240으로 매핑해줘"
+         "회의실 다과는 복리후생비 8270" */
+  if (
+    /\b\d{4}\b/.test(text) &&
+    (t.includes("적요") || t.includes("매핑") || t.includes("회계") || t.includes("코드") || /로|으로/.test(text))
+  ) {
+    const codeMatch = text.match(/\b(\d{4})\b/);
+    const code = codeMatch?.[1] ?? "";
+    const ACCOUNTS: Record<string, string> = {
+      "8210": "사무용품비", "8220": "소모품비", "8230": "도서인쇄비",
+      "8240": "비품", "8250": "수선비", "8260": "차량유지비",
+      "8270": "복리후생비", "8120": "통신비", "8130": "수도광열비",
+    };
+    const accountName = ACCOUNTS[code] ?? "";
+    // 카테고리: "노트북은", "노트북" 같은 패턴에서 첫 명사 추출 (간단히 첫 한글 단어)
+    const catMatch = text.match(/^([가-힣A-Za-z][가-힣A-Za-z0-9·\/\s]*?)(?:은|는|을|를|의|에|에서|이라면|이면|는요)/);
+    const category = catMatch?.[1]?.trim() ?? "";
+    if (category && code) {
+      return {
+        messages: [
+          {
+            id: `ai-${Date.now()}`,
+            role: "ai",
+            content: `'${category}' 키워드를 ${accountName ? `${accountName}(${code})` : code}으로 매핑할게요. 적요 텍스트를 확인하고 적용해주세요.`,
+            thinking: [
+              { label: "기존 규칙 조회", detail: "현재 7개 규칙 등록 (더존 4자리)", focusKey: "description.list" },
+              { label: "코드 유효성 확인", detail: accountName ? `${code} → ${accountName} (정상)` : `${code} (사용자 정의 코드)` },
+              { label: "충돌 확인", detail: `'${category}' 카테고리: 신규 등록` },
+            ],
+            diff: {
+              title: "적요 규칙 추가",
+              items: [
+                { field: "카테고리", before: "—", after: category },
+                { field: "계정과목 코드", before: "—", after: code },
+                { field: "계정과목명", before: "—", after: accountName || "(사용자 입력 필요)" },
+                { field: "기본 적요", before: "—", after: `${category} 관련 지출` },
+              ],
+              patches: [
+                {
+                  target: "description.add",
+                  rule: { category, code, account: accountName || category, memo: `${category} 관련 지출` },
+                  source: "chat",
+                },
+              ],
+              edit: {
+                fields: [
+                  { key: "memo", label: "적요 텍스트", initial: `${category} 관련 지출`, placeholder: "회계장부 기재용" },
+                ],
+                build: ({ memo }) => ({
+                  items: [
+                    { field: "카테고리", before: "—", after: category },
+                    { field: "계정과목 코드", before: "—", after: code },
+                    { field: "계정과목명", before: "—", after: accountName || "(사용자 입력 필요)" },
+                    { field: "기본 적요", before: "—", after: memo || "—" },
+                  ],
+                  patches: [
+                    {
+                      target: "description.add",
+                      rule: { category, code, account: accountName || category, memo: memo || `${category} 관련 지출` },
+                      source: "chat",
+                    },
+                  ],
+                }),
+              },
+            },
+            contextHint: "description",
+          },
+        ],
+      };
+    }
+  }
+
+  /* 적요 — 일반 안내 */
+  if (t.includes("적요") || t.includes("회계") || t.includes("매핑")) {
+    return {
+      messages: [
+        {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: "적요 규칙을 한 번에 알려주시면 바로 추가해드릴게요. (예: \"노트북은 비품 8240으로 매핑해줘\")\n사내 회계 정책을 일괄 반영하려면 우측 패널의 '사내 기준 업로드' 를 사용해주세요.",
+          thinking: [
+            { label: "현재 적요 규칙", detail: "7개 등록 (더존 4자리 코드 체계)", focusKey: "description.list" },
+            { label: "AI 추천 상태", detail: "ON — 주문 시 자동 매핑 시도" },
+          ],
+          suggestions: [
+            "노트북은 비품 8240으로 매핑해줘",
+            "회의실 다과는 복리후생비 8270으로 매핑해줘",
+            "변경기록 보여줘",
+          ],
+          contextHint: "description",
+        },
+      ],
+    };
+  }
+
   /* 에이전트 정책 */
   if (t.includes("에이전트") || t.includes("정책") || t.includes("모드")) {
     return {

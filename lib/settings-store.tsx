@@ -82,6 +82,50 @@ const DEFAULT_SHIPPING: ShippingAddress[] = [
   { id: "addr-3", name: "물류센터", address: "경기도 성남시 분당구 판교로 256", receiver: "김태환", phone: "031-789-1000", isDefault: false },
 ];
 
+/* ───────── Description rules (적요 — 더존 회계코드 매핑) ─────────
+   더존 4자리 계정과목 코드 체계 기준.
+   매칭 키워드 → (계정과목 코드, 계정과목명, 기본 적요 텍스트) */
+
+export interface DescriptionRule {
+  id: string;
+  /** 매칭 키워드 또는 카테고리 (예: "노트북", "사무용품") */
+  category: string;
+  /** 더존 계정과목 코드 (예: "8210") */
+  code: string;
+  /** 계정과목명 (예: "사무용품비") */
+  account: string;
+  /** 기본 적요 텍스트 (회계장부 기재용) */
+  memo: string;
+}
+
+export type RuleHistoryAction = "add" | "update" | "delete" | "bulk-add";
+export type RuleHistorySource = "chat" | "manual" | "upload-excel" | "upload-doc" | "upload-prompt";
+
+export interface RuleHistoryEntry {
+  id: string;
+  ts: number;
+  action: RuleHistoryAction;
+  source: RuleHistorySource;
+  /** 변경 전 (update/delete 시) */
+  before?: DescriptionRule;
+  /** 변경 후 (add/update 시) */
+  after?: DescriptionRule;
+  /** 일괄 추가 시 카운트 */
+  count?: number;
+  /** 일괄 변경 시 요약 (예: "신규 8 / 변경 2") */
+  summary?: string;
+}
+
+const DEFAULT_DESC_RULES: DescriptionRule[] = [
+  { id: "rule-001", category: "용지", code: "8210", account: "사무용품비", memo: "복사용지/문서용지" },
+  { id: "rule-002", category: "잉크/토너", code: "8220", account: "소모품비", memo: "프린터 소모품" },
+  { id: "rule-003", category: "사무기기", code: "8240", account: "비품", memo: "프린터/복합기" },
+  { id: "rule-004", category: "가구", code: "8240", account: "비품", memo: "사무가구" },
+  { id: "rule-005", category: "전자기기", code: "8240", account: "비품", memo: "IT기기 (노트북·모니터)" },
+  { id: "rule-006", category: "사무용품", code: "8210", account: "사무용품비", memo: "문구/소모품" },
+  { id: "rule-007", category: "생활용품", code: "8270", account: "복리후생비", memo: "사무실 생활용품" },
+];
+
 /* ───────── Team (invited members — /data/users 충돌 회피용 별도 상태) ───────── */
 
 export interface InvitedMember {
@@ -135,7 +179,13 @@ export type SettingsPatch =
   | { target: "payment.add"; method: Omit<PaymentMethod, "id"> }
   // Team
   | { target: "team.invite"; members: Omit<InvitedMember, "id">[] }
-  | { target: "team.removeInvite"; id: string };
+  | { target: "team.removeInvite"; id: string }
+  // Description (적요)
+  | { target: "description.add"; rule: Omit<DescriptionRule, "id">; source?: RuleHistorySource }
+  | { target: "description.update"; id: string; patch: Partial<Omit<DescriptionRule, "id">>; source?: RuleHistorySource }
+  | { target: "description.remove"; id: string; source?: RuleHistorySource }
+  | { target: "description.bulkApply"; rules: Omit<DescriptionRule, "id">[]; source?: RuleHistorySource }
+  | { target: "description.toggleAi"; value: boolean };
 
 /** 패치가 영향을 주는 우측 패널의 focus key 로 변환 (적용 후 강조용) */
 export function patchToFocusKey(patch: SettingsPatch): string {
@@ -153,6 +203,11 @@ export function patchToFocusKey(patch: SettingsPatch): string {
     case "payment.add": return "payment.list";
     case "team.invite": return "team.list";
     case "team.removeInvite": return "team.list";
+    case "description.add": return "description.list";
+    case "description.update": return `description.${patch.id}`;
+    case "description.remove": return "description.list";
+    case "description.bulkApply": return "description.list";
+    case "description.toggleAi": return "description.ai";
   }
 }
 
@@ -164,6 +219,9 @@ interface SettingsStore {
   shipping: ShippingAddress[];
   payments: PaymentMethod[];
   invitedMembers: InvitedMember[];
+  descriptionRules: DescriptionRule[];
+  descriptionRuleHistory: RuleHistoryEntry[];
+  aiDescriptionEnabled: boolean;
 
   // Budget setters
   updateDeptAnnual: (dept: string, annual: number) => void;
@@ -188,6 +246,14 @@ interface SettingsStore {
   addInvitedMembers: (members: Omit<InvitedMember, "id">[]) => void;
   removeInvitedMember: (id: string) => void;
 
+  // Description setters
+  addDescriptionRule: (rule: Omit<DescriptionRule, "id">, source?: RuleHistorySource) => void;
+  updateDescriptionRule: (id: string, patch: Partial<Omit<DescriptionRule, "id">>, source?: RuleHistorySource) => void;
+  removeDescriptionRule: (id: string, source?: RuleHistorySource) => void;
+  /** 일괄 적용 — 충돌(category 동일) 시 덮어쓰기, 신규는 추가, 동일 데이터는 무시 */
+  applyDescriptionBulk: (rules: Omit<DescriptionRule, "id">[], source?: RuleHistorySource) => { added: number; updated: number; skipped: number };
+  toggleAiDescription: (value: boolean) => void;
+
   // Patch API
   applyPatch: (patch: SettingsPatch) => void;
   applyPatches: (patches: SettingsPatch[]) => void;
@@ -207,6 +273,16 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
   const [shipping, setShipping] = useState<ShippingAddress[]>(DEFAULT_SHIPPING);
   const [payments, setPayments] = useState<PaymentMethod[]>(DEFAULT_PAYMENTS);
   const [invitedMembers, setInvitedMembers] = useState<InvitedMember[]>(DEFAULT_INVITED);
+  const [descriptionRules, setDescriptionRules] = useState<DescriptionRule[]>(DEFAULT_DESC_RULES);
+  const [descriptionRuleHistory, setDescriptionRuleHistory] = useState<RuleHistoryEntry[]>([]);
+  const [aiDescriptionEnabled, setAiDescriptionEnabled] = useState(true);
+
+  const pushHistory = useCallback((entry: Omit<RuleHistoryEntry, "id" | "ts">) => {
+    setDescriptionRuleHistory((prev) => [
+      { ...entry, id: `hist-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ts: Date.now() },
+      ...prev,
+    ]);
+  }, []);
 
   /* Budget */
   const updateDeptAnnual = useCallback((dept: string, annual: number) => {
@@ -276,6 +352,65 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
     setInvitedMembers((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
+  /* Description (적요) */
+  const addDescriptionRule = useCallback((rule: Omit<DescriptionRule, "id">, source: RuleHistorySource = "manual") => {
+    const newRule: DescriptionRule = { ...rule, id: `rule-${Date.now()}` };
+    setDescriptionRules((prev) => [...prev, newRule]);
+    pushHistory({ action: "add", source, after: newRule });
+  }, [pushHistory]);
+
+  const updateDescriptionRule = useCallback((id: string, patch: Partial<Omit<DescriptionRule, "id">>, source: RuleHistorySource = "manual") => {
+    setDescriptionRules((prev) => {
+      const before = prev.find((r) => r.id === id);
+      if (!before) return prev;
+      const after = { ...before, ...patch };
+      pushHistory({ action: "update", source, before, after });
+      return prev.map((r) => (r.id === id ? after : r));
+    });
+  }, [pushHistory]);
+
+  const removeDescriptionRule = useCallback((id: string, source: RuleHistorySource = "manual") => {
+    setDescriptionRules((prev) => {
+      const before = prev.find((r) => r.id === id);
+      if (before) pushHistory({ action: "delete", source, before });
+      return prev.filter((r) => r.id !== id);
+    });
+  }, [pushHistory]);
+
+  const applyDescriptionBulk = useCallback((rules: Omit<DescriptionRule, "id">[], source: RuleHistorySource = "upload-excel") => {
+    let added = 0, updated = 0, skipped = 0;
+    setDescriptionRules((prev) => {
+      const next = [...prev];
+      for (const r of rules) {
+        const existingIdx = next.findIndex((x) => x.category === r.category);
+        if (existingIdx === -1) {
+          next.push({ ...r, id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` });
+          added++;
+        } else {
+          const existing = next[existingIdx];
+          if (existing.code === r.code && existing.account === r.account && existing.memo === r.memo) {
+            skipped++;
+          } else {
+            next[existingIdx] = { ...existing, ...r };
+            updated++;
+          }
+        }
+      }
+      return next;
+    });
+    pushHistory({
+      action: "bulk-add",
+      source,
+      count: added + updated,
+      summary: `신규 ${added} / 변경 ${updated} / 무시 ${skipped}`,
+    });
+    return { added, updated, skipped };
+  }, [pushHistory]);
+
+  const toggleAiDescription = useCallback((value: boolean) => {
+    setAiDescriptionEnabled(value);
+  }, []);
+
   /* Patches */
   const applyPatch = useCallback((patch: SettingsPatch) => {
     switch (patch.target) {
@@ -292,8 +427,13 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
       case "payment.add": addPayment(patch.method); break;
       case "team.invite": addInvitedMembers(patch.members); break;
       case "team.removeInvite": removeInvitedMember(patch.id); break;
+      case "description.add": addDescriptionRule(patch.rule, patch.source); break;
+      case "description.update": updateDescriptionRule(patch.id, patch.patch, patch.source); break;
+      case "description.remove": removeDescriptionRule(patch.id, patch.source); break;
+      case "description.bulkApply": applyDescriptionBulk(patch.rules, patch.source); break;
+      case "description.toggleAi": toggleAiDescription(patch.value); break;
     }
-  }, [updateDeptAnnual, setCarryOver, setRenewPeriod, updateCompanyField, addShipping, removeShipping, setDefaultShipping, updateShipping, setPaymentActive, setPaymentLimit, addPayment, addInvitedMembers, removeInvitedMember]);
+  }, [updateDeptAnnual, setCarryOver, setRenewPeriod, updateCompanyField, addShipping, removeShipping, setDefaultShipping, updateShipping, setPaymentActive, setPaymentLimit, addPayment, addInvitedMembers, removeInvitedMember, addDescriptionRule, updateDescriptionRule, removeDescriptionRule, applyDescriptionBulk, toggleAiDescription]);
 
   const applyPatches = useCallback((patches: SettingsPatch[]) => {
     patches.forEach(applyPatch);
@@ -307,20 +447,24 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
 
   const value = useMemo<SettingsStore>(() => ({
     budget, company, shipping, payments, invitedMembers,
+    descriptionRules, descriptionRuleHistory, aiDescriptionEnabled,
     updateDeptAnnual, setCarryOver, setRenewPeriod,
     updateCompanyField,
     addShipping, removeShipping, setDefaultShipping, updateShipping,
     setPaymentActive, setPaymentLimit, addPayment,
     addInvitedMembers, removeInvitedMember,
+    addDescriptionRule, updateDescriptionRule, removeDescriptionRule, applyDescriptionBulk, toggleAiDescription,
     applyPatch, applyPatches,
     totalAnnual, totalUsed, defaultShipping, activePaymentsCount,
   }), [
     budget, company, shipping, payments, invitedMembers,
+    descriptionRules, descriptionRuleHistory, aiDescriptionEnabled,
     updateDeptAnnual, setCarryOver, setRenewPeriod,
     updateCompanyField,
     addShipping, removeShipping, setDefaultShipping, updateShipping,
     setPaymentActive, setPaymentLimit, addPayment,
     addInvitedMembers, removeInvitedMember,
+    addDescriptionRule, updateDescriptionRule, removeDescriptionRule, applyDescriptionBulk, toggleAiDescription,
     applyPatch, applyPatches,
     totalAnnual, totalUsed, defaultShipping, activePaymentsCount,
   ]);
