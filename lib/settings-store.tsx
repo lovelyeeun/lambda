@@ -82,6 +82,20 @@ const DEFAULT_SHIPPING: ShippingAddress[] = [
   { id: "addr-3", name: "물류센터", address: "경기도 성남시 분당구 판교로 256", receiver: "김태환", phone: "031-789-1000", isDefault: false },
 ];
 
+/* ───────── Team (invited members — /data/users 충돌 회피용 별도 상태) ───────── */
+
+export interface InvitedMember {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  role: string;
+  /** "메일" | "엑셀" — 초대 경로 */
+  via: "email" | "excel";
+}
+
+const DEFAULT_INVITED: InvitedMember[] = [];
+
 /* ───────── Payment ───────── */
 
 export interface PaymentMethod {
@@ -118,7 +132,10 @@ export type SettingsPatch =
   // Payment
   | { target: "payment.setActive"; id: string; active: boolean }
   | { target: "payment.setLimit"; id: string; monthlyLimit: number }
-  | { target: "payment.add"; method: Omit<PaymentMethod, "id"> };
+  | { target: "payment.add"; method: Omit<PaymentMethod, "id"> }
+  // Team
+  | { target: "team.invite"; members: Omit<InvitedMember, "id">[] }
+  | { target: "team.removeInvite"; id: string };
 
 /** 패치가 영향을 주는 우측 패널의 focus key 로 변환 (적용 후 강조용) */
 export function patchToFocusKey(patch: SettingsPatch): string {
@@ -134,6 +151,8 @@ export function patchToFocusKey(patch: SettingsPatch): string {
     case "payment.setActive":
     case "payment.setLimit": return `payment.${patch.id}`;
     case "payment.add": return "payment.list";
+    case "team.invite": return "team.list";
+    case "team.removeInvite": return "team.list";
   }
 }
 
@@ -144,6 +163,7 @@ interface SettingsStore {
   company: CompanyState;
   shipping: ShippingAddress[];
   payments: PaymentMethod[];
+  invitedMembers: InvitedMember[];
 
   // Budget setters
   updateDeptAnnual: (dept: string, annual: number) => void;
@@ -164,6 +184,10 @@ interface SettingsStore {
   setPaymentLimit: (id: string, monthlyLimit: number) => void;
   addPayment: (m: Omit<PaymentMethod, "id">) => void;
 
+  // Team setters
+  addInvitedMembers: (members: Omit<InvitedMember, "id">[]) => void;
+  removeInvitedMember: (id: string) => void;
+
   // Patch API
   applyPatch: (patch: SettingsPatch) => void;
   applyPatches: (patches: SettingsPatch[]) => void;
@@ -182,6 +206,7 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
   const [company, setCompany] = useState<CompanyState>(DEFAULT_COMPANY);
   const [shipping, setShipping] = useState<ShippingAddress[]>(DEFAULT_SHIPPING);
   const [payments, setPayments] = useState<PaymentMethod[]>(DEFAULT_PAYMENTS);
+  const [invitedMembers, setInvitedMembers] = useState<InvitedMember[]>(DEFAULT_INVITED);
 
   /* Budget */
   const updateDeptAnnual = useCallback((dept: string, annual: number) => {
@@ -240,6 +265,17 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
     setPayments((prev) => [...prev, { ...m, id: `pm-${Date.now()}` }]);
   }, []);
 
+  /* Team */
+  const addInvitedMembers = useCallback((members: Omit<InvitedMember, "id">[]) => {
+    setInvitedMembers((prev) => [
+      ...prev,
+      ...members.map((m, i) => ({ ...m, id: `inv-${Date.now()}-${i}` })),
+    ]);
+  }, []);
+  const removeInvitedMember = useCallback((id: string) => {
+    setInvitedMembers((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   /* Patches */
   const applyPatch = useCallback((patch: SettingsPatch) => {
     switch (patch.target) {
@@ -254,8 +290,10 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
       case "payment.setActive": setPaymentActive(patch.id, patch.active); break;
       case "payment.setLimit": setPaymentLimit(patch.id, patch.monthlyLimit); break;
       case "payment.add": addPayment(patch.method); break;
+      case "team.invite": addInvitedMembers(patch.members); break;
+      case "team.removeInvite": removeInvitedMember(patch.id); break;
     }
-  }, [updateDeptAnnual, setCarryOver, setRenewPeriod, updateCompanyField, addShipping, removeShipping, setDefaultShipping, updateShipping, setPaymentActive, setPaymentLimit, addPayment]);
+  }, [updateDeptAnnual, setCarryOver, setRenewPeriod, updateCompanyField, addShipping, removeShipping, setDefaultShipping, updateShipping, setPaymentActive, setPaymentLimit, addPayment, addInvitedMembers, removeInvitedMember]);
 
   const applyPatches = useCallback((patches: SettingsPatch[]) => {
     patches.forEach(applyPatch);
@@ -268,19 +306,21 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
   const activePaymentsCount = useMemo(() => payments.filter((p) => p.active).length, [payments]);
 
   const value = useMemo<SettingsStore>(() => ({
-    budget, company, shipping, payments,
+    budget, company, shipping, payments, invitedMembers,
     updateDeptAnnual, setCarryOver, setRenewPeriod,
     updateCompanyField,
     addShipping, removeShipping, setDefaultShipping, updateShipping,
     setPaymentActive, setPaymentLimit, addPayment,
+    addInvitedMembers, removeInvitedMember,
     applyPatch, applyPatches,
     totalAnnual, totalUsed, defaultShipping, activePaymentsCount,
   }), [
-    budget, company, shipping, payments,
+    budget, company, shipping, payments, invitedMembers,
     updateDeptAnnual, setCarryOver, setRenewPeriod,
     updateCompanyField,
     addShipping, removeShipping, setDefaultShipping, updateShipping,
     setPaymentActive, setPaymentLimit, addPayment,
+    addInvitedMembers, removeInvitedMember,
     applyPatch, applyPatches,
     totalAnnual, totalUsed, defaultShipping, activePaymentsCount,
   ]);

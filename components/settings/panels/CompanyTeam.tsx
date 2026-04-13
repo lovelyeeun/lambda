@@ -5,8 +5,10 @@ import { users } from "@/data/users";
 import type { User } from "@/lib/types";
 import Table, { type Column } from "@/components/ui/Table";
 import Badge from "@/components/ui/Badge";
-import { X, UserPlus, Bot } from "lucide-react";
+import { X, UserPlus, Bot, Mail, FileSpreadsheet, Trash2 } from "lucide-react";
 import { useAgentPolicy, modeLabels, type AgentMode } from "@/lib/agent-policy-context";
+import { useSettingsStore } from "@/lib/settings-store";
+import TeamInviteModal from "@/components/settings/TeamInviteModal";
 
 type BadgeStatus = "완료" | "대기" | "진행중" | "반려";
 function roleBadge(r: string): BadgeStatus {
@@ -22,6 +24,7 @@ export default function CompanyTeam() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const { applyMode: policyApplyMode, userOverrides, getEffectivePolicy, setUserOverride } = useAgentPolicy();
+  const { invitedMembers, addInvitedMembers, removeInvitedMember } = useSettingsStore();
 
   const columns: Column<User>[] = [
     { key: "name", header: "이름", render: (r) => <span className="font-medium">{r.name}</span> },
@@ -42,6 +45,43 @@ export default function CompanyTeam() {
       </div>
 
       <Table columns={columns} data={users} rowKey={(r) => r.id} onRowClick={(r) => setSelected(r)} />
+
+      {/* 초대 대기 멤버 — store 기반 (채팅 + 새 모달에서 추가됨) */}
+      {invitedMembers.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[13px] font-semibold text-[#1a1a1a]">초대 대기 ({invitedMembers.length})</h3>
+            <span className="text-[11px] text-[#999]">초대 메일 발송 후 수락 대기 중</span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {invitedMembers.map((m) => (
+              <div
+                key={m.id}
+                className="flex items-center gap-3 px-3 py-2.5"
+                style={{ borderRadius: "10px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }}
+              >
+                {m.via === "email" ? (
+                  <Mail size={13} strokeWidth={1.5} color="#999" />
+                ) : (
+                  <FileSpreadsheet size={13} strokeWidth={1.5} color="#999" />
+                )}
+                <span className="text-[13px] font-medium text-[#1a1a1a] w-[80px] shrink-0">{m.name}</span>
+                <span className="text-[12px] text-[#777] flex-1 truncate">{m.email}</span>
+                <span className="text-[11px] text-[#999] w-[64px] shrink-0">{m.department}</span>
+                <span className="text-[11px] text-[#999] w-[64px] shrink-0">{m.role}</span>
+                <span className="text-[10px] font-medium text-[#f59e0b] bg-[rgba(245,158,11,0.08)] px-2 py-0.5 rounded">대기</span>
+                <button
+                  onClick={() => { removeInvitedMember(m.id); showToast("초대를 취소했습니다"); }}
+                  className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f5f5f5]"
+                  aria-label="초대 취소"
+                >
+                  <Trash2 size={12} strokeWidth={1.5} color="#999" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Side panel */}
       {selected && (
@@ -124,20 +164,20 @@ export default function CompanyTeam() {
         </div>
       )}
 
-      {/* Invite modal */}
-      {inviteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setInviteOpen(false)} />
-          <div className="relative bg-white p-6 w-[400px]" style={{ borderRadius: "16px", boxShadow: "rgba(0,0,0,0.08) 0px 8px 40px" }}>
-            <h3 className="text-[16px] font-semibold mb-4">팀원 초대</h3>
-            <input type="email" placeholder="이메일 주소 입력" className="w-full px-3.5 py-2.5 text-[14px] outline-none mb-4" style={{ borderRadius: "10px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }} />
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setInviteOpen(false)} className="px-4 py-2 text-[13px] text-[#777] bg-[#f5f5f5] rounded-lg cursor-pointer hover:bg-[#ebebeb]">취소</button>
-              <button onClick={() => { setInviteOpen(false); showToast("초대 메일이 발송되었습니다"); }} className="px-4 py-2 text-[13px] text-white bg-black rounded-lg cursor-pointer hover:opacity-80">초대</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Invite modal — 메일/엑셀 탭 */}
+      <TeamInviteModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        onSubmit={(members) => {
+          addInvitedMembers(members);
+          setInviteOpen(false);
+          showToast(
+            members.length === 1
+              ? `${members[0].name}님께 초대 메일을 발송했습니다`
+              : `${members.length}명에게 초대 메일을 발송했습니다`
+          );
+        }}
+      />
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#1a1a1a] text-white text-[13px] font-medium" style={{ borderRadius: "10px" }}>{toast}</div>

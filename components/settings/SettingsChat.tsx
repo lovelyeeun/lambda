@@ -435,19 +435,65 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
     };
   }
 
-  /* 팀원 — 안전 안내 (실제 데이터 변경은 우측 패널 모달에서) */
+  /* 팀원 — 채팅에서 직접 한 명 초대 (자유 형식 파싱)
+     예: "최동현 donghyun@rawlabs.io 개발 구매담당 초대" */
+  if ((t.includes("초대") || t.includes("팀원")) && /[a-z0-9._%+-]+@[a-z0-9.-]+/i.test(text)) {
+    const emailMatch = text.match(/([a-z0-9._%+-]+@[a-z0-9.-]+)/i);
+    const email = emailMatch?.[1] ?? "";
+    // 한글 이름 (2~4자) 첫 매칭
+    const nameMatch = text.match(/[가-힣]{2,4}/);
+    const name = nameMatch?.[0] ?? "(이름 미상)";
+    const dept = ["경영지원", "마케팅", "디자인", "개발"].find((d) => text.includes(d)) ?? "개발";
+    const role = ["관리자", "매니저", "구매담당", "일반"].find((r) => text.includes(r)) ?? "구매담당";
+    return {
+      messages: [
+        {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: `${name}님(${email})을 ${dept} ${role}으로 초대할게요.`,
+          thinking: [
+            { label: "현재 팀원 현황", detail: "5명 등록", focusKey: "team.list" },
+            { label: "가용 라이선스", detail: "10명 중 5명 사용 — 여유 5석" },
+            { label: "중복 확인", detail: "동일 이메일 미존재" },
+          ],
+          diff: {
+            title: "팀원 초대",
+            items: [
+              { field: "이름", before: "—", after: name },
+              { field: "이메일", before: "—", after: email },
+              { field: "부서", before: "—", after: dept },
+              { field: "역할", before: "—", after: role },
+            ],
+            patches: [
+              {
+                target: "team.invite",
+                members: [{ name, email, department: dept, role, via: "email" }],
+              },
+            ],
+          },
+          contextHint: "team",
+        },
+      ],
+    };
+  }
+
+  /* 팀원 — 일반 안내 (다중·엑셀 모달 유도) */
   if (t.includes("팀원") || t.includes("초대")) {
     return {
       messages: [
         {
           id: `ai-${Date.now()}`,
           role: "ai",
-          content: "팀원 추가는 우측 '팀원 초대' 버튼에서 진행하시면 돼요. 이름·이메일·부서·역할만 있으면 초대 메일이 발송됩니다.",
+          content: "한 명만 초대하시려면 이름·이메일·부서·역할을 함께 알려주세요.\n여러 명을 한 번에 초대하려면 우측 '팀원 초대' 버튼에서 메일/엑셀 탭을 사용할 수 있어요.",
           thinking: [
             { label: "현재 팀원 현황", detail: "5명 등록 (관리자 1, 구매담당 2, 뷰어 2)", focusKey: "team.list" },
             { label: "가용 라이선스", detail: "10명 중 5명 사용 — 여유 5석" },
           ],
-          suggestions: ["전체 현황 알려줘", "권한 체계 확인해줘"],
+          suggestions: [
+            "최동현 donghyun@rawlabs.io 개발 구매담당 초대",
+            "한예진 yejin@rawlabs.io 마케팅 일반 초대",
+            "전체 현황 알려줘",
+          ],
           contextHint: "team",
         },
       ],

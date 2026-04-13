@@ -7,6 +7,7 @@ import {
 import { useSettings, type SettingsSection } from "@/lib/settings-context";
 import { useAgentPolicy, modeLabels as agentModeLabels } from "@/lib/agent-policy-context";
 import { useSettingsStore } from "@/lib/settings-store";
+import { users } from "@/data/users";
 
 interface SettingCard {
   id: SettingsSection;
@@ -18,18 +19,6 @@ interface SettingCard {
 }
 
 const staticCards: SettingCard[] = [
-  {
-    id: "company-team",
-    icon: Users,
-    title: "팀원 관리",
-    status: "partial",
-    statusLabel: "2명 등록",
-    items: [
-      { label: "관리자", value: "김원균 (나)" },
-      { label: "구매담당", value: "박은서" },
-      { label: "미초대", value: "구매담당 추가 권장" },
-    ],
-  },
   {
     id: "accounting-description",
     icon: FileText,
@@ -75,7 +64,22 @@ export default function SettingsDashboard() {
     ],
   };
 
-  const { budget, totalAnnual, totalUsed, company, shipping, payments, defaultShipping, activePaymentsCount } = useSettingsStore();
+  const { budget, totalAnnual, totalUsed, company, shipping, payments, defaultShipping, activePaymentsCount, invitedMembers } = useSettingsStore();
+
+  const activeCount = users.length;
+  const pendingCount = invitedMembers.length;
+  const teamCard: SettingCard = {
+    id: "company-team",
+    icon: Users,
+    title: "팀원 관리",
+    status: pendingCount > 0 ? "partial" : "done",
+    statusLabel: pendingCount > 0 ? `${activeCount}명 + 대기 ${pendingCount}` : `${activeCount}명 등록`,
+    items: [
+      { label: "활성 멤버", value: `${activeCount}명` },
+      { label: "초대 대기", value: pendingCount > 0 ? `${pendingCount}명` : "—" },
+      { label: "관리자", value: "김원균 (나)" },
+    ],
+  };
 
   const companyCard: SettingCard = {
     id: "company-info-edit",
@@ -148,7 +152,7 @@ export default function SettingsDashboard() {
 
   const allCards = [
     companyCard,
-    ...staticCards.filter((c) => c.id === "company-team"),
+    teamCard,
     shippingCard,
     paymentCard,
     ...staticCards.filter((c) => c.id === "accounting-description"),
