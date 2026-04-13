@@ -1,8 +1,6 @@
 "use client";
 
 import StartHero from "./StartHero";
-import ActiveTasksSection from "./ActiveTasksSection";
-import UpcomingSection from "./UpcomingSection";
 import RecommendedSection from "./RecommendedSection";
 import type { HomeRole } from "@/data/home-tasks";
 
@@ -17,8 +15,6 @@ export default function StartScreen({ role }: Props) {
         <StartHero />
 
         <div className="mt-14 flex flex-col gap-10">
-          <ActiveTasksSection role={role} />
-          <UpcomingSection role={role} />
           <RecommendedSection role={role} />
         </div>
       </div>

@@ -251,28 +251,6 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
     };
   }
 
-  /* 팀원 추가 — "추가" 단독은 너무 광범위 (배송지/결제수단도 걸림) */
-  if (t.includes("팀원") || t.includes("초대")) {
-    return {
-      messages: [
-        {
-          id: `ai-${Date.now()}`,
-          role: "ai",
-          content: "팀원을 추가할게요. 이름, 이메일, 부서, 역할을 알려주세요.",
-          thinking: [
-            { label: "현재 팀원 현황 조회", detail: "5명 등록 (관리자 1, 구매담당 2, 뷰어 2)" },
-            { label: "가용 라이선스 확인", detail: "현재 플랜: 10명 중 5명 사용 — 여유 5석" },
-          ],
-          suggestions: [
-            '최동현 donghyun@rawlabs.io 개발 구매담당',
-            '한예진 yejin@rawlabs.io 마케팅 뷰어',
-          ],
-          contextHint: "team",
-        },
-      ],
-    };
-  }
-
   /* 에이전트 정책 */
   if (t.includes("에이전트") || t.includes("정책") || t.includes("모드")) {
     return {
@@ -457,8 +435,9 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
   }
 
   /* 팀원 — 채팅에서 직접 한 명 초대 (자유 형식 파싱)
-     예: "최동현 donghyun@rawlabs.io 개발 구매담당 초대" */
-  if ((t.includes("초대") || t.includes("팀원")) && /[a-z0-9._%+-]+@[a-z0-9.-]+/i.test(text)) {
+     이메일 + 한글 이름 패턴이면 "초대" 키워드 없이도 매칭
+     예: "최동현 donghyun@rawlabs.io 개발 구매담당" */
+  if (/[a-z0-9._%+-]+@[a-z0-9.-]+/i.test(text) && /[가-힣]{2,4}/.test(text)) {
     const emailMatch = text.match(/([a-z0-9._%+-]+@[a-z0-9.-]+)/i);
     const email = emailMatch?.[1] ?? "";
     // 한글 이름 (2~4자) 첫 매칭
