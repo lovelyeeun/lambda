@@ -29,6 +29,24 @@ interface DiffItem {
   after: string;
 }
 
+/** Diff 카드에 편집 가능한 입력을 추가하는 설정.
+   AI 가 제안한 값을 유저가 한 번 더 조정 후 적용할 수 있게 한다. */
+interface DiffEdit {
+  fields: Array<{
+    key: string;
+    label: string;
+    /** 입력 초기값 (raw — 천단위 콤마 없이 숫자 문자열) */
+    initial: string;
+    /** 입력 박스 우측에 표시할 단위 텍스트 */
+    suffix?: string;
+    placeholder?: string;
+    /** 숫자 input mode 힌트 */
+    numeric?: boolean;
+  }>;
+  /** 편집된 값으로부터 화면에 그릴 items 와 적용할 patches 를 재계산 */
+  build: (values: Record<string, string>) => { items: DiffItem[]; patches: SettingsPatch[] };
+}
+
 interface ChatMessage {
   id: string;
   role: "ai" | "user" | "system";
@@ -37,7 +55,14 @@ interface ChatMessage {
   /** 접히는 추론 블록 */
   thinking?: ThinkingStep[];
   /** 설정 변경 diff 카드 */
-  diff?: { title: string; items: DiffItem[]; applied?: boolean; patches?: SettingsPatch[] };
+  diff?: {
+    title: string;
+    items: DiffItem[];
+    applied?: boolean;
+    patches?: SettingsPatch[];
+    /** 편집 가능 모드 — 있으면 입력 박스가 카드 안에 노출 */
+    edit?: DiffEdit;
+  };
   /** 배송지 추가/수정 인라인 폼 카드 (diff 대신 편집 가능한 카드) */
   shippingForm?: { title: string; draft: ShippingDraft; applied?: boolean };
   /** 영향 분석 경고 */
@@ -149,6 +174,27 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
             patches: [
               { target: "budget.dept.annual", dept: "마케팅", annual: 60000000 },
             ],
+            edit: {
+              fields: [
+                { key: "monthly", label: "월 예산", initial: "5000000", suffix: "원", numeric: true, placeholder: "월 예산 (원)" },
+              ],
+              build: ({ monthly }) => {
+                const m = Math.max(0, parseInt((monthly ?? "").replace(/\D/g, ""), 10) || 0);
+                const annual = m * 12;
+                const totalCorporate = 480000000; // 전사 연간 예산 가정
+                const ratio = totalCorporate > 0 ? ((annual / totalCorporate) * 100).toFixed(1) : "0.0";
+                return {
+                  items: [
+                    { field: "월 예산", before: "3,800,000원", after: `${m.toLocaleString()}원` },
+                    { field: "연간 합계", before: "45,600,000원", after: `${annual.toLocaleString()}원` },
+                    { field: "전사 비중", before: "9.5%", after: `${ratio}%` },
+                  ],
+                  patches: [
+                    { target: "budget.dept.annual", dept: "마케팅", annual },
+                  ],
+                };
+              },
+            },
           },
           contextHint: "budget",
         },
@@ -348,6 +394,22 @@ function buildScenarioResponse(text: string): { messages: ChatMessage[]; delay?:
             patches: [
               { target: "payment.setLimit", id: "pm-1", monthlyLimit: 2000000 },
             ],
+            edit: {
+              fields: [
+                { key: "limit", label: "월 한도", initial: "2000000", suffix: "원", numeric: true, placeholder: "월 한도 (원)" },
+              ],
+              build: ({ limit }) => {
+                const v = Math.max(0, parseInt((limit ?? "").replace(/\D/g, ""), 10) || 0);
+                return {
+                  items: [
+                    { field: "종법기명_신한 (1)", before: "1,000,000원", after: `${v.toLocaleString()}원` },
+                  ],
+                  patches: [
+                    { target: "payment.setLimit", id: "pm-1", monthlyLimit: v },
+                  ],
+                };
+              },
+            },
           },
           contextHint: "payment",
         },
@@ -656,9 +718,25 @@ function ThinkingBlock({
 
 function DiffCard({ diff, onApply, onReject }: {
   diff: NonNullable<ChatMessage["diff"]>;
-  onApply: () => void;
+  /** 편집된 값 기준으로 계산된 patches·items 를 함께 전달 */
+  onApply: (resolved: { patches: SettingsPatch[]; items: DiffItem[] }) => void;
   onReject: () => void;
 }) {
+  // 편집 가능 모드일 때 입력 상태
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    if (!diff.edit) return {};
+    const init: Record<string, string> = {};
+    diff.edit.fields.forEach((f) => { init[f.key] = f.initial; });
+    return init;
+  });
+
+  // 편집된 값으로부터 화면에 그릴 items 와 적용할 patches 를 매 렌더마다 재계산
+  const computed = diff.edit
+    ? diff.edit.build(values)
+    : { items: diff.items, patches: diff.patches ?? [] };
+
+  const setField = (key: string, v: string) => setValues((p) => ({ ...p, [key]: v }));
+
   return (
     <div
       className="mt-2"
@@ -667,9 +745,34 @@ function DiffCard({ diff, onApply, onReject }: {
       <div className="px-3 py-2 flex items-center gap-2" style={{ backgroundColor: "#f9f9f9", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
         <ArrowRight size={12} strokeWidth={1.5} color="#666" />
         <span className="text-[12px] font-semibold text-[#333]">{diff.title}</span>
+        {diff.edit && !diff.applied && (
+          <span className="ml-auto text-[10px] text-[#999]">편집 가능</span>
+        )}
       </div>
+
+      {/* 편집 입력 — edit 설정이 있고 아직 미적용일 때만 */}
+      {diff.edit && !diff.applied && (
+        <div className="px-3 py-2.5 flex flex-col gap-2" style={{ backgroundColor: "rgba(99,102,241,0.03)", borderBottom: "1px solid rgba(99,102,241,0.08)" }}>
+          {diff.edit.fields.map((f) => (
+            <div key={f.key} className="flex items-center gap-2 text-[12px]">
+              <span className="text-[#666] w-[80px] shrink-0">{f.label}</span>
+              <input
+                value={values[f.key] ?? ""}
+                onChange={(e) => setField(f.key, e.target.value)}
+                placeholder={f.placeholder}
+                inputMode={f.numeric ? "numeric" : undefined}
+                className="flex-1 px-2 py-1 text-[12px] outline-none bg-white"
+                style={{ borderRadius: "6px", boxShadow: "rgba(99,102,241,0.3) 0px 0px 0px 1px" }}
+              />
+              {f.suffix && <span className="text-[11px] text-[#999] shrink-0">{f.suffix}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 미리보기 items */}
       <div className="px-3 py-2.5 flex flex-col gap-2">
-        {diff.items.map((item) => (
+        {computed.items.map((item) => (
           <div key={item.field} className="flex items-center gap-2 text-[12px]">
             <span className="text-[#999] w-[80px] shrink-0">{item.field}</span>
             <span className="text-[#ef4444] line-through">{item.before}</span>
@@ -678,10 +781,11 @@ function DiffCard({ diff, onApply, onReject }: {
           </div>
         ))}
       </div>
+
       {!diff.applied && (
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }}>
           <button
-            onClick={onApply}
+            onClick={() => onApply(computed)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-[#111] cursor-pointer hover:opacity-80 transition-opacity"
             style={{ borderRadius: "8px" }}
           >
@@ -1042,29 +1146,32 @@ export default function SettingsChat() {
     }, 800);
   }, [emit, section, setSection]);
 
-  const handleApplyDiff = useCallback((msgId: string) => {
+  const handleApplyDiff = useCallback((msgId: string, resolved: { patches: SettingsPatch[]; items: DiffItem[] }) => {
+    const msg = messages.find((m) => m.id === msgId);
+    if (!msg?.diff) return;
+
+    // 편집된 결과로 메시지의 diff 도 업데이트 (이력 보존)
     setMessages((prev) =>
       prev.map((m) =>
-        m.id === msgId && m.diff ? { ...m, diff: { ...m.diff, applied: true } } : m
+        m.id === msgId && m.diff
+          ? { ...m, diff: { ...m.diff, applied: true, patches: resolved.patches, items: resolved.items } }
+          : m
       )
     );
 
-    // diff 적용 → 실제 store 업데이트 + 적용 후 강조 (펄스 재발사)
-    const msg = messages.find((m) => m.id === msgId);
-    if (msg?.diff) {
-      if (msg.diff.patches && msg.diff.patches.length > 0) {
-        applyPatches(msg.diff.patches);
-        // 적용 후 200ms 뒤 영향받은 행 펄스 — 유저 시선 유도
-        const keys = Array.from(new Set(msg.diff.patches.map(patchToFocusKey)));
-        setTimeout(() => keys.forEach((k) => focus(k)), 200);
-      }
-      emit({
-        source: "chat",
-        panel: section ?? "company-info",
-        action: msg.diff.title,
-        detail: `${msg.diff.title} 적용됨`,
-      });
+    if (resolved.patches.length > 0) {
+      applyPatches(resolved.patches);
+      // 적용 후 200ms 뒤 영향받은 행 펄스 — 유저 시선 유도
+      const keys = Array.from(new Set(resolved.patches.map(patchToFocusKey)));
+      setTimeout(() => keys.forEach((k) => focus(k)), 200);
     }
+
+    emit({
+      source: "chat",
+      panel: section ?? "company-info",
+      action: msg.diff.title,
+      detail: `${msg.diff.title} 적용됨`,
+    });
 
     setMessages((prev) => [...prev, {
       id: `applied-${Date.now()}`, role: "ai" as const,
@@ -1186,7 +1293,7 @@ export default function SettingsChat() {
                 {msg.diff && (
                   <DiffCard
                     diff={msg.diff}
-                    onApply={() => handleApplyDiff(msg.id)}
+                    onApply={(resolved) => handleApplyDiff(msg.id, resolved)}
                     onReject={() => handleRejectDiff(msg.id)}
                   />
                 )}

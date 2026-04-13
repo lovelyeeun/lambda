@@ -89,7 +89,7 @@ function SettingsOverlayInner() {
 
   /* 패널별 권장 최소 너비 — 결제수단처럼 컬럼이 많은 표는 760 이상 필요 */
   const PANEL_MIN_WIDTH: Record<string, number> = {
-    "accounting-payment": 760,
+    "accounting-payment": 980,
   };
   const panelMin = section ? PANEL_MIN_WIDTH[section] ?? 440 : 340;
   const dashboardMinWidth = activeCardPanel ? panelMin : 340;
