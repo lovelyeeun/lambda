@@ -8,6 +8,8 @@ import {
 import type { ChatMessage, Product, WorkItem, WorkItemSnapshot, WorkItemStatus } from "@/lib/types";
 import { products } from "@/data/products";
 import { chats } from "@/data/chats";
+import { users } from "@/data/users";
+import { useSettingsStore } from "@/lib/settings-store";
 import { useRightPanel } from "@/lib/right-panel-context";
 import { useSettings } from "@/lib/settings-context";
 import { useRouter } from "next/navigation";
@@ -15,6 +17,7 @@ import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";
 import ProductRecommendCard from "./ProductRecommendCard";
 import ExpenseSummaryCard from "./ExpenseSummaryCard";
+import SnackRecommendationCard from "./SnackRecommendationCard";
 import SourcedProductCard, {
   type SourcedProduct,
   type ScrapingStatus,
@@ -367,6 +370,17 @@ function detectCostAnalysisQuery(text: string): boolean {
   return costAnalysisKeywords.some((kw) => lower.includes(kw));
 }
 
+/* ─── 간식 추천 시나리오 감지 ─── */
+const snackKeywords = [
+  "간식", "스낵", "다과", "간식 추천", "이번달 간식", "이번 달 간식",
+  "팀 간식", "간식 구매", "간식 패키지",
+];
+
+function detectSnackQuery(text: string): boolean {
+  const lower = text.toLowerCase();
+  return snackKeywords.some((kw) => lower.includes(kw));
+}
+
 /* ─── Fallback responses ─── */
 
 const dummyResponses: { content: string; agent?: string }[] = [
@@ -438,6 +452,17 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const { openPanel, closePanel, open: panelOpen, contentKey, setWorkItemStrip, registerDefaultOpener } = useRightPanel();
   const { openSettings } = useSettings();
   const router = useRouter();
+  const { budget } = useSettingsStore();
+
+  /* ── 회사 컨텍스트 (간식 추천 시나리오에서 사용) ──
+     인원: users.length
+     월 간식 예산: 부서 연간 예산 합계에서 월 환산 후 1%를 간식 가이드로 추정 (설정에 간식 전용 필드 없음) */
+  const teamSize = users.length;
+  const totalAnnualBudget = budget.departments.reduce((s, d) => s + d.annual, 0);
+  const estimatedSnackBudget = Math.round((totalAnnualBudget / 12) * 0.01 / 1000) * 1000;
+
+  /* ── 간식 시나리오 단계 ── */
+  const [snackStep, setSnackStep] = useState<"idle" | "awaiting-confirm" | "completed">("idle");
 
   const totalPrice = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
 
@@ -987,6 +1012,39 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       return;
     }
 
+    /* ── 간식 추천 시나리오 — 2단 분기 ──
+       턴 1: 키워드 감지 → 설정에서 팀 인원·예산 읽어와 확인 질문
+       턴 2: 확인 응답 후 분석 요약 + 추천 카드 (간식 패키지 탭 유도) */
+    if (snackStep === "idle" && detectSnackQuery(text)) {
+      setIsTyping(true);
+      setTimeout(() => {
+        addMsg({
+          role: "assistant",
+          agent: "주문",
+          content:
+            `이번 달 간식 기준을 맞춰볼게요. 회사 설정에서 읽은 값입니다.\n\n- **팀 인원**: ${teamSize}명\n- **월 간식 예산(권장 가이드)**: ${estimatedSnackBudget.toLocaleString()}원\n\n이대로 추천할까요, 아니면 다르게 맞춰드릴까요?`,
+        });
+        setIsTyping(false);
+        setSnackStep("awaiting-confirm");
+      }, 700);
+      return;
+    }
+    if (snackStep === "awaiting-confirm") {
+      setIsTyping(true);
+      setTimeout(() => {
+        addMsg({
+          role: "assistant",
+          agent: "분석",
+          content:
+            "최근 3개월 간식 주문 패턴을 분석했어요. 견과류 · 초콜릿 · 음료 비중이 안정적으로 나타나고 있어, 비슷한 구성으로 추천드립니다.\n\n한 번에 묶음으로 받고 싶다면 카드 하단의 **간식 패키지**에서 팀 규모·예산에 맞춰 한 번에 구매할 수 있어요.",
+          cardType: "snack-recommendation",
+        });
+        setIsTyping(false);
+        setSnackStep("completed");
+      }, 900);
+      return;
+    }
+
     /* ── Work Item 자동 생성 — 키워드 매칭 ──
        1) 활성 WI가 없으면 → 첫 WI 생성 (타이틀/색은 키워드로 결정, 못 찾으면 "구매 요청")
        2) 활성 WI가 있고, 새 키워드가 현재와 다른 구매 의도면 → 새 WI 생성 후 활성화 */
@@ -1232,6 +1290,11 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
               {msg.cardType === "expense-summary" && (
                 <div className="flex justify-start mb-1 mt-1">
                   <ExpenseSummaryCard />
+                </div>
+              )}
+              {msg.cardType === "snack-recommendation" && (
+                <div className="flex justify-start mb-1 mt-1">
+                  <SnackRecommendationCard teamSize={teamSize} monthlyBudget={estimatedSnackBudget} />
                 </div>
               )}
             </div>

@@ -161,6 +161,20 @@ export const chats: Chat[] = [
     ],
   },
   {
+    id: "chat-013",
+    title: "이번달 간식 추천",
+    lastMessage: "최근 3개월 간식 주문 패턴을 분석했어요. 견과류·초콜릿·음료 비중이...",
+    updatedAt: "2026-04-13T16:00:00",
+    status: "진행중",
+    tags: ["간식", "추천"],
+    messages: [
+      { id: "m-013-1", role: "user", content: "이번달 간식 추천해줘", timestamp: "2026-04-13T15:55:00" },
+      { id: "m-013-2", role: "assistant", agent: "주문", content: "이번 달 간식 기준을 맞춰볼게요. 회사 설정에서 읽은 값입니다.\n\n- **팀 인원**: 18명\n- **월 간식 예산(권장 가이드)**: 100,000원\n\n이대로 추천할까요, 아니면 다르게 맞춰드릴까요?", timestamp: "2026-04-13T15:56:00" },
+      { id: "m-013-3", role: "user", content: "그대로 진행해줘", timestamp: "2026-04-13T15:58:00" },
+      { id: "m-013-4", role: "assistant", agent: "분석", content: "최근 3개월 간식 주문 패턴을 분석했어요. 견과류 · 초콜릿 · 음료 비중이 안정적으로 나타나고 있어, 비슷한 구성으로 추천드립니다.\n\n한 번에 묶음으로 받고 싶다면 카드 하단의 **간식 패키지**에서 팀 규모·예산에 맞춰 한 번에 구매할 수 있어요.", timestamp: "2026-04-13T16:00:00", cardType: "snack-recommendation" },
+    ],
+  },
+  {
     id: "chat-onboarding",
     title: "시작 가이드",
     lastMessage: "설정이 완료되었습니다! 지금 바로 구매를 시작해보세요.",

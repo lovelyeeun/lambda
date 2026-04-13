@@ -24,7 +24,8 @@ export type ProductCategory =
   | "가구"
   | "전자기기"
   | "사무용품"
-  | "생활용품";
+  | "생활용품"
+  | "간식";
 
 /* ─── 주문 ─── */
 export interface Order {
@@ -98,8 +99,8 @@ export interface ChatMessage {
   timestamp: string;       // ISO datetime
   agent?: string;          // 자동 호출된 에이전트 (주문, 배송, 권한 등)
   productIds?: string[];   // 상품 추천 시 포함되는 상품 ID 목록
-  /** 메시지에 특수 카드를 덧붙일 때 사용 — 현재는 비용 요약 카드만 정의 */
-  cardType?: "expense-summary";
+  /** 메시지에 특수 카드를 덧붙일 때 사용 */
+  cardType?: "expense-summary" | "snack-recommendation";
 }
 
 /* ─── 폴더 ─── */

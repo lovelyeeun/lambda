@@ -1,0 +1,2285 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC 데스크톱 프리뷰 — 에어스토어 홈 v7.0 (컬러 규칙 적용)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  /* 70% Base — 배경·카드·보더 */
+  --w:#FFFFFF;--bg:#FFFFFF;--bg2:#F0F0F0;--bd:#F0F0F0;
+  /* 텍스트 */
+  --t1:#222222;--t2:#5F5F5F;--t3:#AAAAAA;--t4:#D0D0D0;
+  /* UI 액센트 — 블랙 기반 (화이트+블랙 기조) */
+  --p:#222222;--pl:#F5F5F5;--pd:#111111;
+  /* 키 컬러 — 앰버 (최종 CTA 전용, 1화면 1개 원칙) */
+  --cta:#FFB800;--cta-hover:#E5A600;--cta-light:#FFE0B2;--cta-inactive:#FFD9A0;
+  /* 카테고리 탭 오렌지 */
+  --cat-active:#FF9F0F;
+  /* 시맨틱 */
+  --g:#00B96B;--gl:#F0FFF4;
+  --red:#FF3131;--redl:#FFF0F0;
+  --amber:#FF9F0F;--amberl:#FFF8EB;
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bd);padding:20px;}
+
+/* Page title */
+.page-title{text-align:center;font-size:14px;color:var(--t2);padding:6px;margin-bottom:8px;}
+.page-sub{text-align:center;font-size:11px;color:var(--t3);margin-bottom:12px;}
+
+/* Browser Frame */
+.browser-frame{background:white;border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.15);max-width:1680px;width:calc(100vw - 40px);margin:0 auto;display:flex;flex-direction:column;height:calc(100vh - 80px);min-height:900px;}
+.browser-chrome{background:#f5f5f5;padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #ddd;}
+.browser-dots{display:flex;gap:6px;}
+.dot{width:12px;height:12px;border-radius:50%;}
+.dot-r{background:#ED6158;}.dot-y{background:#FCC02E;}.dot-g{background:#5FBF5F;}
+.browser-url{flex:1;background:#e8e8e8;border-radius:6px;padding:5px 12px;color:#888;font-size:11px;}
+
+/* App Container */
+.app-container{display:flex;flex:1;overflow:hidden;}
+
+/* Sidebar */
+.sidebar{width:72px;background:var(--bg);border-right:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:4px;flex-shrink:0;}
+.side-logo{width:36px;height:36px;background:#fff;border:1px solid #e0e0e0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--t1);margin-bottom:16px;}
+.side-item{padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default;width:56px;border-radius:8px;transition:background .15s;}
+.side-item:hover{background:#f0f0f0;}
+.side-item.on{background:var(--bg2);}
+.side-item .ico{font-size:18px;}
+.side-item .lbl{font-size:9px;color:var(--t3);}
+.side-item.on .lbl{color:var(--t1);font-weight:700;}
+.side-badge{font-size:7px;color:#e67e22;font-weight:700;background:#fff3e0;padding:1px 4px;border-radius:3px;margin-top:-1px;}
+.side-section-label{font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;padding:4px 0;margin-top:4px;text-align:center;}
+.side-divider{width:40px;border-top:1px solid #ddd;margin:8px 0;}
+
+/* Main Content */
+.main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+
+/* Header */
+.header{padding:10px 24px;background:#fff;border-bottom:1px solid #eee;}
+.header-beta{font-size:11px;color:#e67e22;font-weight:700;margin-bottom:6px;}
+.header-beta span{background:#fff3e0;padding:1px 6px;border-radius:4px;font-size:9px;}
+.service-tabs{display:flex;gap:8px;align-items:center;}
+.service-tab{padding:6px 16px;border-radius:8px;font-size:12px;color:#999;cursor:default;}
+.service-tab.on{background:#f5f5f5;font-weight:600;color:var(--t1);}
+.service-tab .badge{font-size:8px;background:#f0f0f0;padding:1px 5px;border-radius:3px;color:#bbb;margin-left:2px;}
+
+/* Store Tabs Bar */
+.store-tabs-bar{display:flex;align-items:center;padding:0 24px;background:#fff;border-bottom:2px solid #eee;gap:16px;}
+.store-tabs{display:flex;gap:0;flex:1;}
+.store-tab{padding:14px 20px;border:none;background:none;cursor:pointer;font-size:13px;color:#aaa;transition:all .25s;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;position:relative;font-weight:400;}
+.store-tab::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2.5px;background:transparent;border-radius:2px 2px 0 0;transition:background .25s;}
+.store-tab.on{color:#222;font-weight:600;}
+.store-tab.on::after{background:var(--p);}
+.store-tab:hover:not(.on){color:#666;}
+.tab-right{margin-left:auto;display:flex;gap:10px;align-items:center;}
+.tab-icon{width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:default;}
+.cart-btn{display:flex;align-items:center;gap:5px;padding:6px 14px;background:var(--t1);color:#fff;border-radius:8px;font-size:11px;font-weight:600;cursor:default;}
+.cart-btn .num{background:var(--t3);padding:1px 6px;border-radius:10px;font-size:9px;margin-left:2px;}
+
+/* Content Scroll */
+.content-scroll{flex:1;overflow-y:auto;background:var(--bg);}
+.content-scroll::-webkit-scrollbar{width:6px;}
+.content-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px;}
+
+/* Tab content */
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* Instructions */
+.instructions{background:#F5F5F5;border:1px solid #E0E0E0;border-radius:8px;padding:10px 16px;margin:16px 24px 0;font-size:11px;color:var(--t2);}
+
+/* ===== HERO: Search + Banner side by side ===== */
+.hero-section{background:linear-gradient(135deg,#171720,#21212D);padding:28px 32px 24px;position:relative;overflow:visible;z-index:10;}
+.hero-section::after{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(91,76,219,.12),transparent);border-radius:50%;z-index:0;}
+.hero-row{display:flex;gap:24px;align-items:center;position:relative;z-index:1;}
+
+/* Search side */
+.hero-search{flex:1;min-width:0;}
+.search-bar-wrap{position:relative;z-index:200;}
+.search-bar{display:flex;align-items:center;background:#fff;border-radius:12px;padding:13px 18px;gap:10px;box-shadow:0 2px 16px rgba(0,0,0,.1);cursor:pointer;transition:box-shadow .2s;}
+.search-bar:hover{box-shadow:0 4px 20px rgba(0,0,0,.15);}
+.search-bar.active{box-shadow:0 4px 24px rgba(0,0,0,.12);outline:2px solid #E0E0E0;}
+.search-bar .icon{font-size:16px;color:var(--t3);}
+.search-bar .text{font-size:13px;color:var(--t4);flex:1;}
+.search-bar .cat{padding:6px 14px;background:var(--bg2);border-radius:8px;font-size:10px;color:var(--t2);font-weight:600;cursor:default;}
+.search-bar .sbtn{padding:6px 18px;background:var(--t1);color:#fff;border-radius:8px;font-size:11px;font-weight:600;cursor:default;}
+.hero-tags{display:flex;gap:8px;margin-top:10px;}
+.hero-tag{padding:5px 12px;background:rgba(255,255,255,.1);border-radius:14px;font-size:10px;color:rgba(255,255,255,.65);}
+
+/* Search Dropdown */
+.search-dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1px solid #e0e0e0;border-radius:0 0 12px 12px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:20px 24px;z-index:200;display:none;max-height:none;overflow:visible;}
+.search-dropdown.active{display:block;}
+.sd-row{display:flex;gap:32px;}
+.sd-left{flex:1;}
+.sd-right{width:280px;flex-shrink:0;}
+.sd-title{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.sd-title .del{font-size:10px;color:#999;cursor:pointer;}
+.sd-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;}
+.sd-chip{padding:6px 14px;background:#f5f5f5;border-radius:16px;font-size:11px;color:#555;cursor:pointer;transition:background .15s;}
+.sd-chip:hover{background:var(--pl);color:var(--p);}
+.sd-reorder{display:flex;gap:10px;}
+.sd-reorder-card{flex:1;display:flex;gap:10px;align-items:center;padding:10px;border-radius:8px;}
+.sd-reorder-card.red{background:#fef0f0;border:1px solid #fcc;}
+.sd-reorder-card.amber{background:#FFF8EB;border:1px solid #FDE68A;}
+.sd-reorder-img{width:40px;height:40px;background:#f5f5f5;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#ccc;}
+.sd-reorder-nm{font-size:11px;color:#555;}
+.sd-reorder-st{font-size:9px;font-weight:600;}
+.sd-cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.sd-cat-item{text-align:center;padding:12px 4px;background:#f8f8f8;border-radius:8px;cursor:pointer;transition:background .15s;}
+.sd-cat-item:hover{background:var(--pl);}
+.sd-cat-item .e{font-size:20px;margin-bottom:3px;}
+.sd-cat-item .n{font-size:9px;color:#555;}
+
+/* Banner side */
+.hero-banner{width:380px;flex-shrink:0;position:relative;z-index:1;}
+.carousel-wrap{position:relative;border-radius:12px;overflow:hidden;height:140px;}
+.carousel-slide{position:absolute;inset:0;display:flex;align-items:center;padding:0 24px;gap:14px;opacity:0;transition:opacity .4s;pointer-events:none;}
+.carousel-slide.active{opacity:1;pointer-events:auto;}
+.carousel-slide.s1{background:linear-gradient(135deg,#ff6b35,#ff8c42);}
+.carousel-slide.s2{background:linear-gradient(135deg,#1e88e5,#42a5f5);}
+.carousel-slide.s3{background:linear-gradient(135deg,#43a047,#66bb6a);}
+.carousel-slide.s4{background:linear-gradient(135deg,#333,#555);}
+.slide-info{flex:1;}
+.slide-badge{display:inline-block;padding:3px 8px;background:rgba(255,255,255,.2);border-radius:12px;font-size:9px;color:#fff;font-weight:600;margin-bottom:6px;}
+.slide-title{font-size:15px;font-weight:800;color:#fff;margin-bottom:3px;line-height:1.3;}
+.slide-desc{font-size:10px;color:rgba(255,255,255,.7);}
+.slide-emoji{font-size:36px;opacity:.6;flex-shrink:0;}
+.carousel-arrow{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;background:rgba(255,255,255,.3);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;cursor:pointer;z-index:2;transition:background .15s;}
+.carousel-arrow:hover{background:rgba(255,255,255,.5);}
+.carousel-arrow.left{left:8px;}
+.carousel-arrow.right{right:8px;}
+.carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:10px;}
+.cdot{width:8px;height:4px;border-radius:2px;background:rgba(255,255,255,.3);cursor:pointer;transition:all .2s;}
+.cdot.on{width:20px;background:#fff;}
+.carousel-labels{display:none;}
+
+/* ===== Sections ===== */
+.section{padding:24px 32px;border-bottom:1px solid #eee;background:#fff;margin:0;}
+.section:last-child{border-bottom:none;}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.sec-title{font-size:15px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px;}
+.sec-title .badge{font-size:10px;font-weight:600;padding:3px 10px;border-radius:10px;}
+.sec-more{font-size:11px;color:var(--t2);font-weight:500;cursor:pointer;transition:opacity .15s;}
+.sec-more:hover{opacity:.7;}
+
+/* Purchase cycle tabs — underline style */
+.cycle-tabs{display:flex;gap:0;margin-bottom:24px;border-bottom:1px solid #F0F0F0;position:relative;}
+.cycle-tab{padding:10px 18px;font-size:13px;font-weight:600;color:#B0B0B0;background:none;border:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.cycle-tab.on{color:#F59E0B;border-bottom-color:#F59E0B;}
+.cycle-tab:hover:not(.on){color:#555;}
+/* Cycle badge — gradient overlay at bottom of product image */
+.freq-cycle-badge{position:absolute;bottom:0;left:0;right:0;padding:5px 10px;background:linear-gradient(transparent,rgba(0,0,0,.5));display:flex;align-items:center;gap:4px;justify-content:flex-end;}
+.freq-cycle-badge span{font-size:10px;font-weight:600;color:#fff;letter-spacing:.2px;}
+
+/* Product grids */
+.prod-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.prod-grid-6{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+
+/* Product card — Figma design tokens applied */
+.prod-card{border-radius:12px;overflow:hidden;border:1px solid #eee;background:#fff;transition:box-shadow .15s;cursor:default;display:flex;flex-direction:column;gap:16px;}
+.prod-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.06);}
+.prod-card.urgent{border-color:var(--red);}
+.prod-card.soon{border-color:var(--amber);}
+.prod-img{aspect-ratio:1;background:#F6F6F6;border:1px solid #F0F0F0;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:center;position:relative;font-size:11px;color:#ccc;font-weight:500;}
+.prod-badge{position:absolute;top:8px;left:8px;padding:8px;border-radius:8px;font-size:12px;font-weight:700;color:#fff;line-height:1;font-family:'Noto Sans KR',sans-serif;}
+.prod-badge.red{background:rgba(255,49,49,.8);}.prod-badge.amber{background:var(--amber);}.prod-badge.green{background:var(--g);}
+.prod-rank{position:absolute;top:8px;left:8px;width:22px;height:22px;border-radius:6px;background:#222;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.prod-logo{padding:0 12px;height:28px;display:flex;align-items:center;}
+.prod-logo svg{width:91px;height:16px;}
+.prod-bd{padding:0 12px 12px;display:flex;flex-direction:column;gap:16px;}
+.prod-bd .prod-text{display:flex;flex-direction:column;gap:8px;}
+.prod-nm{font-size:14px;color:#222;margin-bottom:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;font-weight:400;}
+.prod-pr{font-size:14px;font-weight:700;color:#222;margin-bottom:0;}
+.prod-tag{display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 8px;background:rgba(170,170,170,.12);border:1px solid #aaa;border-radius:4px;font-size:12px;font-weight:700;color:#5f5f5f;}
+.prod-cy{font-size:9px;color:var(--t3);margin-bottom:6px;}
+.prod-btn{display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 8px;background:rgba(170,170,170,.12);border:1px solid #aaa;border-radius:4px;font-size:12px;font-weight:700;color:#5f5f5f;cursor:default;font-family:'Noto Sans KR',sans-serif;}
+.prod-btn.u{background:rgba(170,170,170,.12);color:#5f5f5f;border:1px solid #aaa;}
+.prod-btn.s{background:rgba(170,170,170,.12);color:#5f5f5f;border:1px solid #aaa;}
+.prod-btn.n{background:rgba(170,170,170,.12);color:#5f5f5f;border:1px solid #aaa;}
+.prod-nudge{font-size:8px;color:var(--t2);background:var(--bg2);padding:2px 7px;border-radius:4px;margin-top:4px;display:inline-block;}
+.prod-btn{cursor:pointer;transition:opacity .15s;}.prod-btn:hover{opacity:.85;}
+
+/* Badge tooltip */
+.badge-wrap{position:relative;display:inline-flex;align-items:center;gap:4px;}
+.badge-info{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.85);color:var(--red);font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:help;line-height:1;}
+.badge-tooltip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#333;color:#fff;font-size:10px;font-weight:400;line-height:1.5;padding:8px 12px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;}
+.badge-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#333;}
+.badge-wrap:hover .badge-tooltip{opacity:1;}
+
+/* Industry section (홈) — sidebar + main layout */
+.ind-row{display:flex;gap:0;min-height:500px;}
+.ind-sidebar{width:110px;border-right:1px solid #F0F0F0;padding:20px 8px;flex-shrink:0;overflow-y:auto;}
+.ind-type-list{display:flex;flex-direction:column;gap:4px;}
+.ind-type-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px 9px;border-radius:10px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;user-select:none;background:none;font-family:'Noto Sans KR',sans-serif;}
+.ind-type-card:hover:not(.on){background:#FAFAFA;border-color:#ECECEC;}
+.ind-type-card.on{background:#F5F5F5;border-color:#E0E0E0;}
+.ind-type-icon{width:34px;height:34px;border-radius:9px;background:#F3F3F3;display:flex;align-items:center;justify-content:center;font-size:18px;transition:background .15s;}
+.ind-type-card.on .ind-type-icon{background:#E8E8E8;}
+.ind-type-name{font-size:10px;font-weight:600;color:#777;text-align:center;line-height:1.35;}
+.ind-type-card.on .ind-type-name{color:var(--t1);font-weight:700;}
+
+.ind-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.ind-page-header{padding:14px 24px 0;flex-shrink:0;}
+
+/* Category underline tabs (홈) */
+.ind-cats{display:flex;border-bottom:1px solid #F0F0F0;margin-bottom:0;position:relative;gap:0;overflow-x:auto;}
+.ind-cats::-webkit-scrollbar{height:0;}
+.ind-cat{display:flex;align-items:center;gap:5px;padding:10px 16px;border:none;background:none;font-size:12px;font-weight:600;color:#999;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s;position:relative;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;flex-shrink:0;}
+.ind-cat:hover:not(.on){color:#555;border-bottom-color:#DDD;}
+.ind-cat.on{color:var(--cat-active);border-bottom-color:var(--cat-active);}
+.ind-cat .ci{font-size:14px;}
+.ind-cat .cn{font-size:12px;}
+
+/* Subcategory chips (홈) */
+.ind-subs-wrap{padding:14px 24px 12px;display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;border-bottom:1px solid #F8F8F8;}
+.ind-sub{padding:6px 12px;border-radius:16px;font-size:11px;font-weight:600;color:#888;background:#F5F5F5;cursor:pointer;border:1.5px solid transparent;font-family:'Noto Sans KR',sans-serif;transition:all .15s;white-space:nowrap;}
+.ind-sub:hover:not(.on){background:#EBEBEB;}
+.ind-sub.on{background:var(--t1);color:#fff;border-color:var(--t1);}
+
+/* Industry products (홈) */
+.ind-prod-area{flex:1;overflow-y:auto;padding:20px 24px;}
+.ind-prod-section-label{font-size:12px;font-weight:700;color:#555;margin-bottom:14px;}
+.ind-prods{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.ind-prod{border-radius:10px;overflow:hidden;border:1px solid #F0F0F0;background:#fff;display:flex;flex-direction:column;cursor:default;transition:box-shadow .15s;}
+.ind-prod:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);}
+.ind-prod-img{aspect-ratio:1;background:#F5F5F5;display:flex;align-items:center;justify-content:center;font-size:10px;color:#D0D0D0;position:relative;}
+.ind-prod-info{padding:10px 10px 12px;}
+.ind-prod-brand{font-size:9px;font-weight:700;color:#B0B0B0;margin-bottom:3px;letter-spacing:.3px;}
+.ind-prod-nm{font-size:11px;color:#333;line-height:1.4;margin-bottom:6px;}
+.ind-prod-pr{font-size:13px;font-weight:800;color:var(--t1);}
+.ind-prod-badge{display:inline-block;font-size:9px;padding:2px 6px;background:#EDF5F1;color:#2E8B6A;border-radius:4px;margin-top:4px;}
+
+/* Category BEST pills */
+.cat-pills{display:flex;gap:4px;margin-bottom:12px;}
+.cat-pill{padding:6px 16px;border-radius:16px;font-size:11px;cursor:pointer;border:none;font-family:'Noto Sans KR',sans-serif;transition:all .15s;}
+.cat-pill.on{background:var(--t1);color:#fff;}
+.cat-pill.off{border:1px solid var(--bd);color:var(--t3);background:#fff;}
+.cat-pill:hover:not(.on){background:#f0f0f0;}
+
+/* Brand section - circular logos with text below */
+.brand-wrap{position:relative;}
+.brand-wrap:hover .brand-arrow{opacity:1;}
+.brand-arrow{position:absolute;top:50%;transform:translateY(-60%);width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.95);border:1px solid #e0e0e0;box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;cursor:pointer;z-index:5;opacity:0;transition:opacity .2s;}
+.brand-arrow:hover{background:var(--pl);border-color:var(--p);color:var(--p);}
+.brand-arrow.left{left:-6px;}
+.brand-arrow.right{right:-6px;}
+.brand-row{display:flex;gap:24px;overflow-x:auto;padding:8px 4px;scroll-behavior:smooth;}
+.brand-row::-webkit-scrollbar{height:0;}
+.brand-item{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all .15s;width:80px;}
+.brand-item:hover .brand-circle{border-color:var(--t4);background:var(--bg2);transform:scale(1.05);}
+.brand-item:hover .brand-name{color:var(--t1);font-weight:600;}
+.brand-circle{width:72px;height:72px;border-radius:50%;background:#f8f8fa;border:1.5px solid #e8e8e8;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;transition:all .2s;font-weight:500;}
+.brand-name{font-size:11px;color:#555;white-space:nowrap;text-align:center;}
+
+/* Brand Search Result Page */
+.bs-topbar{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid #eee;margin-bottom:20px;}
+.bs-back{width:32px;height:32px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;}
+.bs-back:hover{background:var(--pl);}
+.bs-search-box{flex:1;display:flex;align-items:center;background:#f7f7f7;border:1.5px solid #e0e0e0;border-radius:10px;padding:10px 16px;gap:8px;}
+.bs-search-box.active{border-color:var(--p);background:#fff;}
+.bs-search-box .icon{color:#999;font-size:14px;}
+.bs-search-box .kw{font-size:13px;font-weight:600;color:var(--t1);}
+.bs-search-box .x{margin-left:auto;color:#bbb;cursor:pointer;font-size:12px;}
+.bs-search-box .sbtn{padding:6px 18px;background:var(--p);color:#fff;border-radius:8px;font-size:11px;font-weight:600;cursor:default;margin-left:8px;}
+.bs-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.bs-filter{padding:6px 14px;border:1px solid #e0e0e0;border-radius:8px;font-size:11px;color:#555;background:#fff;cursor:default;}
+.bs-filter.on{border-color:var(--t1);color:var(--t1);background:var(--bg2);}
+.bs-sort{margin-left:auto;font-size:11px;color:#888;display:flex;align-items:center;gap:4px;cursor:default;}
+.bs-brand-hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 16px;background:#f9f9fb;border-radius:10px;}
+.bs-brand-logo{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #e8e8e8;display:flex;align-items:center;justify-content:center;font-size:9px;color:#bbb;}
+.bs-brand-info .bn{font-size:14px;font-weight:700;color:var(--t1);}
+.bs-brand-info .bc{font-size:11px;color:#888;margin-top:2px;}
+.bs-result-count{font-size:12px;color:#888;margin-bottom:12px;}
+.bs-prod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.bs-prod{background:#fff;border:1px solid #f0f0f0;border-radius:10px;overflow:hidden;cursor:default;transition:box-shadow .15s;}
+.bs-prod:hover{box-shadow:0 2px 12px rgba(0,0,0,.07);}
+.bs-prod-img{aspect-ratio:1;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ccc;position:relative;}
+.bs-prod-badge{position:absolute;top:8px;left:8px;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;color:#fff;}
+.bs-prod-badge.free{background:#4caf50;}
+.bs-prod-badge.sale{background:var(--red);}
+.bs-prod-body{padding:10px 12px;}
+.bs-prod-brand{font-size:9px;color:var(--p);font-weight:600;margin-bottom:2px;}
+.bs-prod-nm{font-size:11px;color:#333;line-height:1.4;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.bs-prod-pr{font-size:14px;font-weight:700;color:var(--t1);}
+
+/* ===== 간식 빌더 (embedded from builder_v9) ===== */
+/* 추가 토큰 */
+:root{--bdl:#F5F5F5;--r:6px;--rmd:10px;--rlg:14px;}
+
+/* 빌더 랜딩 (page0) */
+.bd-page{flex:1;overflow-y:auto;padding:0;}
+.bd-page-ttl{font-size:20px;font-weight:700;color:var(--t1);margin-bottom:6px;}
+.bd-page-sub{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:28px;}
+
+/* Snack Builder Hero Landing */
+/* snack-hero 섹션 제거됨 — 홈 배너(SEC 5)로 통합 */
+
+/* Package list section below hero */
+.pkg-list-section{padding:28px 32px;}
+.pkg-list-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.pkg-list-title{font-size:16px;font-weight:700;color:var(--t1);}
+.pkg-list-sub{font-size:11px;color:var(--t3);}
+.pkg-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px;}
+.pkg-card{background:var(--w);border:1px solid var(--bd);border-radius:var(--rlg);padding:18px;cursor:pointer;position:relative;display:flex;flex-direction:column;min-height:170px;transition:border-color .15s;}
+.pkg-card:hover{border-color:var(--p);}
+.pkg-menu-btn{position:absolute;top:12px;right:12px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:16px;border-radius:4px;cursor:pointer;z-index:2;}
+.pkg-menu-btn:hover{background:var(--bg);color:var(--t1);}
+.ctx-menu{display:none;position:absolute;top:38px;right:12px;background:var(--w);border:1px solid var(--bd);border-radius:var(--rmd);box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:10;min-width:170px;padding:4px 0;}
+.ctx-menu.show{display:block;}
+.ctx-item{padding:8px 14px;font-size:12px;color:var(--t1);cursor:pointer;display:flex;align-items:center;gap:8px;}
+.ctx-item:hover{background:var(--bg);}
+.ctx-item.danger{color:var(--red);}
+.pkg-name{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px;padding-right:28px;}
+.pkg-date{font-size:11px;color:var(--t3);}
+.pkg-icon-area{flex:1;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.85;padding:8px 0;}
+.pkg-summary{font-size:11px;color:var(--t2);margin-bottom:6px;}
+.pkg-bottom{display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;}
+.pkg-meta-col{display:flex;flex-direction:column;gap:3px;}
+.pkg-preset-tag{display:inline-block;font-size:10px;font-weight:500;color:var(--p);background:var(--pl);padding:2px 7px;border-radius:50px;}
+.pkg-price{font-size:15px;font-weight:700;color:var(--t1);}
+.pkg-order-btn{height:26px;padding:0 10px;background:var(--p);color:#fff;border:none;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;flex-shrink:0;}
+.suggest-card{background:var(--bg);border:1px solid var(--bdl);border-radius:var(--rlg);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:170px;cursor:pointer;transition:border-color .15s;}
+.suggest-card:hover{border-color:var(--p);background:var(--pl);}
+.suggest-icon{font-size:32px;}
+.suggest-lbl{font-size:12px;color:var(--t2);line-height:1.6;text-align:center;}
+.suggest-lbl b{color:var(--t1);font-weight:600;}
+.suggest-arrow{font-size:11px;font-weight:500;color:var(--p);background:var(--pl);padding:3px 10px;border-radius:50px;margin-top:2px;}
+.new-card{border:1.5px dashed var(--bd);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:170px;border-radius:var(--rlg);cursor:pointer;transition:all .15s;}
+.new-card:hover{border-color:var(--p);background:var(--pl);}
+.new-plus{width:40px;height:40px;border-radius:50%;background:var(--bdl);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--t3);}
+.new-card:hover .new-plus{background:var(--pl);color:var(--p);}
+.new-lbl{font-size:12px;font-weight:500;color:var(--t2);}
+.new-card:hover .new-lbl{color:var(--p);}
+
+/* 빌더 상세 (page-detail) */
+.detail-wrap{overflow-y:auto;padding:28px 32px;}
+.detail-back{font-size:13px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:4px;margin-bottom:16px;}
+.detail-back:hover{color:var(--p);}
+.detail-title{font-size:22px;font-weight:700;color:var(--t1);margin-bottom:6px;}
+.detail-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+.detail-tag{font-size:11px;font-weight:500;padding:2px 9px;border-radius:50px;}
+.detail-info-row{display:flex;gap:20px;font-size:12px;color:var(--t2);}
+.detail-info-row b{color:var(--t1);font-weight:600;}
+.detail-section{margin-bottom:22px;}
+.detail-sec-hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--bdl);margin-bottom:12px;}
+.detail-sec-name{font-size:13px;font-weight:700;color:var(--t1);}
+.detail-n-badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:3px;}
+.detail-budget{font-size:12px;color:var(--t2);}
+.detail-prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.detail-prod-card{background:var(--w);border:1px solid var(--bd);border-radius:var(--rmd);overflow:hidden;}
+.detail-prod-img{width:100%;height:100px;display:flex;align-items:center;justify-content:center;}
+.detail-prod-body{padding:8px 10px;}
+.detail-prod-name{font-size:11px;font-weight:500;color:var(--t1);line-height:1.4;margin-bottom:4px;}
+.detail-prod-meta{font-size:10px;color:var(--t2);}
+.detail-prod-price{font-size:12px;font-weight:700;color:var(--t1);}
+.detail-prod-qty{font-size:11px;font-weight:600;color:var(--g);}
+.detail-cta{display:flex;gap:10px;margin-top:28px;}
+.btn-lg-p{flex:1;height:44px;background:var(--p);color:#fff;border:none;border-radius:var(--rmd);font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.btn-lg-g{height:44px;padding:0 20px;background:var(--w);color:var(--t2);border:1px solid var(--bd);border-radius:var(--rmd);font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+
+/* 빌더 위자드 (page1) */
+.builder-full{overflow-y:auto;padding:28px 32px 40px;}
+.builder-back{font-size:13px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:4px;margin-bottom:20px;}
+.builder-back:hover{color:var(--p);}
+.input-inline-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.input-inline-group{display:flex;flex-direction:column;gap:5px;}
+.input-inline-lbl{font-size:11px;font-weight:500;color:var(--t3);}
+.input-inline-field{height:36px;border:1px solid var(--bd);border-radius:var(--r);padding:0 12px;font-size:13px;color:var(--t1);background:#fff;font-family:'Noto Sans KR',sans-serif;width:140px;}
+/* 카드형 인풋 */
+.input-card-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+.input-card{border:1.5px solid #E8E8E8;border-radius:14px;padding:18px 20px;background:#fff;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,box-shadow .15s;}
+.input-card:focus-within{border-color:#222;box-shadow:0 0 0 3px rgba(34,34,34,.06);}
+.input-card-lbl{font-size:12px;font-weight:600;color:#AAAAAA;}
+.input-card-val{border:none;outline:none;font-size:24px;font-weight:800;color:var(--t1);background:transparent;font-family:'Noto Sans KR',sans-serif;width:100%;padding:0;}
+/* Validation error */
+.input-card.error{border-color:var(--red);box-shadow:0 0 0 3px rgba(255,49,49,.06);}
+.input-card.error:focus-within{border-color:var(--red);box-shadow:0 0 0 3px rgba(255,49,49,.1);}
+.input-card-warn{font-size:11px;font-weight:600;color:var(--red);margin-top:6px;display:none;line-height:1.4;}
+.input-card-warn.show{display:block;}
+/* 예산 단위 표시 */
+.input-card-unit{display:flex;align-items:center;gap:4px;}
+.input-card-unit .unit-suffix{font-size:14px;font-weight:600;color:#C0C0C0;flex-shrink:0;}
+.acc-section{margin-bottom:2px;}
+.acc-hdr{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:var(--rmd);cursor:pointer;transition:background .12s;user-select:none;}
+.acc-hdr:hover{background:var(--bdl);}
+.acc-hdr.done-closed:hover{background:#F0F8FF;}
+.sdwrap{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;margin-top:2px;}
+.sdot{width:10px;height:10px;border-radius:50%;background:#DDDDDD;flex-shrink:0;transition:background .2s;}
+.sdot.done{background:var(--p);}
+.sdot.on{background:var(--p);box-shadow:0 0 0 3px rgba(34,34,34,.1);}
+.dline{width:1px;height:18px;background:#E5E5E5;margin:0 auto;transition:background .2s;}
+.dline.done{background:var(--p);}
+.acc-hdr-text{flex:1;}
+.sec-ttl{font-size:15px;font-weight:700;color:var(--t1);}
+.sec-sub{font-size:12px;color:var(--t2);margin-top:2px;}
+.done-badge{font-size:11px;font-weight:500;color:var(--g);background:var(--gl);padding:2px 8px;border-radius:50px;display:none;flex-shrink:0;}
+.reopen-hint{font-size:10px;color:var(--p);background:var(--pl);padding:2px 8px;border-radius:50px;display:none;flex-shrink:0;}
+.acc-body{padding:4px 12px 16px 32px;}
+.reopen-warn{background:#FFF8EB;border:1px solid #FDE68A;border-radius:var(--rmd);padding:10px 14px;margin-bottom:14px;font-size:12px;color:#78350F;line-height:1.6;display:none;}
+.reopen-warn.show{display:block;}
+.tsplit{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.tsplit>div{display:flex;flex-direction:column;}
+.tgrp-lbl{font-size:11px;font-weight:600;color:var(--t3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px;}
+.pcards{display:flex;gap:8px;flex-wrap:wrap;}
+.pcard{border:1px solid var(--bd);border-radius:var(--rmd);padding:12px;cursor:pointer;background:var(--w);display:flex;flex-direction:column;gap:3px;flex:1;min-width:90px;transition:border-color .15s;}
+.pcard:hover{border-color:var(--p);}
+.pcard.on{border:2px solid var(--p);background:var(--pl);}
+.pcard-ico{font-size:22px;margin-bottom:2px;}
+.pcard-name{font-size:12px;font-weight:700;color:var(--t1);}
+.pcard.on .pcard-name{color:var(--p);}
+.hcard{border:1px solid var(--bd);border-radius:var(--rmd);padding:14px;cursor:pointer;background:var(--w);display:flex;align-items:center;gap:12px;transition:border-color .15s;flex:1;}
+.hcard:hover{border-color:var(--p);}
+.hcard.on{border:2px solid var(--p);background:var(--pl);}
+.hcard-ico{font-size:22px;width:40px;height:40px;background:var(--pl);border-radius:var(--rmd);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.hcard.on .hcard-ico{background:var(--w);}
+.pcard-desc{font-size:10px;color:var(--t2);line-height:1.4;}
+.guidebox{display:none;background:var(--pl);border-left:3px solid var(--p);padding:10px 12px;border-radius:0 var(--r) var(--r) 0;margin-top:10px;}
+.guidebox.show{display:block;}
+.guidebox p{font-size:12px;color:var(--pd);line-height:1.6;}
+.snext{margin-top:14px;height:38px;padding:0 20px;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.snext.active{background:var(--p);color:#fff;}
+.snext.active:hover{background:var(--pd);}
+.snext.inactive{background:var(--bdl);color:var(--t3);cursor:not-allowed;}
+.notice{display:flex;gap:8px;background:#F5F5F5;border:1px solid #E0E0E0;border-radius:var(--rmd);padding:10px 12px;margin-bottom:14px;}
+.nic{width:16px;height:16px;border-radius:50%;background:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.nic span{color:#fff;font-size:10px;font-weight:700;}
+.notice p{font-size:12px;color:var(--t2);line-height:1.6;}
+.f-dist-bar{height:44px;border-radius:10px;overflow:hidden;display:flex;margin-bottom:8px;}
+.f-seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;transition:width .15s;overflow:hidden;white-space:nowrap;min-width:0;}
+.f-seg-inner{overflow:hidden;white-space:nowrap;text-overflow:clip;padding:0 4px;}
+/* Custom slider list */
+.slider-list{display:flex;flex-direction:column;gap:0;}
+.slider-item{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid #F0F0F0;}
+.slider-item:last-child{border-bottom:none;}
+.slider-label{min-width:120px;flex-shrink:0;}
+.slider-label .sl-name{font-size:13px;font-weight:600;color:#21212D;margin-bottom:2px;}
+.slider-label .sl-badge{font-size:11px;color:var(--t2);font-weight:500;}
+.slider-track-wrap{flex:1;position:relative;height:36px;display:flex;align-items:center;}
+.slider-track{width:100%;height:4px;background:#E0E0E0;border-radius:2px;position:relative;}
+.slider-fill{height:100%;background:#222222;border-radius:2px;transition:width .15s;}
+.slider-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);width:28px;height:28px;background:#fff;border:2px solid #222222;border-radius:50%;cursor:grab;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#222222;box-shadow:0 1px 4px rgba(0,0,0,.1);transition:box-shadow .15s;user-select:none;z-index:2;}
+.slider-thumb:hover{box-shadow:0 2px 8px rgba(34,34,34,.2);}
+.slider-thumb:active{cursor:grabbing;box-shadow:0 0 0 6px rgba(34,34,34,.08);}
+/* 기타(예비) — 읽기 전용 */
+.slider-item.readonly{opacity:.55;}
+.slider-item.readonly .slider-track-wrap input[type=range]{pointer-events:none;cursor:default;}
+.slider-item.readonly .slider-thumb{cursor:default;border-style:dashed;}
+.slider-item.readonly .slider-thumb:hover{box-shadow:none;}
+.slider-auto-label{font-size:9px;font-weight:700;color:#C0C0C0;letter-spacing:.3px;margin-top:2px;}
+.slider-track-wrap input[type=range]{position:absolute;width:100%;height:36px;opacity:0;cursor:pointer;z-index:3;margin:0;}
+.slider-value{min-width:90px;text-align:right;flex-shrink:0;}
+.slider-value .sv-pct{font-size:15px;font-weight:700;color:#21212D;}
+.slider-value .sv-amt{font-size:11px;color:#999;margin-top:1px;}
+/* Legacy slider classes kept for compatibility */
+.f-slider-grid{display:flex;flex-direction:column;gap:10px;}
+.f-sl-row{display:flex;align-items:center;gap:10px;}
+.f-sl-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.f-sl-name{font-size:13px;font-weight:500;color:var(--t1);min-width:110px;}
+.f-sl-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.f-sl-badge{font-size:11px;font-weight:500;color:var(--p);background:var(--pl);padding:2px 8px;border-radius:3px;min-width:42px;text-align:center;}
+.f-sl-amt{font-size:12px;color:var(--t2);min-width:72px;text-align:right;}
+input[type=range].f-range{flex:1;height:4px;cursor:pointer;}
+.f-total-row{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--bdl);margin-top:4px;}
+.tok{font-size:13px;font-weight:600;color:var(--g);}
+.terr{font-size:13px;font-weight:600;color:var(--red);}
+.cat-section{margin-bottom:28px;}
+.cat-sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cat-sec-left{display:flex;align-items:center;gap:8px;}
+.cat-sec-name{font-size:14px;font-weight:700;color:var(--t1);}
+.cat-n-badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:3px;}
+.cat-budget-lbl{font-size:12px;color:var(--t2);}
+.bd-prod-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px;}
+.bd-prod-card{background:var(--w);border:1px solid var(--bd);border-radius:var(--rmd);overflow:hidden;position:relative;transition:border-color .15s;}
+.bd-prod-card:hover{border-color:var(--p);}
+.prod-img-wrap{width:100%;height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.prod-placeholder-inner{width:76px;height:76px;background:rgba(255,255,255,.65);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#555;text-align:center;padding:6px;line-height:1.3;}
+.prod-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .15s;}
+.bd-prod-card:hover .prod-actions{opacity:1;}
+.prod-action-btn{width:26px;height:26px;border-radius:var(--r);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.prod-action-btn.refresh{background:rgba(255,255,255,.9);color:var(--t2);}
+.prod-action-btn.refresh:hover{background:var(--w);color:var(--p);}
+.prod-action-btn.del{background:rgba(255,255,255,.9);color:var(--t3);}
+.prod-action-btn.del:hover{background:var(--redl);color:var(--red);}
+.bd-prod-card-body{padding:10px 12px 12px;}
+.bd-prod-card-name{font-size:12px;font-weight:500;color:var(--t1);line-height:1.4;margin-bottom:5px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.bd-prod-card-meta{font-size:10px;color:var(--t2);margin-bottom:4px;}
+.bd-prod-card-bottom{display:flex;align-items:center;justify-content:space-between;}
+.bd-prod-card-price{font-size:12px;font-weight:700;color:var(--t1);}
+.bd-prod-card-qty{font-size:11px;font-weight:600;color:var(--g);background:var(--gl);padding:2px 7px;border-radius:50px;}
+
+/* Step4 최종확인 */
+.fin-summary-card{background:var(--w);border:1px solid var(--bd);border-radius:var(--rlg);padding:18px;margin-bottom:12px;}
+.fin-summary-ttl{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px;}
+.finrow{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdl);font-size:12px;}
+.finrow:last-child{border-bottom:none;}
+.finl{color:var(--t2);}
+.finv{font-weight:500;color:var(--t1);}
+.fin-total-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0 4px;border-top:1px solid var(--bd);margin-top:4px;}
+.shiprow{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--gl);border:1px solid #B3E8D8;border-radius:var(--rmd);margin-bottom:12px;}
+.save-check-row{background:var(--pl);border:1px solid #E0E0E0;border-radius:var(--rmd);padding:12px 16px;margin-bottom:12px;}
+.save-check-top{display:flex;align-items:center;gap:10px;}
+.save-checkbox{width:16px;height:16px;accent-color:var(--p);cursor:pointer;flex-shrink:0;}
+.save-check-lbl{font-size:13px;font-weight:600;color:var(--pd);cursor:pointer;flex:1;}
+.save-name-input{width:100%;height:32px;border:1px solid #E0E0E0;border-radius:var(--r);padding:0 10px;font-size:12px;color:var(--t1);background:var(--w);font-family:'Noto Sans KR',sans-serif;margin-top:8px;display:none;}
+.save-name-input.show{display:block;}
+.sharestrip{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px dashed var(--bd);border-radius:var(--rmd);margin-bottom:8px;}
+.shareurl{font-size:11px;color:var(--t3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sharecopy{font-size:11px;font-weight:500;color:var(--p);cursor:pointer;flex-shrink:0;}
+.cta-row-final{display:flex;gap:10px;margin-top:14px;}
+.ctap{flex:1;height:44px;background:var(--cta);color:#222;border:none;border-radius:var(--rmd);font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.ctag{height:44px;padding:0 18px;background:var(--w);color:var(--t2);border:1px solid var(--bd);border-radius:var(--rmd);font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+
+/* 폴더 추가 모달 */
+.cart-modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.32);z-index:100;align-items:center;justify-content:center;}
+.cart-modal-overlay.show{display:flex;}
+.cart-modal{background:var(--w);border-radius:16px;padding:32px;width:400px;box-shadow:0 8px 32px rgba(0,0,0,.16);display:flex;flex-direction:column;align-items:flex-start;}
+.cart-modal-icon{width:48px;height:48px;border-radius:50%;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px;}
+.cart-modal-ttl{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:6px;}
+.cart-modal-sub{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:20px;}
+.cart-modal-note{background:var(--amberl);border:1px solid #FCD34D;border-radius:var(--rmd);padding:10px 12px;margin-bottom:20px;}
+.cart-modal-note p{font-size:12px;color:#78350F;line-height:1.6;}
+.cart-modal-btns{display:flex;flex-direction:column;gap:8px;}
+.cart-modal-btn-primary{width:100%;height:44px;background:var(--p);color:#fff;border:none;border-radius:var(--rmd);font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.cart-modal-btn-secondary{width:100%;height:44px;background:var(--w);color:var(--t1);border:1px solid var(--bd);border-radius:var(--rmd);font-size:13px;font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.cart-modal-btn-ghost{width:100%;height:36px;background:transparent;color:var(--t3);border:none;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-top:4px;}
+
+/* ===== 기획전 탭 ===== */
+.promo-page{padding:24px 32px;}
+.promo-title{font-size:18px;font-weight:800;color:var(--t1);margin-bottom:4px;}
+.promo-desc{font-size:12px;color:#999;margin-bottom:20px;}
+.promo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+.promo-card{border-radius:12px;overflow:hidden;border:1px solid #e8e8e8;cursor:pointer;transition:all .2s;}
+.promo-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.08);transform:translateY(-2px);}
+.promo-banner{height:160px;display:flex;align-items:center;padding:0 24px;position:relative;}
+.promo-banner .info{position:relative;z-index:1;}
+.promo-banner .tag{display:inline-block;padding:3px 8px;background:rgba(255,255,255,.2);border-radius:4px;font-size:9px;color:#fff;font-weight:600;margin-bottom:6px;}
+.promo-banner .name{font-size:20px;font-weight:800;color:#fff;}
+.promo-banner .sub{font-size:12px;color:rgba(255,255,255,.8);margin-top:2px;}
+.promo-banner .deco{position:absolute;right:20px;font-size:40px;opacity:.3;}
+.promo-banner .view-link{position:absolute;right:20px;bottom:16px;padding:6px 14px;background:rgba(255,255,255,.2);border-radius:6px;font-size:10px;color:#fff;font-weight:600;z-index:1;}
+.promo-footer{padding:10px 16px;background:#fff;}
+.promo-footer .date{font-size:10px;color:#888;}
+.promo-footer .fname{font-size:12px;font-weight:600;color:var(--t1);}
+.promo-footer .prod-count{font-size:10px;color:var(--p);margin-top:2px;}
+.promo-b1{background:linear-gradient(135deg,#1e88e5,#42a5f5);}
+.promo-b2{background:linear-gradient(135deg,#43a047,#66bb6a);}
+.promo-b3{background:linear-gradient(135deg,#333,#555);}
+.promo-b4{background:linear-gradient(135deg,#f06292,#ec407a);}
+
+/* ===== 업종별 상품탐색 전용 탭 (아코디언 트리) ===== */
+.ind-full-content{display:flex;min-height:680px;overflow:hidden;}
+/* 아코디언 사이드바 */
+.ind-tree-sidebar{width:200px;border-right:1px solid #F0F0F0;padding:16px 10px;flex-shrink:0;overflow-y:auto;}
+.ind-tree-label{font-size:10px;font-weight:700;color:#C0C0C0;letter-spacing:.4px;margin-bottom:10px;padding:0 4px;}
+.type-row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:all .15s;border:1.5px solid transparent;margin-bottom:4px;}
+.type-row:hover:not(.on){background:#F8F8F8;}
+.type-row.on{background:#F3F3F3;border-color:#E8E8E8;}
+.type-ico{width:28px;height:28px;border-radius:7px;background:#EBEBEB;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:background .15s;}
+.type-row.on .type-ico{background:#E0E0E0;}
+.type-row-name{font-size:11px;font-weight:600;color:#888;flex:1;}
+.type-row.on .type-row-name{color:var(--t1);font-weight:700;}
+/* 아코디언 카테고리 그룹 */
+.cat-group{overflow:hidden;max-height:0;transition:max-height .25s ease;margin-left:14px;margin-bottom:4px;}
+.cat-group.open{max-height:400px;padding:6px 0 4px;}
+.cat-row{display:flex;align-items:center;gap:7px;padding:8px 10px 8px 14px;border-radius:8px;font-size:11px;font-weight:600;color:#999;cursor:pointer;transition:all .15s;margin-bottom:1px;}
+.cat-row:hover:not(.on){background:#F8F8F8;color:#555;}
+.cat-row.on{background:#FEF3C7;color:#D97706;}
+.cat-row-ico{font-size:13px;flex-shrink:0;}
+/* 상품 패널 */
+.ind-product-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.ind-pane-header{padding:18px 22px 0;flex-shrink:0;}
+.ind-pane-title{font-size:15px;font-weight:800;color:var(--t1);margin-bottom:12px;}
+.ind-sub-filter{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid #F5F5F5;}
+.ind-chip{padding:6px 13px;border-radius:16px;font-size:11px;font-weight:600;color:#888;background:#F5F5F5;cursor:pointer;border:1.5px solid transparent;transition:all .15s;}
+.ind-chip:hover:not(.on){background:#EBEBEB;}
+.ind-chip.on{background:var(--t1);color:#fff;border-color:var(--t1);}
+.ind-product-area{flex:1;overflow-y:auto;padding:18px 22px;}
+.ind-product-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.ind-product-card{border-radius:10px;overflow:hidden;border:1px solid #F0F0F0;cursor:pointer;transition:box-shadow .15s;}
+.ind-product-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);}
+.ind-product-img{background:#F5F5F5;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:10px;color:#D0D0D0;position:relative;}
+.ind-product-info{padding:10px 10px 12px;}
+.ind-product-brand{font-size:9px;font-weight:700;color:#B0B0B0;margin-bottom:3px;letter-spacing:.3px;}
+.ind-product-name{font-size:11px;color:#333;line-height:1.4;margin-bottom:6px;}
+.ind-product-price{font-size:13px;font-weight:800;color:var(--t1);}
+.ind-product-tag{display:inline-block;font-size:9px;padding:2px 6px;background:#EDF5F1;color:#2E8B6A;border-radius:4px;margin-top:4px;}
+
+/* ===== 기획전 상세 페이지 ===== */
+.promo-detail{padding:0;}
+.promo-detail-hero{height:180px;display:flex;align-items:center;padding:0 40px;position:relative;overflow:hidden;}
+.promo-detail-hero .info{position:relative;z-index:1;}
+.promo-detail-hero .tag{display:inline-block;padding:4px 10px;background:rgba(255,255,255,.2);border-radius:6px;font-size:10px;color:#fff;font-weight:600;margin-bottom:8px;}
+.promo-detail-hero .name{font-size:26px;font-weight:800;color:#fff;margin-bottom:4px;}
+.promo-detail-hero .sub{font-size:13px;color:rgba(255,255,255,.8);}
+.promo-detail-hero .period{font-size:11px;color:rgba(255,255,255,.5);margin-top:6px;}
+.promo-detail-hero .deco{position:absolute;right:40px;font-size:80px;opacity:.15;}
+.promo-detail-hero .back-btn{position:absolute;top:16px;left:16px;padding:6px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:8px;font-size:11px;color:#fff;cursor:pointer;z-index:2;font-family:'Noto Sans KR',sans-serif;transition:background .15s;}
+.promo-detail-hero .back-btn:hover{background:rgba(255,255,255,.25);}
+.promo-detail-body{padding:28px 40px;}
+
+/* 매칭 섹션 */
+.match-section{margin-bottom:32px;}
+.match-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.match-title{font-size:16px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px;}
+.match-title .cnt{font-size:12px;font-weight:600;color:var(--p);background:var(--pl);padding:3px 10px;border-radius:12px;}
+.match-subtitle{font-size:11px;color:var(--t3);}
+
+/* 절약 요약 바 */
+.savings-bar{display:flex;align-items:center;gap:16px;padding:16px 24px;background:linear-gradient(135deg,#EEF0FF,#f8f7ff);border:1.5px solid var(--p);border-radius:12px;margin-bottom:20px;}
+.savings-icon{font-size:28px;}
+.savings-info{flex:1;}
+.savings-label{font-size:12px;color:var(--t2);margin-bottom:2px;}
+.savings-amount{font-size:22px;font-weight:800;color:var(--p);}
+.savings-detail{font-size:11px;color:var(--t3);margin-top:2px;}
+.savings-cta{padding:10px 20px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s;}
+.savings-cta:hover{background:var(--pd);}
+
+/* 가격 비교 카드 */
+.compare-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.compare-card{border:1.5px solid #e8e8e8;border-radius:12px;overflow:hidden;background:#fff;transition:all .2s;}
+.compare-card:hover{border-color:var(--p);box-shadow:0 4px 16px rgba(91,76,219,.08);}
+.compare-card .img{height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:11px;color:#ccc;position:relative;}
+.compare-card .match-badge{position:absolute;top:8px;left:8px;padding:3px 8px;background:var(--p);color:#fff;font-size:8px;font-weight:700;border-radius:4px;}
+.compare-card .body{padding:12px 14px;}
+.compare-card .pname{font-size:12px;color:var(--t1);font-weight:500;margin-bottom:8px;line-height:1.4;}
+.compare-prices{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+.price-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;}
+.price-row.old{color:var(--t3);}
+.price-row.old .val{text-decoration:line-through;}
+.price-row.new{color:var(--red);font-weight:700;}
+.price-row .label{color:var(--t3);font-size:10px;}
+.save-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--redl);color:var(--red);font-size:10px;font-weight:700;border-radius:6px;margin-bottom:8px;}
+.compare-card .add-btn{width:100%;padding:8px;border:none;background:var(--pl);color:var(--p);font-size:11px;font-weight:600;border-radius:6px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s;}
+.compare-card .add-btn:hover{background:var(--p);color:#fff;}
+
+/* 기획전 전체 상품 */
+.promo-all-section{margin-top:32px;}
+.promo-all-title{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px;}
+.promo-all-desc{font-size:11px;color:var(--t3);margin-bottom:16px;}
+.promo-all-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.promo-prod{border-radius:12px;overflow:hidden;border:1px solid #eee;background:#fff;display:flex;flex-direction:column;gap:16px;cursor:default;transition:box-shadow .15s;}
+.promo-prod:hover{box-shadow:0 3px 12px rgba(0,0,0,.06);}
+.promo-prod .img{aspect-ratio:1;background:#F6F6F6;border:1px solid #F0F0F0;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ccc;position:relative;}
+.promo-prod .my-badge{position:absolute;top:8px;left:8px;padding:8px;background:rgba(255,49,49,.8);color:#fff;font-size:12px;font-weight:700;border-radius:8px;line-height:1;}
+.promo-prod .promo-logo{padding:0 12px;height:28px;display:flex;align-items:center;}
+.promo-prod .promo-logo svg{width:91px;height:16px;}
+.promo-prod .promo-bd{padding:0 12px 12px;display:flex;flex-direction:column;gap:16px;}
+.promo-prod .promo-text{display:flex;flex-direction:column;gap:8px;}
+.promo-prod .nm{font-size:14px;color:#222;font-weight:400;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.promo-prod .pr-row{display:flex;align-items:center;gap:6px;}
+.promo-prod .old-pr{font-size:12px;color:var(--t3);text-decoration:line-through;}
+.promo-prod .new-pr{font-size:14px;font-weight:700;color:var(--red);}
+.promo-prod .disc{font-size:12px;color:var(--red);font-weight:700;}
+
+/* SEC 5: 간식 패키지 배너 (크림 일러스트형 — 안 1) */
+.snack-home-banner{margin:0;padding:48px 52px;background:#FFF8EB;display:flex;align-items:center;gap:40px;cursor:pointer;transition:transform .25s,box-shadow .25s;overflow:hidden;position:relative;border-radius:0;}
+.snack-home-banner:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.1);}
+/* Left side */
+.shb-left{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0;}
+.shb-pre{font-size:14px;font-weight:600;color:#D97706;margin-bottom:10px;letter-spacing:-.2px;}
+.shb-title{font-size:32px;font-weight:900;color:#1A1A1A;line-height:1.3;margin-bottom:14px;letter-spacing:-.5px;}
+.shb-title em{font-style:normal;color:#D97706;}
+.shb-desc{font-size:14px;color:#999;line-height:1.7;margin-bottom:28px;}
+.shb-cta{display:inline-flex;align-items:center;gap:6px;padding:14px 28px;background:#222222;color:#fff;font-size:14px;font-weight:700;border-radius:12px;border:none;cursor:pointer;transition:background .2s;width:fit-content;font-family:'Noto Sans KR',sans-serif;}
+.shb-cta:hover{background:#111111;}
+.shb-stats{display:flex;gap:20px;margin-top:24px;}
+.shb-stat{display:flex;align-items:center;gap:6px;font-size:12px;color:#B45309;}
+.shb-stat-num{font-size:14px;font-weight:800;color:#D97706;}
+/* Right side — floating snack scene */
+.shb-right{width:300px;height:240px;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center;}
+.snack-scene{position:relative;width:100%;height:100%;}
+.cookie-main{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100px;height:100px;background:#FFE0A0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:56px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:3;}
+.float-snack{position:absolute;background:#fff;border-radius:14px;padding:10px;box-shadow:0 4px 16px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;animation:floatY 3s ease-in-out infinite;z-index:2;}
+.float-snack .emoji{font-size:28px;}
+.float-snack .info{margin-left:8px;}
+.float-snack .info .nm{font-size:10px;font-weight:600;color:#333;}
+.float-snack .info .pr{font-size:9px;color:#999;}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.fs1{top:10px;left:20px;animation-delay:0s;}
+.fs2{top:0px;right:10px;animation-delay:.5s;}
+.fs3{bottom:30px;left:5px;animation-delay:1s;}
+.fs4{bottom:10px;right:20px;animation-delay:1.5s;}
+.deco-circle{position:absolute;border-radius:50%;background:rgba(0,0,0,.03);}
+.dc1{width:200px;height:200px;top:-20px;right:-30px;}
+.dc2{width:120px;height:120px;bottom:-10px;left:10px;}
+
+/* 세트 이름 블록 */
+.name-block{background:#F8F8F8;border-radius:12px;padding:20px;margin-bottom:0;}
+.name-block .name-label{font-size:12px;font-weight:600;color:#888;margin-bottom:8px;}
+.name-block .name-input{width:100%;padding:12px 14px;border:1.5px solid #E8E8E8;border-radius:8px;font-size:14px;color:var(--t1);background:#fff;outline:none;transition:border .15s,box-shadow .15s;font-family:'Noto Sans KR',sans-serif;}
+.name-block .name-input:focus{border-color:var(--cat-active);box-shadow:0 0 0 3px rgba(255,159,15,.08);}
+.name-block .name-input.is-default{color:#BBBBBB;}
+.name-hint{font-size:11px;color:#C0C0C0;margin-top:7px;display:flex;align-items:center;gap:4px;}
+.name-hint svg{flex-shrink:0;}
+
+/* Toast */
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--t1);color:#fff;padding:12px 28px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:9999;opacity:0;transition:all .3s ease;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<!-- airsupply SVG sprite (한번 정의, <use>로 재사용) -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+  <symbol id="as-logo" viewBox="0 0 91 16">
+    <path d="M16.4613 0.00878906H13.9766V11.9812H16.4613V0.00878906Z" fill="#333333"/>
+    <path d="M24.2431 0.00878906H25.4461V2.62933H24.4093C22.9045 2.62933 21.684 3.91653 21.684 5.50362V11.9765H19.1992V5.33292C19.1949 2.39865 21.4565 0.00878906 24.2431 0.00878906Z" fill="#333333"/>
+    <path d="M8.77101 1.12067C7.87422 0.479379 6.7937 0.105675 5.63007 0.105675C2.51975 0.105675 0 2.76313 0 6.04342C0 9.32371 2.51975 11.9812 5.63007 11.9812C6.7937 11.9812 7.87422 11.6075 8.77538 10.9708V11.9858H11.2601V0.00878906H8.77538V1.12067H8.77101ZM5.62569 9.30987C3.91524 9.30987 2.5285 7.84735 2.5285 6.04342C2.5285 4.23949 3.91524 2.77697 5.62569 2.77697C7.33615 2.77697 8.72289 4.23949 8.72289 6.04342C8.72289 7.84735 7.33615 9.30987 5.62569 9.30987Z" fill="#333333"/>
+    <path d="M78.1518 9.31448V11.9765C76.0739 11.9396 74.3984 10.1542 74.3984 7.95346V0.00878906H76.8832V7.65819C76.8832 8.47019 77.4213 9.153 78.1518 9.31909V9.31448Z" fill="#333333"/>
+    <path d="M56.0281 0.00878906H51.0586V15.4322H53.5433V10.491H56.0281C57.4017 10.491 58.6441 9.90964 59.5409 8.95462C60.4377 8.00882 60.9976 6.69855 60.9976 5.24987C60.9976 2.35713 58.7666 0.00878906 56.0281 0.00878906ZM56.0281 7.87041H53.5433V2.62933H56.0281C56.7105 2.62933 57.3317 2.91999 57.7867 3.39519C58.2373 3.86578 58.5129 4.52092 58.5129 5.24987C58.5129 6.69855 57.4017 7.87041 56.0281 7.87041Z" fill="#333333"/>
+    <path d="M67.7 0.00878906H62.7305V15.4322H65.2152V10.491H67.7C69.0736 10.491 70.316 9.90964 71.2128 8.95462C72.1095 8.00882 72.6695 6.69855 72.6695 5.24987C72.6695 2.35713 70.4428 0.00878906 67.7 0.00878906ZM67.7 7.87041H65.2152V2.62933H67.7C68.3824 2.62933 69.0036 2.91999 69.4586 3.39519C69.9091 3.86578 70.1847 4.52092 70.1847 5.24987C70.1847 6.69855 69.0736 7.87041 67.7 7.87041Z" fill="#333333"/>
+    <path d="M49.0914 0.00878906V6.74008C49.0914 9.63743 46.8647 11.9812 44.1219 11.9812C41.3746 11.9812 39.1523 9.63282 39.1523 6.74008V0.00878906H41.6371V6.74008C41.6371 8.18876 42.7482 9.36062 44.1219 9.36062C45.4955 9.36062 46.6066 8.18876 46.6066 6.74008V0.00878906H49.0914Z" fill="#333333"/>
+    <path d="M87.8578 0.00878906L84.6382 6.80005L81.4185 0.00878906H78.6406L83.247 9.72971L80.8104 14.8693L83.0546 15.9996L90.6138 0.00878906H87.8578Z" fill="#333333"/>
+    <path d="M27.2773 3.65861C27.2773 5.67476 28.8259 7.30799 30.7376 7.30799H33.7604C34.2985 7.30799 34.7316 7.76935 34.7316 8.33222C34.7316 8.89969 34.2941 9.35644 33.7604 9.35644H27.2773V11.977H33.7604C35.6721 11.977 37.2207 10.3438 37.2207 8.3276C37.2207 6.31145 35.6721 4.67822 33.7604 4.67822H30.7376C30.1996 4.67822 29.7621 4.21686 29.7621 3.64938C29.7621 3.0819 30.1996 2.62054 30.7376 2.62054H37.2164V0H30.7376C28.8259 0 27.2773 1.63322 27.2773 3.64938V3.65861Z" fill="#333333"/>
+  </symbol>
+</svg>
+
+<div class="page-title">PC 데스크톱 프리뷰 — 에어스토어 홈 v7.0 (컬러 규칙 적용)</div>
+<div class="page-sub">탭, 검색바, 배너 화살표, 업종별 클러스터 등을 클릭하면 실제 인터랙션을 확인할 수 있습니다</div>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="browser-dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+    <div class="browser-url" id="urlBar">🔒 app.airsupply.kr/store</div>
+  </div>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar" id="wf-sidebar">
+      <div class="side-logo">air</div>
+      <!-- 우리 회사 -->
+      <div class="side-section-label">우리 회사</div>
+      <div class="side-item"><div class="ico">📂</div><div class="lbl">폴더</div></div>
+      <div class="side-item"><div class="ico">🏠</div><div class="lbl">내 활동</div></div>
+      <div class="side-item"><div class="ico">⚙️</div><div class="lbl">관리</div></div>
+      <!-- 구분선 -->
+      <div class="side-divider"></div>
+      <!-- 공용 -->
+      <div class="side-section-label">공용</div>
+      <div class="side-item on"><div class="ico">🏪</div><div class="lbl">스토어</div><div class="side-badge">Beta</div></div>
+    </div>
+
+    <!-- Main -->
+    <div class="main-content">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-beta">탐색 <span>Beta</span></div>
+        <div class="service-tabs">
+          <div class="service-tab on">에어스토어</div>
+          <div class="service-tab">렌탈 <span class="badge">준비중</span></div>
+          <div class="service-tab">주문제작 <span class="badge">준비중</span></div>
+        </div>
+      </div>
+
+      <!-- Store Tabs -->
+      <div class="store-tabs-bar">
+        <div class="store-tabs">
+          <button class="store-tab on" data-tab="home" onclick="switchTab('home')">스토어 홈</button>
+          <button class="store-tab" data-tab="snack" onclick="switchTab('snack')">간식 패키지</button>
+          <button class="store-tab" data-tab="industry" onclick="switchTab('industry')">업종별 상품탐색</button>
+          <button class="store-tab" data-tab="promo" onclick="switchTab('promo')">기획전</button>
+        </div>
+        <div class="tab-right">
+          <div class="tab-icon">♡</div>
+          <div class="tab-icon">🔔</div>
+          <div class="cart-btn" style="background:var(--p);color:#fff;border-color:var(--p);">📂 폴더에 담기</div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content-scroll" id="contentScroll">
+
+        <!-- ====== TAB: 스토어 홈 ====== -->
+        <div class="tab-pane active" id="pane-home" data-wf-id="wf-store-home">
+
+          <!-- HERO: Search + Banner -->
+          <div class="hero-section" id="wf-hero">
+            <div class="hero-row">
+              <!-- Search -->
+              <div class="hero-search">
+                <div class="search-bar-wrap">
+                  <div class="search-bar" id="searchBar" onclick="openSearch()">
+                    <div class="icon">🔍</div>
+                    <div class="text">상품명, 브랜드명으로 검색하세요</div>
+                    <div class="cat">카테고리 ▾</div>
+                    <div class="sbtn">검색</div>
+                  </div>
+                  <!-- Search Dropdown -->
+                  <div class="search-dropdown" id="searchDropdown">
+                    <div class="sd-row">
+                      <div class="sd-left">
+                        <div class="sd-title"><span>최근 검색어</span><span class="del">전체 삭제</span></div>
+                        <div class="sd-chips">
+                          <div class="sd-chip">아이스컵 16oz</div>
+                          <div class="sd-chip">A4용지</div>
+                          <div class="sd-chip">물티슈</div>
+                          <div class="sd-chip">원두커피 1kg</div>
+                          <div class="sd-chip">냅킨</div>
+                        </div>
+                      </div>
+                      <div class="sd-right">
+                        <div class="sd-title">카테고리 바로가기</div>
+                        <div class="sd-cat-grid">
+                          <div class="sd-cat-item"><div class="e">🥤</div><div class="n">음료서비스</div></div>
+                          <div class="sd-cat-item"><div class="e">☕</div><div class="n">커피·음료</div></div>
+                          <div class="sd-cat-item"><div class="e">📦</div><div class="n">사무용품</div></div>
+                          <div class="sd-cat-item"><div class="e">🧹</div><div class="n">위생·세정</div></div>
+                          <div class="sd-cat-item"><div class="e">🧁</div><div class="n">베이커리</div></div>
+                          <div class="sd-cat-item"><div class="e">🍪</div><div class="n">간식</div></div>
+                          <div class="sd-cat-item"><div class="e">💡</div><div class="n">전기·조명</div></div>
+                          <div class="sd-cat-item" style="background:var(--pl);"><div class="e">📂</div><div class="n" style="color:var(--p);font-weight:600;">전체보기</div></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="hero-tags">
+                  <div class="hero-tag">최근: 아이스컵 16oz</div>
+                  <div class="hero-tag">최근: A4용지</div>
+                  <div class="hero-tag">최근: 물티슈</div>
+                  <div class="hero-tag">최근: 원두커피 1kg</div>
+                </div>
+              </div>
+
+              <!-- Banner Carousel -->
+              <div class="hero-banner">
+                <div class="carousel-wrap">
+                  <div class="carousel-slide s1 active" onclick="switchTab('snack')" style="cursor:pointer;">
+                    <div class="slide-info">
+                      <div class="slide-badge">🍪 간식 패키지</div>
+                      <div class="slide-title">나만의 간식 패키지 만들기</div>
+                      <div class="slide-desc">예산과 인원만 알려주세요</div>
+                    </div>
+                    <div class="slide-emoji">🍪</div>
+                  </div>
+                  <div class="carousel-slide s2" onclick="goToPromo('sparkle')" style="cursor:pointer;">
+                    <div class="slide-info">
+                      <div class="slide-badge">혜택</div>
+                      <div class="slide-title">스파클 기획전</div>
+                      <div class="slide-desc">A4용지 최대 30% 할인</div>
+                    </div>
+                    <div class="slide-emoji">📄</div>
+                  </div>
+                  <div class="carousel-slide s3" onclick="goToPromo('kojubu')" style="cursor:pointer;">
+                    <div class="slide-info">
+                      <div class="slide-badge">혜택</div>
+                      <div class="slide-title">코주부 위생용지 도매가</div>
+                      <div class="slide-desc">부림제지 핸드타올·화장지</div>
+                    </div>
+                    <div class="slide-emoji">🧻</div>
+                  </div>
+                  <div class="carousel-slide s4" onclick="goToPromo('apple')" style="cursor:pointer;">
+                    <div class="slide-info">
+                      <div class="slide-badge">할인행사</div>
+                      <div class="slide-title">애플제품 저렴하게 구매하기</div>
+                      <div class="slide-desc">수량 제한 없는 기업 특별가</div>
+                    </div>
+                    <div class="slide-emoji">🍎</div>
+                  </div>
+                  <button class="carousel-arrow left" onclick="prevSlide()">◂</button>
+                  <button class="carousel-arrow right" onclick="nextSlide()">▸</button>
+                </div>
+                <div class="carousel-dots" id="carouselDots">
+                  <div class="cdot on" onclick="goSlide(0)"></div>
+                  <div class="cdot" onclick="goSlide(1)"></div>
+                  <div class="cdot" onclick="goSlide(2)"></div>
+                  <div class="cdot" onclick="goSlide(3)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEC 1: 자주 구매하는 상품 -->
+          <div class="section" id="wf-repeat-purchase">
+            <div class="sec-hdr">
+              <div class="sec-title" style="font-size:18px;font-weight:800;">에어서플라이 고객들이 반복해서 구매한 상품</div>
+            </div>
+            <div class="cycle-tabs" id="freqTabs">
+              <button class="cycle-tab on" onclick="filterFreq(this,'all')">전체</button>
+              <button class="cycle-tab" onclick="filterFreq(this,'weekly')">매주</button>
+              <button class="cycle-tab" onclick="filterFreq(this,'biweekly')">격주</button>
+              <button class="cycle-tab" onclick="filterFreq(this,'monthly')">매월</button>
+            </div>
+            <div class="prod-grid-5" id="freqProdGrid"></div>
+          </div>
+
+          <!-- SEC 2: 업종별 상품탐색 -->
+          <div class="section" id="wf-industry-rec" style="padding:0;">
+            <div class="sec-hdr" style="padding:24px 32px 0;margin-bottom:0;">
+              <div class="sec-title"><span id="homeIndSectionTitle">로랩스</span>와/과 비슷한 업종의 고객들이 구매하는 상품</div>
+              <div class="sec-more" onclick="switchTab('industry')">전체보기 →</div>
+            </div>
+            <div class="ind-row">
+              <!-- Sidebar 1열 아이콘 카드 -->
+              <div class="ind-sidebar">
+                <div class="ind-type-list" id="homeIndTabs"></div>
+              </div>
+              <!-- Main content -->
+              <div class="ind-main">
+                <div class="ind-page-header">
+                  <div class="ind-cats" id="homeIndCats"></div>
+                </div>
+                <div class="ind-subs-wrap" id="homeIndSubsWrap"></div>
+                <div class="ind-prod-area">
+                  <div class="ind-prod-section-label" id="homeIndProdTitle"></div>
+                  <div class="ind-prods" id="homeIndProds"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEC 3: 카테고리 BEST -->
+          <div class="section" id="wf-category-best">
+            <div class="sec-hdr">
+              <div class="sec-title">카테고리 BEST</div>
+            </div>
+            <div class="cat-pills">
+              <button class="cat-pill on" onclick="catPill(this)">전체</button>
+              <button class="cat-pill off" onclick="catPill(this)">음료</button>
+              <button class="cat-pill off" onclick="catPill(this)">과자/간식</button>
+              <button class="cat-pill off" onclick="catPill(this)">유제품</button>
+              <button class="cat-pill off" onclick="catPill(this)">냉동식품</button>
+              <button class="cat-pill off" onclick="catPill(this)">사무용품</button>
+              <button class="cat-pill off" onclick="catPill(this)">위생용품</button>
+            </div>
+            <div class="prod-grid-5">
+              <div class="prod-card" id="wf-product-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">1</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">코카콜라 1.5L</div><div class="prod-pr">₩1,800</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">2</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">삼다수 2L 6입</div><div class="prod-pr">₩4,200</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">3</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">포카리스웨트 500ml</div><div class="prod-pr">₩1,200</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">4</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">카페라떼 200ml</div><div class="prod-pr">₩1,500</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">5</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">밀키스 250ml</div><div class="prod-pr">₩900</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">6</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">비타500</div><div class="prod-pr">₩600</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">7</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">신라면 5입</div><div class="prod-pr">₩3,980</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">8</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">오레오 300g</div><div class="prod-pr">₩3,200</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">9</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">서울우유 1L</div><div class="prod-pr">₩2,800</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+              <div class="prod-card"><div class="prod-img"><span>IMG</span><div class="prod-rank">10</div></div><div class="prod-logo"><svg><use href="#as-logo"/></svg></div><div class="prod-bd"><div class="prod-text"><div class="prod-nm">크리넥스 3겹 30롤</div><div class="prod-pr">₩15,900</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div></div></div>
+            </div>
+          </div>
+
+          <!-- SEC 4: 브랜드 모아보기 -->
+          <div class="section" id="wf-brands">
+            <div class="sec-hdr">
+              <div class="sec-title">브랜드 모아보기</div>
+            </div>
+            <div class="brand-wrap">
+              <div class="brand-arrow left" onclick="scrollBrand(-1)">◂</div>
+              <div class="brand-row" id="brandRow">
+                <div class="brand-item" onclick="openBrandSearch('CJ제일제당')"><div class="brand-circle">CJ</div><div class="brand-name">CJ제일제당</div></div>
+                <div class="brand-item" onclick="openBrandSearch('오뚜기')"><div class="brand-circle">오뚜기</div><div class="brand-name">오뚜기</div></div>
+                <div class="brand-item" onclick="openBrandSearch('농심')"><div class="brand-circle">농심</div><div class="brand-name">농심</div></div>
+                <div class="brand-item" onclick="openBrandSearch('롯데칠성')"><div class="brand-circle">롯데</div><div class="brand-name">롯데칠성</div></div>
+                <div class="brand-item" onclick="openBrandSearch('해태제과')"><div class="brand-circle">해태</div><div class="brand-name">해태제과</div></div>
+                <div class="brand-item" onclick="openBrandSearch('동서식품')"><div class="brand-circle">동서</div><div class="brand-name">동서식품</div></div>
+                <div class="brand-item" onclick="openBrandSearch('빙그레')"><div class="brand-circle">빙그레</div><div class="brand-name">빙그레</div></div>
+                <div class="brand-item" onclick="openBrandSearch('매일유업')"><div class="brand-circle">매일</div><div class="brand-name">매일유업</div></div>
+                <div class="brand-item" onclick="openBrandSearch('풀무원')"><div class="brand-circle">풀무원</div><div class="brand-name">풀무원</div></div>
+                <div class="brand-item" onclick="openBrandSearch('삼양식품')"><div class="brand-circle">삼양</div><div class="brand-name">삼양식품</div></div>
+              </div>
+              <div class="brand-arrow right" onclick="scrollBrand(1)">▸</div>
+            </div>
+          </div>
+
+          <!-- SEC 5: 간식 패키지 만들기 CTA (크림 일러스트 배너) -->
+          <div class="snack-home-banner" onclick="switchTab('snack')">
+            <div class="shb-left">
+              <div class="shb-pre">간식 고르느라 시간 쓰지 마세요!</div>
+              <div class="shb-title">예산만 알려주면<br><em>간식은 알아서</em> 채워드려요</div>
+              <div class="shb-desc">구매 데이터 기반으로 우리 회사에 딱 맞는<br>간식 조합을 자동으로 만들어드려요.</div>
+              <button class="shb-cta" onclick="event.stopPropagation();switchTab('snack')">간식 세트 만들기 →</button>
+              <div class="shb-stats">
+                <div class="shb-stat"><span class="shb-stat-num">3분</span> 만에 완성</div>
+                <div class="shb-stat"><span class="shb-stat-num">25종</span> 간식</div>
+                <div class="shb-stat"><span class="shb-stat-num">87%</span> 재주문</div>
+              </div>
+            </div>
+            <div class="shb-right">
+              <div class="snack-scene">
+                <div class="deco-circle dc1"></div>
+                <div class="deco-circle dc2"></div>
+                <div class="cookie-main">🍪</div>
+                <div class="float-snack fs1"><span class="emoji">🍫</span><div class="info"><div class="nm">빈츠 102g</div><div class="pr">17,380원</div></div></div>
+                <div class="float-snack fs2"><span class="emoji">☕</span><div class="info"><div class="nm">드립백 커피</div><div class="pr">18,490원</div></div></div>
+                <div class="float-snack fs3"><span class="emoji">🥜</span><div class="info"><div class="nm">하루견과 50개</div><div class="pr">27,900원</div></div></div>
+                <div class="float-snack fs4"><span class="emoji">🧃</span><div class="info"><div class="nm">카프리썬 20입</div><div class="pr">9,800원</div></div></div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end pane-home -->
+
+        <!-- ====== TAB: 간식 패키지 (빌더 내장) ====== -->
+        <div class="tab-pane" id="pane-snack" data-wf-id="wf-snack">
+
+          <!-- 빌더 PAGE 0: 히어로 + 패키지 목록 -->
+          <div class="bd-page" id="bd-page0">
+
+            <!-- 간식 세트 만들기 시작 -->
+            <div style="padding:48px 32px;text-align:center;">
+              <div style="font-size:48px;margin-bottom:16px;">🍪</div>
+              <div style="font-size:22px;font-weight:800;color:var(--t1);margin-bottom:6px;">간식 세트 만들기</div>
+              <div style="font-size:13px;color:#999;margin-bottom:28px;">예산과 인원만 알려주면 딱 맞는 간식 세트를 구성해드려요.<br>완성된 세트는 바로 폴더에 담을 수 있습니다.</div>
+              <button style="padding:14px 36px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;" onclick="bdGoBuilderWithPreset(null,1)">+ 간식 세트 만들기</button>
+            </div>
+          </div>
+
+
+          <!-- 빌더 PAGE 1: 4단계 위자드 -->
+          <div class="builder-full" id="bd-page1" style="display:none;">
+            <div class="builder-back" onclick="bdGoPage('bd-page0')">← 돌아가기</div>
+
+            <!-- 세트 이름 입력 -->
+            <div class="name-block" style="margin-bottom:28px;">
+              <div class="name-label">세트 이름</div>
+              <input class="name-input is-default" type="text" id="bd-set-name" value="4월 로랩스 간식">
+              <div class="name-hint" id="bd-name-hint">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#C0C0C0" stroke-width="1.2"/><path d="M6 5.5V8.5M6 3.5V4.5" stroke="#C0C0C0" stroke-width="1.2" stroke-linecap="round"/></svg>
+                <span id="bd-name-hint-text">입력하지 않으면 이 이름으로 저장돼요</span>
+              </div>
+            </div>
+
+            <!-- 구분선: 세트이름 ↔ 스텝 영역 -->
+            <div style="margin:0 0 20px;border-top:1px solid #EBEBEB;"></div>
+
+            <!-- STEP 1 -->
+            <div class="acc-section" id="bd-acc1">
+              <div class="acc-hdr" id="bd-hdr1" onclick="bdToggleAcc(1)">
+                <div class="sdwrap"><div class="sdot on" id="bd-d1"></div><div class="dline" id="bd-dl1"></div></div>
+                <div class="acc-hdr-text"><div class="sec-ttl">어떤 간식을 주로 구매하시나요?</div><div class="sec-sub">목적에 맞게 간식 비율을 자동으로 잡아드려요</div></div>
+                <div class="done-badge" id="bd-b1">완료</div>
+                <div class="reopen-hint" id="bd-rh1">클릭해서 수정</div>
+              </div>
+              <div class="acc-body" id="bd-body1">
+                <div class="input-card-row">
+                  <div class="input-card" id="bd-card-people">
+                    <label class="input-card-lbl">회사 인원</label>
+                    <input class="input-card-val" id="bd-people" value="20" type="number" min="5" oninput="bdValidateInputs()">
+                    <div class="input-card-warn" id="bd-warn-people">최소 인원은 5명 이상이어야 해요</div>
+                  </div>
+                  <div class="input-card" id="bd-card-budget">
+                    <label class="input-card-lbl">월 간식 예산</label>
+                    <div class="input-card-unit"><input class="input-card-val" id="bd-budget" value="300,000" oninput="bdValidateInputs()"><span class="unit-suffix">원</span></div>
+                    <div class="input-card-warn" id="bd-warn-budget">최소 예산은 100,000원 이상이어야 해요</div>
+                  </div>
+                </div>
+                <div class="reopen-warn" id="bd-warn1">Step 1을 수정하면 이후 단계(비율·상품)가 초기화돼요</div>
+                <div class="tsplit">
+                  <div><div class="tgrp-lbl">직원 복지형</div>
+                    <div class="pcards">
+                      <div class="pcard" onclick="bdSelP(this,'daily')" id="bd-pc-daily"><div class="pcard-ico">🍪</div><div class="pcard-name">사무실<br>일상 간식</div></div>
+                      <div class="pcard" onclick="bdSelP(this,'health')" id="bd-pc-health"><div class="pcard-ico">🥗</div><div class="pcard-name">건강한<br>간식</div></div>
+                      <div class="pcard" onclick="bdSelP(this,'meeting')" id="bd-pc-meeting"><div class="pcard-ico">⚡</div><div class="pcard-name">집중을 위한<br>에너지</div></div>
+                      <div class="pcard" onclick="bdSelP(this,'energy')" id="bd-pc-energy"><div class="pcard-ico">☕</div><div class="pcard-name">회의하며<br>먹는 간식</div></div>
+                    </div>
+                  </div>
+                  <div><div class="tgrp-lbl">고객 응대형</div>
+                    <div class="hcard" onclick="bdSelP(this,'hosting')" id="bd-pc-hosting"><div class="hcard-ico">🎁</div><div><div class="pcard-name">고객 응대를 위한 간식</div><div class="pcard-desc" style="margin-top:4px;">공유오피스·쇼룸·딜러사<br>개별포장·프리미엄 상품 위주</div></div></div>
+                    <div class="guidebox" id="bd-guide"><p>인원수는 <b>일 평균 방문객 수</b> 기준으로 입력해주세요.</p></div>
+                  </div>
+                </div>
+                <button class="snext inactive" id="bd-btn1" onclick="bdTryDone1()">다음 — 비율 조정하기 →</button>
+              </div>
+            </div>
+
+            <!-- STEP 2 -->
+            <div class="acc-section" id="bd-acc2" style="display:none;">
+              <div class="acc-hdr" id="bd-hdr2" onclick="bdToggleAcc(2)">
+                <div class="sdwrap"><div class="sdot" id="bd-d2"></div><div class="dline" id="bd-dl2"></div></div>
+                <div class="acc-hdr-text"><div class="sec-ttl">카테고리 비율을 조정해보세요</div><div class="sec-sub">비율을 바꾸면 추천 상품 수와 예산이 함께 바뀌어요</div></div>
+                <div class="done-badge" id="bd-b2">완료</div>
+                <div class="reopen-hint" id="bd-rh2">클릭해서 수정</div>
+              </div>
+              <div class="acc-body" id="bd-body2">
+                <div class="reopen-warn" id="bd-warn2">Step 2를 수정하면 상품 추천이 초기화돼요</div>
+                <div class="notice"><div class="nic"><span>i</span></div><p>동종 업계 기업들의 실제 구매 데이터를 기반으로 최적 비율을 자동 설정했어요.</p></div>
+                <div style="margin-bottom:16px;">
+                  <div class="f-dist-bar" id="bd-f-bar">
+                    <div class="f-seg" id="bd-fs0" style="width:40%;background:#222222;"><div class="f-seg-inner">달달 40%</div></div>
+                    <div class="f-seg" id="bd-fs1" style="width:27%;background:#555555;"><div class="f-seg-inner">짭짤 27%</div></div>
+                    <div class="f-seg" id="bd-fs2" style="width:18%;background:#888888;"><div class="f-seg-inner">건강 18%</div></div>
+                    <div class="f-seg" id="bd-fs3" style="width:11%;background:#AAAAAA;"><div class="f-seg-inner">음료 11%</div></div>
+                    <div class="f-seg" id="bd-fs4" style="width:4%;background:#D0D0D0;"><div class="f-seg-inner"></div></div>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;">
+                    <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);"><div style="width:8px;height:8px;border-radius:2px;background:#222222;"></div>달달한</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);"><div style="width:8px;height:8px;border-radius:2px;background:#555555;"></div>짭짤/고소한</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);"><div style="width:8px;height:8px;border-radius:2px;background:#888888;"></div>건강/포만</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);"><div style="width:8px;height:8px;border-radius:2px;background:#AAAAAA;"></div>음료</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);"><div style="width:8px;height:8px;border-radius:2px;background:#D0D0D0;"></div>기타</div>
+                  </div>
+                </div>
+                <div class="slider-list">
+                  <div class="slider-item">
+                    <div class="slider-label"><div class="sl-name">달달한 간식</div><div class="sl-badge" id="bd-h1">약 8종</div></div>
+                    <div class="slider-track-wrap">
+                      <input type="range" min="0" max="100" step="1" value="40" id="bd-sl1" oninput="bdSlide(1)">
+                      <div class="slider-track"><div class="slider-fill" id="bd-sf0" style="width:40%;"></div></div>
+                      <div class="slider-thumb" id="bd-st0" style="left:40%;">40</div>
+                    </div>
+                    <div class="slider-value"><div class="sv-pct" id="bd-sp0">40%</div><div class="sv-amt" id="bd-sa1">120,000원</div></div>
+                  </div>
+                  <div class="slider-item">
+                    <div class="slider-label"><div class="sl-name">짭짤/고소한 간식</div><div class="sl-badge" id="bd-h2">약 2종</div></div>
+                    <div class="slider-track-wrap">
+                      <input type="range" min="0" max="100" step="1" value="27" id="bd-sl2" oninput="bdSlide(2)">
+                      <div class="slider-track"><div class="slider-fill" id="bd-sf1" style="width:27%;"></div></div>
+                      <div class="slider-thumb" id="bd-st1" style="left:27%;">27</div>
+                    </div>
+                    <div class="slider-value"><div class="sv-pct" id="bd-sp1">27%</div><div class="sv-amt" id="bd-sa2">81,000원</div></div>
+                  </div>
+                  <div class="slider-item">
+                    <div class="slider-label"><div class="sl-name">건강/포만 간식</div><div class="sl-badge" id="bd-h3">약 1종</div></div>
+                    <div class="slider-track-wrap">
+                      <input type="range" min="0" max="100" step="1" value="18" id="bd-sl3" oninput="bdSlide(3)">
+                      <div class="slider-track"><div class="slider-fill" id="bd-sf2" style="width:18%;"></div></div>
+                      <div class="slider-thumb" id="bd-st2" style="left:18%;">18</div>
+                    </div>
+                    <div class="slider-value"><div class="sv-pct" id="bd-sp2">18%</div><div class="sv-amt" id="bd-sa3">54,000원</div></div>
+                  </div>
+                  <div class="slider-item">
+                    <div class="slider-label"><div class="sl-name">음료</div><div class="sl-badge" id="bd-h4">약 1종</div></div>
+                    <div class="slider-track-wrap">
+                      <input type="range" min="0" max="100" step="1" value="11" id="bd-sl4" oninput="bdSlide(4)">
+                      <div class="slider-track"><div class="slider-fill" id="bd-sf3" style="width:11%;"></div></div>
+                      <div class="slider-thumb" id="bd-st3" style="left:11%;">11</div>
+                    </div>
+                    <div class="slider-value"><div class="sv-pct" id="bd-sp3">11%</div><div class="sv-amt" id="bd-sa4">33,000원</div></div>
+                  </div>
+                  <div class="slider-item readonly" style="border-bottom:none;">
+                    <div class="slider-label"><div class="sl-name" style="color:#999;">기타 (예비)</div><div class="slider-auto-label">AUTO</div></div>
+                    <div class="slider-track-wrap">
+                      <input type="range" min="0" max="100" step="1" value="4" id="bd-sl5">
+                      <div class="slider-track"><div class="slider-fill" id="bd-sf4" style="width:4%;background:#D0D0D0;"></div></div>
+                      <div class="slider-thumb" id="bd-st4" style="left:4%;border-color:#D0D0D0;color:#999;">4</div>
+                    </div>
+                    <div class="slider-value"><div class="sv-pct" id="bd-sp4" style="color:#999;">4%</div><div class="sv-amt" id="bd-sa5" style="color:#C0C0C0;">12,000원</div></div>
+                  </div>
+                </div>
+                <div class="f-total-row"><span style="font-size:12px;color:var(--t2);">예산 배정 현황</span><span id="bd-totd" class="tok">예비 4% (12,000원) 남음</span></div>
+                <button class="snext active" onclick="bdDone2()">추천 상품 보러가기 →</button>
+              </div>
+            </div>
+
+            <!-- STEP 3 -->
+            <div class="acc-section" id="bd-acc3" style="display:none;">
+              <div class="acc-hdr" id="bd-hdr3" onclick="bdToggleAcc(3)">
+                <div class="sdwrap"><div class="sdot" id="bd-d3"></div><div class="dline" id="bd-dl3"></div></div>
+                <div class="acc-hdr-text"><div class="sec-ttl">이런 간식 어때요?</div><div class="sec-sub">카드에 마우스를 올리면 교체(↻) 또는 삭제(×)를 할 수 있어요</div></div>
+                <div class="done-badge" id="bd-b3">완료</div>
+                <div class="reopen-hint" id="bd-rh3">클릭해서 수정</div>
+              </div>
+              <div class="acc-body" id="bd-body3">
+                <div class="notice"><div class="nic"><span>i</span></div><p><b>수량은 어떻게 정했나요?</b> 카테고리 예산 ÷ 추천 종류 수로 자동 계산했어요. 상품을 삭제하면 나머지 상품에 예산이 균등 재배분돼요.</p></div>
+                <div id="bd-prodbody"></div>
+                <button class="snext active" onclick="bdDone3()">이 구성으로 확정하기 →</button>
+              </div>
+            </div>
+
+            <!-- STEP 4 -->
+            <div class="acc-section" id="bd-acc4" style="display:none;">
+              <div class="acc-hdr" id="bd-hdr4" style="cursor:default;">
+                <div class="sdwrap"><div class="sdot" id="bd-d4"></div></div>
+                <div class="acc-hdr-text"><div class="sec-ttl">간식 고민 끝! 간식 세트가 완성됐어요</div><div class="sec-sub">예산·인원·목적에 딱 맞게 완성됐어요</div></div>
+              </div>
+              <div class="acc-body" id="bd-body4">
+                <div class="fin-summary-card"><div class="fin-summary-ttl">구성 요약</div><div id="bd-finrows"></div>
+                  <div class="fin-total-row"><span style="font-size:14px;font-weight:700;color:var(--t1);">상품 금액</span><span style="font-size:18px;font-weight:700;color:var(--t1);" id="bd-fin-total-amt">—</span></div>
+                </div>
+                <div class="shiprow"><span style="font-size:14px;font-weight:700;color:var(--g);">🚚 배송비 무료</span></div>
+                <div class="cta-row-final"><button class="ctap" onclick="bdShowCartModal()" style="flex:1;">간식 세트 만들기</button></div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end pane-snack -->
+
+        <!-- ====== TAB: 업종별 상품탐색 ====== -->
+        <div class="tab-pane" id="pane-industry" data-wf-id="wf-industry">
+          <div class="ind-full-content">
+            <!-- 아코디언 트리 사이드바 -->
+            <div class="ind-tree-sidebar">
+              <div id="fullTreeNav"></div>
+            </div>
+            <!-- 상품 영역 -->
+            <div class="ind-product-pane">
+              <div class="ind-pane-header">
+                <div class="ind-pane-title" id="fullPaneTitle"></div>
+                <div class="ind-sub-filter" id="fullSubFilter"></div>
+              </div>
+              <div class="ind-product-area">
+                <div class="ind-product-grid" id="fullProductGrid"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====== TAB: 기획전 ====== -->
+        <div class="tab-pane" id="pane-promo" data-wf-id="wf-promotions">
+          <!-- 기획전 목록 -->
+          <div class="promo-page" id="promoList">
+            <div class="promo-title">기획전</div>
+            <div class="promo-desc">브랜드별 특별 할인가 기획전. 수시 업데이트됩니다.</div>
+            <div class="promo-grid">
+              <div class="promo-card" onclick="openPromoDetail('sparkle')">
+                <div class="promo-banner promo-b1">
+                  <div class="info"><div class="tag">혜택</div><div class="name">스파클 기획전</div><div class="sub">A4용지·복사용지 최대 30% 할인</div></div>
+                  <div class="deco">📄</div>
+                  <div class="view-link">상품 12개 보기 →</div>
+                </div>
+                <div class="promo-footer"><div class="date">2026-03-01 ~ 2026-04-30</div><div class="fname">스파클 복사용지 기획전</div><div class="prod-count">등록 상품 12개</div></div>
+              </div>
+              <div class="promo-card" onclick="openPromoDetail('kojubu')">
+                <div class="promo-banner promo-b2">
+                  <div class="info"><div class="tag">혜택</div><div class="name">코주부 위생용지 도매가</div><div class="sub">부림제지 핸드타올·화장지 특가</div></div>
+                  <div class="deco">🧻</div>
+                  <div class="view-link">상품 8개 보기 →</div>
+                </div>
+                <div class="promo-footer"><div class="date">2026-03-15 ~ 2026-04-15</div><div class="fname">코주부 위생용지 도매가</div><div class="prod-count">등록 상품 8개</div></div>
+              </div>
+              <div class="promo-card" onclick="openPromoDetail('apple')">
+                <div class="promo-banner promo-b3">
+                  <div class="info"><div class="tag">할인행사</div><div class="name">애플제품 저렴하게 구매하기</div><div class="sub">수량 제한 없는 기업 특별가</div></div>
+                  <div class="deco">🍎</div>
+                  <div class="view-link">상품 15개 보기 →</div>
+                </div>
+                <div class="promo-footer"><div class="date">상시 진행</div><div class="fname">수량 제한 없는 애플제품</div><div class="prod-count">등록 상품 15개</div></div>
+              </div>
+              <div class="promo-card" onclick="openPromoDetail('spring')">
+                <div class="promo-banner promo-b4">
+                  <div class="info"><div class="tag">할인행사</div><div class="name">봄맞이 간식 & 차류 할인</div><div class="sub">봄 시즌 필수 간식과 차</div></div>
+                  <div class="deco">🌸</div>
+                  <div class="view-link">상품 20개 보기 →</div>
+                </div>
+                <div class="promo-footer"><div class="date">2026-03-01 ~ 2026-04-30</div><div class="fname">봄맞이 인기 간식 & 차류 할인</div><div class="prod-count">등록 상품 20개</div></div>
+              </div>
+            </div>
+          </div>
+          <!-- 기획전 상세 페이지 -->
+          <div class="promo-detail" id="promoDetail" style="display:none;">
+            <div class="promo-detail-hero" id="promoDetailHero">
+              <button class="back-btn" onclick="closePromoDetail()">← 기획전 목록</button>
+              <div class="info" id="promoDetailInfo"></div>
+              <div class="deco" id="promoDetailDeco"></div>
+            </div>
+            <div class="promo-detail-body">
+              <!-- 전체 기획전 상품 -->
+              <div class="promo-all-section">
+                <div class="promo-all-title" id="promoAllTitle"></div>
+                <div class="promo-all-desc" id="promoAllDesc"></div>
+                <div class="promo-all-grid" id="promoAllGrid"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====== 브랜드 검색 결과 페이지 (오버레이) ====== -->
+        <div class="tab-pane" id="pane-brand-search" style="padding:24px 32px;">
+          <div class="bs-topbar">
+            <div class="bs-back" onclick="closeBrandSearch()">←</div>
+            <div class="bs-search-box active">
+              <div class="icon">🔍</div>
+              <div class="kw" id="bsKeyword">스파클</div>
+              <div class="x" onclick="closeBrandSearch()">✕</div>
+              <div class="sbtn">검색</div>
+            </div>
+          </div>
+          <div class="bs-brand-hdr">
+            <div class="bs-brand-logo">Logo</div>
+            <div class="bs-brand-info">
+              <div class="bn" id="bsBrandName">스파클</div>
+              <div class="bc" id="bsBrandCat">식품 · 생활/건강</div>
+            </div>
+            <div style="margin-left:auto;font-size:11px;color:#888;" id="bsBrandCount">21개 상품</div>
+          </div>
+          <div class="bs-filter-bar">
+            <div class="bs-filter on">전체</div>
+            <div class="bs-filter">무료배송</div>
+            <div class="bs-filter">희망일 배송</div>
+            <div class="bs-filter">퀵배송</div>
+            <div class="bs-sort">관련도순 ▾</div>
+          </div>
+          <div class="bs-prod-grid" id="bsProdGrid"></div>
+        </div>
+
+      </div><!-- end content-scroll -->
+    </div><!-- end main-content -->
+  </div><!-- end app-container -->
+</div><!-- end browser-frame -->
+
+<!-- 빌더 폴더 추가 모달 -->
+<div class="cart-modal-overlay" id="bd-cart-modal">
+  <div class="cart-modal">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%;margin-bottom:8px;">
+      <div class="cart-modal-ttl" style="font-size:20px;font-weight:800;text-align:left;">상품폴더에 추가하기</div>
+      <div style="font-size:22px;color:#999;cursor:pointer;line-height:1;" onclick="bdCloseCartModal()">✕</div>
+    </div>
+    <div style="font-size:13px;color:var(--t2);text-align:left;width:100%;margin-bottom:24px;">이 상품을 추가할 상품폴더를 선택해주세요.</div>
+    <!-- 폴더 드롭다운 셀렉트 -->
+    <div style="width:100%;margin-bottom:32px;position:relative;">
+      <select id="bd-folder-select" style="width:100%;padding:14px 16px;border:1px solid var(--bd);border-radius:10px;font-size:14px;color:var(--t3);background:#fff;appearance:none;-webkit-appearance:none;font-family:'Noto Sans KR',sans-serif;cursor:pointer;">
+        <option value="" disabled selected>상품폴더를 선택해주세요.</option>
+        <option value="기본 폴더">기본 폴더</option>
+        <option value="3월 간식 주문">3월 간식 주문</option>
+        <option value="사무용품">사무용품</option>
+        <option value="음료·커피">음료·커피</option>
+      </select>
+      <div style="position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--t1);pointer-events:none;">▼</div>
+    </div>
+    <div style="display:flex;gap:10px;width:100%;">
+      <button onclick="bdCloseCartModal()" style="flex:1;height:48px;border:1px solid var(--bd);border-radius:10px;background:#fff;font-size:15px;font-weight:600;color:var(--t1);cursor:pointer;font-family:'Noto Sans KR',sans-serif;">취소</button>
+      <button id="bd-folder-add-btn" onclick="bdConfirmFolder()" style="flex:1;height:48px;border:none;border-radius:10px;background:#e0e0e0;font-size:15px;font-weight:600;color:#999;cursor:default;font-family:'Noto Sans KR',sans-serif;">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast element -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 빌더 Data & Logic (bd- prefix) =====
+const BD_B=300000,BD_AVG={sweet:10800,salty:12900,health:14500,drink:12200},BD_MAX={sweet:12,salty:5,health:5,drink:5};
+const BD_PR={daily:[40,27,18,11,4],meeting:[30,20,15,15,20],health:[15,20,45,15,5],energy:[20,25,20,10,25],hosting:[38,17,10,20,15]};
+const BD_IMG_COLORS={sweet:['#F5E6D3','#F0D4B8','#EBC4A0','#E8D5C4','#F2DECE','#EDD5B8','#F5E8D8','#EAD0B5','#F0DCB8','#F4E2C8','#EDD8C0','#F2E0C5'],salty:['#E8F4E8','#D4EDD4','#C8E8C0','#D8EDD0','#CCE8C4'],health:['#FFF3E0','#FFE0B2','#FFCC80','#FFD180'],drink:['#E3F2FD','#BBDEFB','#90CAF9','#E8F5E9']};
+const BD_ALL_PRODS={sweet:[{n:'롯데 빈츠 102g×8입',p:17380,t:'달달·고소',sub:'102g×8입'},{n:'삼립 옛날밤만쥬 750g',p:8080,t:'달달·한입',sub:'750g'},{n:'오리온 몽쉘 오리지널 408g',p:5580,t:'달달·한입',sub:'408g'},{n:'해태 오예스 30g×48입',p:16080,t:'달달·한입',sub:'30g×48입'},{n:'오리온 후레쉬베리 840g',p:12680,t:'달달·공유형',sub:'840g'},{n:'노브랜드 카스타드',p:3480,t:'달달·한입',sub:'기본'},{n:'킷캣 녹차 527g',p:15100,t:'달달·고소',sub:'527g'},{n:'크라운 쿠크다스 케이크 616g',p:11280,t:'달달·개별포장',sub:'616g'},{n:'로투스 비스킷 156g×6입',p:10180,t:'달달·개별포장',sub:'156g×6입'},{n:'엠앤엠즈 피라미드 밀크 945g',p:22780,t:'달달·공유형',sub:'945g'},{n:'마이쮸 캔털루프멜론 284g×2',p:8480,t:'달달·한입',sub:'284g×2'},{n:'이클립스 쿨링소프트캔디 525g',p:10980,t:'달달·각성',sub:'525g'}],salty:[{n:'에낙 스파이시 레벨3 840g',p:13680,t:'짭짤·공유형',sub:'28g×30입'},{n:'켈로그 프링글스 미니 19g×30',p:14960,t:'짭짤·한입',sub:'19g×30개'},{n:'밀크 클래식 쌀과자 720g',p:9680,t:'고소·공유형',sub:'720g'},{n:'노브랜드 참깨크래커 216g',p:1980,t:'고소·한입',sub:'216g'},{n:'우고래빗 밸런스 하루견과 50개',p:27900,t:'고소·개별포장',sub:'20g×50개'}],health:[{n:'구운란 짜라란 중란 60구',p:16500,t:'건강·포만',sub:'60구'},{n:'오리온 단백질바 미니 324g',p:4980,t:'건강·고단백',sub:'324g'},{n:'노브랜드 간식소시지 504g',p:5680,t:'포만·고소',sub:'504g'},{n:'매일 두유 99.9% 190ml×24',p:9890,t:'건강·무카페인',sub:'190ml×24'}],drink:[{n:'곰곰 예가체프 드립백 커피',p:18490,t:'음료·카페인',sub:'8g×36개입'},{n:'카프리썬 오렌지망고 200ml×20',p:9800,t:'음료·무카페인',sub:'200ml×20입'},{n:'꽃샘 블랙 보리차',p:8940,t:'음료·무카페인',sub:'1g×100개입'},{n:'이롬 검은콩 두유 190ml×20',p:9890,t:'음료·건강',sub:'190ml×20입'}]};
+const BD_CATKEYS=['sweet','salty','health','drink'];
+const BD_CC={sweet:{bg:'#F5F5F5',c:'#222222',l:'달달한 간식'},salty:{bg:'#F5F5F5',c:'#555555',l:'짭짤/고소한 간식'},health:{bg:'#F5F5F5',c:'#888888',l:'건강/포만 간식'},drink:{bg:'#F5F5F5',c:'#555555',l:'음료'}};
+
+let bdPcts=[40,27,18,11,4],bdCur=null;
+let bdActiveProd={sweet:[],salty:[],health:[],drink:[]};
+let bdNextPoolIdx={sweet:0,salty:0,health:0,drink:0};
+let bdCurrentDetailName='',bdCurrentDetailPreset='';
+let bdOpenStep=1,bdDoneSteps=new Set();
+
+function bdCn(k,p){return Math.max(1,Math.min(BD_MAX[k],Math.round(BD_B*p/100/BD_AVG[k])));}
+
+function bdGoPage(id){['bd-page0','bd-page-detail','bd-page1'].forEach(p=>{const el=document.getElementById(p);if(el)el.style.display=(p===id?'block':'none');});document.getElementById('contentScroll').scrollTop=0;}
+function bdToggleMenu(e,id){e.stopPropagation();document.querySelectorAll('.ctx-menu').forEach(m=>{if(m.id!==id)m.classList.remove('show');});document.getElementById(id).classList.toggle('show');}
+function bdCloseAllMenus(){document.querySelectorAll('.ctx-menu').forEach(m=>m.classList.remove('show'));}
+function bdToggleSaveName(){const chk=document.getElementById('bd-save-chk'),inp=document.getElementById('bd-save-name');if(inp)inp.className='save-name-input'+(chk.checked?' show':'');}
+
+function bdShowCartModal(){
+  const sel=document.getElementById('bd-folder-select');
+  if(sel)sel.selectedIndex=0;
+  const btn=document.getElementById('bd-folder-add-btn');
+  if(btn){btn.style.background='#e0e0e0';btn.style.color='#999';btn.style.cursor='default';}
+  document.getElementById('bd-cart-modal').classList.add('show');
+  if(sel)sel.addEventListener('change',function(){
+    const btn=document.getElementById('bd-folder-add-btn');
+    if(btn&&this.value){btn.style.background='var(--t1)';btn.style.color='#fff';btn.style.cursor='pointer';}
+  });
+}
+function bdCloseCartModal(){document.getElementById('bd-cart-modal').classList.remove('show');}
+function bdConfirmFolder(){
+  const sel=document.getElementById('bd-folder-select');
+  if(!sel||!sel.value)return;
+  const sn=document.getElementById('bd-set-name');
+  const setName=sn?(sn.value||'4월 로랩스 간식'):'간식 세트';
+  bdCloseCartModal();
+  showToast(`"${setName}" 세트가 "${sel.value}" 폴더에 추가됐습니다`);
+}
+
+function bdShowDetail(name,preset,price,date,people,e){
+  if(e)e.stopPropagation();bdCloseAllMenus();
+  bdCurrentDetailName=name;bdCurrentDetailPreset=preset;
+  document.getElementById('bd-dt-name').textContent=name;document.getElementById('bd-dt-date').textContent=date;document.getElementById('bd-dt-people').textContent=people;document.getElementById('bd-dt-budget').textContent=price;
+  const tagEl=document.getElementById('bd-dt-tag');const tm={daily:{l:'일상 비치',bg:'var(--pl)',c:'var(--p)'},health:{l:'건강 중심',bg:'#EAF3DE',c:'#27500A'},hosting:{l:'고객 접대 중심',bg:'#FBEAF0',c:'#72243E'},meeting:{l:'회의 중심',bg:'#EBF3FF',c:'#0C447C'},energy:{l:'에너지 보충',bg:'#FAEEDA',c:'#633806'}};
+  const t=tm[preset]||tm.daily;tagEl.textContent=t.l;tagEl.style.background=t.bg;tagEl.style.color=t.c;
+  const budget=parseInt(price.replace(/,/g,'').replace('원',''));const p=BD_PR[preset]||BD_PR.daily;
+  const cats=[{k:'sweet',pi:0},{k:'salty',pi:1},{k:'health',pi:2},{k:'drink',pi:3}];let h='';
+  cats.forEach(cat=>{const n=bdCn(cat.k,p[cat.pi]),catB=Math.round(budget*p[cat.pi]/100),c=BD_CC[cat.k];h+=`<div class="detail-section"><div class="detail-sec-hdr"><div style="display:flex;align-items:center;gap:8px;"><span class="detail-sec-name">${c.l}</span><span class="detail-n-badge" style="background:${c.bg};color:${c.c};">${n}종</span></div><span class="detail-budget">${catB.toLocaleString('ko-KR')}원</span></div><div class="detail-prod-grid">`;for(let i=0;i<n;i++){const prod=BD_ALL_PRODS[cat.k][i%BD_ALL_PRODS[cat.k].length],qty=Math.max(1,Math.floor(catB/(n*prod.p))),bg=BD_IMG_COLORS[cat.k][i%BD_IMG_COLORS[cat.k].length];h+=`<div class="detail-prod-card"><div class="detail-prod-img" style="background:${bg};"><div style="width:60px;height:60px;background:rgba(255,255,255,.65);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#555;text-align:center;padding:4px;line-height:1.3;">${prod.n.substring(0,8)}</div></div><div class="detail-prod-body"><div class="detail-prod-name">${prod.n}</div><div class="detail-prod-meta">${prod.sub}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;"><span class="detail-prod-price">${prod.p.toLocaleString('ko-KR')}원</span><span class="detail-prod-qty">${qty}개</span></div></div></div>`;}h+=`</div></div>`;});
+  document.getElementById('bd-detail-prod-area').innerHTML=h;bdGoPage('bd-page-detail');
+}
+
+function bdGoStep3FromDetail(name,preset){
+  bdCloseAllMenus();bdCur=preset;bdPcts=[...BD_PR[preset]];
+  bdGoPage('bd-page1');bdResetBuilderAll();bdSelPresetKey(preset);
+  bdDoneSteps.add(1);bdDoneSteps.add(2);
+  document.getElementById('bd-d1').className='sdot done';document.getElementById('bd-dl1').className='dline done';bdCollapseStep(1);
+  document.getElementById('bd-d2').className='sdot done';document.getElementById('bd-dl2').className='dline done';bdShow('bd-acc2');bdCollapseStep(2);
+  bdInitActiveProd();bdRenderProds();
+  bdShow('bd-acc3');document.getElementById('bd-d3').className='sdot on';bdExpandStep(3,false);bdOpenStep=3;
+}
+
+function bdGoBuilderWithPreset(preset,startStep){
+  bdCur=preset;bdGoPage('bd-page1');bdResetBuilderAll();
+  if(preset)bdSelPresetKey(preset);
+  if(startStep===2&&preset){
+    bdPcts=[...BD_PR[preset]];bdUpdSliders();
+    bdDoneSteps.add(1);document.getElementById('bd-d1').className='sdot done';document.getElementById('bd-dl1').className='dline done';bdCollapseStep(1);
+    bdShow('bd-acc2');document.getElementById('bd-d2').className='sdot on';bdExpandStep(2,false);bdOpenStep=2;
+  }
+}
+
+function bdToggleAcc(step){
+  if(!bdDoneSteps.has(step-1)&&step>1&&bdOpenStep!==step)return;
+  if(bdOpenStep===step){if(bdDoneSteps.has(step)){bdCollapseStep(step);bdOpenStep=-1;}return;}
+  if(bdDoneSteps.has(step)){bdCollapseStep(bdOpenStep);bdExpandStep(step,true);bdOpenStep=step;}
+}
+function bdExpandStep(step,showWarn){
+  const body=document.getElementById('bd-body'+step),hdr=document.getElementById('bd-hdr'+step),b=document.getElementById('bd-b'+step),rh=document.getElementById('bd-rh'+step),warn=document.getElementById('bd-warn'+step);
+  if(body)body.style.display='block';if(hdr)hdr.classList.remove('done-closed');if(b)b.style.display='none';if(rh)rh.style.display='none';if(warn)warn.classList.toggle('show',showWarn);
+}
+function bdCollapseStep(step){
+  const body=document.getElementById('bd-body'+step),hdr=document.getElementById('bd-hdr'+step),b=document.getElementById('bd-b'+step),rh=document.getElementById('bd-rh'+step),warn=document.getElementById('bd-warn'+step);
+  if(body)body.style.display='none';if(hdr&&bdDoneSteps.has(step))hdr.classList.add('done-closed');if(b&&bdDoneSteps.has(step))b.style.display='flex';if(rh&&bdDoneSteps.has(step))rh.style.display='flex';if(warn)warn.classList.remove('show');
+}
+
+function bdSelP(el,p){document.querySelectorAll('#pane-snack .pcard, #pane-snack .hcard').forEach(c=>c.classList.remove('on'));el.classList.add('on');bdCur=p;document.getElementById('bd-guide').classList.toggle('show',p==='hosting');bdUpdateBtn1State();}
+function bdSelPresetKey(k){document.querySelectorAll('#pane-snack .pcard, #pane-snack .hcard').forEach(c=>c.classList.remove('on'));const m={daily:'bd-pc-daily',health:'bd-pc-health',meeting:'bd-pc-meeting',energy:'bd-pc-energy',hosting:'bd-pc-hosting'};if(m[k])document.getElementById(m[k]).classList.add('on');bdCur=k;document.getElementById('bd-guide').classList.toggle('show',k==='hosting');bdUpdateBtn1State();}
+
+// ===== 인원·예산 유효성 검사 =====
+const BD_MIN_PEOPLE = 5;
+const BD_MIN_BUDGET = 100000;
+
+function bdParseBudget() {
+  return parseInt((document.getElementById('bd-budget').value || '0').replace(/,/g, ''));
+}
+
+function bdValidateInputs() {
+  const peopleInput = document.getElementById('bd-people');
+  const budgetInput = document.getElementById('bd-budget');
+  const people = parseInt(peopleInput.value) || 0;
+  const budget = bdParseBudget();
+
+  // 인원 검증
+  const cardP = document.getElementById('bd-card-people');
+  const warnP = document.getElementById('bd-warn-people');
+  const pErr = people > 0 && people < BD_MIN_PEOPLE;
+  cardP.classList.toggle('error', pErr);
+  warnP.classList.toggle('show', pErr);
+
+  // 예산 검증
+  const cardB = document.getElementById('bd-card-budget');
+  const warnB = document.getElementById('bd-warn-budget');
+  const bErr = budget > 0 && budget < BD_MIN_BUDGET;
+  cardB.classList.toggle('error', bErr);
+  warnB.classList.toggle('show', bErr);
+
+  // "다음" 버튼 활성화 조건 갱신
+  bdUpdateBtn1State();
+  return !pErr && !bErr && people >= BD_MIN_PEOPLE && budget >= BD_MIN_BUDGET;
+}
+
+function bdUpdateBtn1State() {
+  const btn = document.getElementById('bd-btn1');
+  const people = parseInt(document.getElementById('bd-people').value) || 0;
+  const budget = bdParseBudget();
+  const valid = bdCur && people >= BD_MIN_PEOPLE && budget >= BD_MIN_BUDGET;
+  btn.className = valid ? 'snext active' : 'snext inactive';
+}
+
+function bdTryDone1(){if(!bdCur)return;if(!bdValidateInputs())return;bdDone1();}
+function bdDone1(){
+  if(!bdCur)return;
+  if(bdDoneSteps.has(2)||bdDoneSteps.has(3)||bdDoneSteps.has(4))bdResetFromStep(2);
+  bdPcts=[...BD_PR[bdCur]];bdUpdSliders();bdDoneSteps.add(1);bdCollapseStep(1);
+  document.getElementById('bd-d1').className='sdot done';document.getElementById('bd-dl1').className='dline done';
+  bdShow('bd-acc2');document.getElementById('bd-d2').className='sdot on';bdExpandStep(2,false);bdOpenStep=2;
+}
+function bdDone2(){
+  if(bdDoneSteps.has(3)||bdDoneSteps.has(4))bdResetFromStep(3);
+  bdDoneSteps.add(2);bdCollapseStep(2);
+  document.getElementById('bd-d2').className='sdot done';document.getElementById('bd-dl2').className='dline done';
+  bdInitActiveProd();bdRenderProds();bdShow('bd-acc3');document.getElementById('bd-d3').className='sdot on';bdExpandStep(3,false);bdOpenStep=3;
+}
+function bdDone3(){
+  bdDoneSteps.add(3);bdCollapseStep(3);
+  document.getElementById('bd-d3').className='sdot done';document.getElementById('bd-dl3').className='dline done';
+  bdRenderFin();bdShow('bd-acc4');document.getElementById('bd-d4').className='sdot on';bdExpandStep(4,false);bdOpenStep=4;
+}
+
+function bdResetFromStep(from){
+  for(let s=from;s<=4;s++){bdDoneSteps.delete(s);const acc=document.getElementById('bd-acc'+s);if(acc&&s>1)acc.style.display='none';const body=document.getElementById('bd-body'+s);if(body)body.style.display='block';const hdr=document.getElementById('bd-hdr'+s);if(hdr)hdr.classList.remove('done-closed');const b=document.getElementById('bd-b'+s);if(b)b.style.display='none';const rh=document.getElementById('bd-rh'+s);if(rh)rh.style.display='none';const d=document.getElementById('bd-d'+s);if(d)d.className='sdot';const dl=document.getElementById('bd-dl'+s);if(dl)dl.className='dline';const warn=document.getElementById('bd-warn'+s);if(warn)warn.classList.remove('show');}
+}
+
+function bdUpdSliders(){
+  const segl=['달달','짭짤','건강','음료','기타'];
+  [1,2,3,4,5].forEach(i=>{
+    const p=bdPcts[i-1];
+    const s=document.getElementById('bd-sl'+i);if(s)s.value=p;
+    // Custom slider: fill + thumb + value
+    const sf=document.getElementById('bd-sf'+(i-1));if(sf)sf.style.width=p+'%';
+    const st=document.getElementById('bd-st'+(i-1));if(st){st.style.left=p+'%';st.textContent=p;}
+    const sp=document.getElementById('bd-sp'+(i-1));if(sp)sp.textContent=p+'%';
+    const sa=document.getElementById('bd-sa'+i);if(sa)sa.textContent=Math.round(BD_B*p/100).toLocaleString('ko-KR')+'원';
+    // Ratio bar segments
+    const fs=document.getElementById('bd-fs'+(i-1));if(fs){fs.style.width=p+'%';const inner=fs.querySelector('.f-seg-inner');if(inner)inner.textContent=p>=7?segl[i-1]+' '+p+'%':'';}
+  });
+  BD_CATKEYS.forEach((k,i)=>{const h=document.getElementById('bd-h'+(i+1));if(h)h.textContent='약 '+bdCn(k,bdPcts[i])+'종';});
+  // 합계 표시 — 예산 상한선 기준 (기타 예비분 표시)
+  const reserve=bdPcts[4];
+  const td=document.getElementById('bd-totd');
+  if(td){
+    if(reserve>0){
+      td.textContent='예비 '+reserve+'% ('+Math.round(BD_B*reserve/100).toLocaleString('ko-KR')+'원) 남음';
+      td.className='tok';
+    } else {
+      td.textContent='예산 100% 배정됨';
+      td.className='tok';
+    }
+  }
+}
+function bdSlide(idx){
+  // idx는 1~4 (기타=5는 읽기 전용)
+  let nv = parseInt(document.getElementById('bd-sl'+idx).value);
+  // 나머지 3개 슬라이더(idx 제외, 기타 제외) 합
+  const othersSum = bdPcts.slice(0,4).reduce((a,b,i) => i===idx-1 ? a : a+b, 0);
+  // 이 슬라이더의 최댓값 = 100 - 나머지 합 (기타가 0 미만이 되지 않도록)
+  nv = Math.min(nv, 100 - othersSum);
+  nv = Math.max(nv, 0);
+  bdPcts[idx-1] = nv;
+  // 기타(예비) 자동 계산
+  bdPcts[4] = Math.max(0, 100 - bdPcts.slice(0,4).reduce((a,b)=>a+b,0));
+  bdUpdSliders();
+}
+
+function bdInitActiveProd(){
+  bdNextPoolIdx={sweet:0,salty:0,health:0,drink:0};
+  BD_CATKEYS.forEach(k=>{bdActiveProd[k]=[];const n=bdCn(k,bdPcts[BD_CATKEYS.indexOf(k)]);for(let i=0;i<n;i++){bdActiveProd[k].push({...BD_ALL_PRODS[k][i%BD_ALL_PRODS[k].length],ci:i});bdNextPoolIdx[k]=i+1;}});
+}
+
+function bdRenderProds(){
+  const cats=[{k:'sweet',pi:0},{k:'salty',pi:1},{k:'health',pi:2},{k:'drink',pi:3}];let h='';
+  cats.forEach(cat=>{const prods=bdActiveProd[cat.k],n=prods.length,budget=Math.round(BD_B*bdPcts[cat.pi]/100),c=BD_CC[cat.k];
+    h+=`<div class="cat-section"><div class="cat-sec-hdr"><div class="cat-sec-left"><span class="cat-sec-name">${c.l}</span><span class="cat-n-badge" style="background:${c.bg};color:${c.c};">${n}종 추천</span></div><span class="cat-budget-lbl">${budget.toLocaleString('ko-KR')}원</span></div><div class="bd-prod-card-grid">`;
+    prods.forEach((p,i)=>{const qty=Math.max(1,Math.floor(budget/(n*p.p))),bg=BD_IMG_COLORS[cat.k][p.ci%BD_IMG_COLORS[cat.k].length];h+=`<div class="bd-prod-card"><div class="prod-img-wrap" style="background:${bg};"><div class="prod-placeholder-inner">${p.n.substring(0,8)}</div></div><div class="prod-actions"><button class="prod-action-btn refresh" onclick="bdRefSlot('${cat.k}',${i})">↻</button><button class="prod-action-btn del" onclick="bdDelSlot('${cat.k}',${i})">×</button></div><div class="bd-prod-card-body"><div class="bd-prod-card-name">${p.n}</div><div class="bd-prod-card-meta">${p.sub} · ${p.t}</div><div class="bd-prod-card-bottom"><span class="bd-prod-card-price">${p.p.toLocaleString('ko-KR')}원</span><span class="bd-prod-card-qty">${qty}개</span></div></div></div>`;});
+    h+=`</div></div>`;});
+  document.getElementById('bd-prodbody').innerHTML=h;
+}
+
+function bdRefSlot(k,i){const pool=BD_ALL_PRODS[k],cl=bdActiveProd[k];let tries=0,np;do{np={...pool[bdNextPoolIdx[k]%pool.length],ci:bdNextPoolIdx[k]%BD_IMG_COLORS[k].length};bdNextPoolIdx[k]=(bdNextPoolIdx[k]+1)%pool.length;tries++;}while(tries<pool.length&&cl.some((p,j)=>j!==i&&p.n===np.n));bdActiveProd[k][i]=np;bdRenderProds();}
+function bdDelSlot(k,i){if(bdActiveProd[k].length<=1){showToast('카테고리에 최소 1종 이상 있어야 해요');return;}bdActiveProd[k].splice(i,1);bdRenderProds();}
+
+function bdRenderFin(){
+  const cats=[{k:'sweet',l:'달달한 간식',pi:0},{k:'salty',l:'짭짤/고소한 간식',pi:1},{k:'health',l:'건강/포만 간식',pi:2},{k:'drink',l:'음료',pi:3}];
+  let total=0,html='';
+  cats.forEach(c=>{const n=bdActiveProd[c.k].length,b=Math.round(BD_B*bdPcts[c.pi]/100);total+=b;html+=`<div class="finrow"><span class="finl">${c.l}</span><span class="finv">${n}종 · ${b.toLocaleString('ko-KR')}원</span></div>`;});
+  document.getElementById('bd-finrows').innerHTML=html;
+  const fa=document.getElementById('bd-fin-total-amt');if(fa)fa.textContent='약 '+total.toLocaleString('ko-KR')+'원';
+}
+
+function bdResetBuilderAll(){
+  bdDoneSteps.clear();bdOpenStep=1;bdCur=null;bdPcts=[40,27,18,11,4];
+  // 세트 이름 기본값으로 복원
+  const sni=document.getElementById('bd-set-name');if(sni){sni.value='4월 로랩스 간식';sni.classList.add('is-default');}
+  const snh=document.getElementById('bd-name-hint-text');if(snh)snh.textContent='입력하지 않으면 이 이름으로 저장돼요';
+  // 인원·예산 초기화 및 에러 상태 제거
+  const pi=document.getElementById('bd-people');if(pi)pi.value='20';
+  const bi=document.getElementById('bd-budget');if(bi)bi.value='300,000';
+  ['bd-card-people','bd-card-budget'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('error');});
+  ['bd-warn-people','bd-warn-budget'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});
+  document.getElementById('bd-btn1').className='snext inactive';bdUpdSliders();
+  for(let s=1;s<=4;s++){const acc=document.getElementById('bd-acc'+s);if(acc){if(s>1)acc.style.display='none';}const body=document.getElementById('bd-body'+s);if(body)body.style.display=(s===1?'block':'none');const hdr=document.getElementById('bd-hdr'+s);if(hdr)hdr.classList.remove('done-closed');const b=document.getElementById('bd-b'+s);if(b)b.style.display='none';const rh=document.getElementById('bd-rh'+s);if(rh)rh.style.display='none';const d=document.getElementById('bd-d'+s);if(d)d.className='sdot'+(s===1?' on':'');const dl=document.getElementById('bd-dl'+s);if(dl)dl.className='dline';const warn=document.getElementById('bd-warn'+s);if(warn)warn.classList.remove('show');}
+}
+
+function bdShow(id){const el=document.getElementById(id);if(el)el.style.display='block';}
+
+// 빌더 초기화
+bdUpdSliders();
+
+// 빌더 영역 클릭시 컨텍스트 메뉴 닫기
+document.getElementById('pane-snack').addEventListener('click',function(e){if(!e.target.closest('.pkg-menu-btn'))bdCloseAllMenus();});
+
+// ===== Store Data =====
+const DATA = {
+  fb: {
+    label: '☕ F&B/식음업형',
+    catTitle: '카페 소모품 카테고리',
+    desc: 'F&B/식음업형으로 분류된 고객사입니다',
+    cats: [
+      { name: '음료서비스 소모품', icon: '🥤', subs: ['아이스컵·컵뚜껑','종이컵·핫컵','캐리어·홀더','빨대·스틱','냅킨·디스펜서'], cnt: 5 },
+      { name: '커피·음료 재료', icon: '☕', subs: ['원두커피','에스프레소','시럽·소스','우유·크림','설탕·감미료','티백'], cnt: 6 },
+      { name: '베이커리 포장재', icon: '🧁', subs: ['케이크박스','비닐팩','종이백','스티커','리본','쿠킹시트'], cnt: 6 },
+      { name: '베이킹재료 업소용', icon: '🧤', subs: ['밀가루','설탕','버터','계란','초콜릿'], cnt: 5 },
+      { name: '위생·세정 소모품', icon: '🧹', subs: ['손세정제','위생장갑','행주','물티슈','세제','소독제'], cnt: 6 }
+    ],
+    products: [
+      {nm:'아이스컵 16oz PET 1000입',pr:'₩28,000',tag:'F&B 92% 구매'},
+      {nm:'컵뚜껑 16oz 평뚜껑',pr:'₩18,500',tag:''},
+      {nm:'종이빨대 개별포장 500입',pr:'₩12,000',tag:''},
+      {nm:'아이스컵 12oz PET 500입',pr:'₩22,000',tag:''},
+      {nm:'핫컵 8oz 종이컵 1000입',pr:'₩15,000',tag:''},
+      {nm:'캐리어 2구 200입',pr:'₩9,800',tag:''},
+      {nm:'컵홀더 슬리브 500입',pr:'₩11,000',tag:''},
+      {nm:'일자 빨대 500입',pr:'₩6,500',tag:''},
+      {nm:'냅킨 갈색 5000매',pr:'₩18,000',tag:''},
+      {nm:'테이크아웃 봉투 200장',pr:'₩8,500',tag:''},
+      {nm:'종이컵 13oz 1000입',pr:'₩19,500',tag:''},
+      {nm:'뚜껑 12oz 돔뚜껑',pr:'₩15,000',tag:''},
+      {nm:'스티로폼컵 6oz',pr:'₩7,200',tag:''},
+      {nm:'이쑤시개 개별포장',pr:'₩3,500',tag:''},
+      {nm:'디스펜서 냅킨 리필',pr:'₩12,000',tag:''}
+    ]
+  },
+  space: {
+    label: '🏢 공간운영형',
+    catTitle: '공간관리 카테고리',
+    desc: '공간운영형으로 분류된 고객사입니다',
+    cats: [
+      { name: '사무용품', icon: '📝', subs: ['문구용품','인쇄물','사무기구','보안용품'], cnt: 4 },
+      { name: '시설관리', icon: '🔧', subs: ['배관','전기','페인트','공구','열쇠'], cnt: 5 },
+      { name: '청소/위생', icon: '🧹', subs: ['세제','걸레','쓰레기봉투','소독제'], cnt: 4 },
+      { name: '전기/조명', icon: '💡', subs: ['LED전구','형광등','스위치'], cnt: 3 },
+      { name: '비품/인테리어', icon: '🪑', subs: ['가구','수납','액자','카펫'], cnt: 4 }
+    ],
+    products: [
+      {nm:'A4복사용지 2500매',pr:'₩22,000',tag:'공간운영 88% 구매'},
+      {nm:'핸드타올 5000매',pr:'₩15,000',tag:''},
+      {nm:'LED전구 10W 4개',pr:'₩8,500',tag:''},
+      {nm:'화장지 30롤',pr:'₩18,000',tag:''},
+      {nm:'쓰레기봉투 100L 100장',pr:'₩12,000',tag:''},
+      {nm:'다용도 세정제 5L',pr:'₩9,800',tag:''},
+      {nm:'물걸레 대형',pr:'₩6,500',tag:''},
+      {nm:'손세정제 리필 1L',pr:'₩5,500',tag:''},
+      {nm:'방향제 스프레이',pr:'₩4,200',tag:''},
+      {nm:'연장코드 5구 3m',pr:'₩11,000',tag:''},
+      {nm:'형광등 32W 2개',pr:'₩7,800',tag:''},
+      {nm:'고무장갑 M 10켤레',pr:'₩8,000',tag:''},
+      {nm:'먼지떨이 대형',pr:'₩5,500',tag:''},
+      {nm:'페인트 롤러 세트',pr:'₩14,000',tag:''},
+      {nm:'분리수거 스티커 세트',pr:'₩3,200',tag:''}
+    ]
+  },
+  it: {
+    label: '💻 IT오피스형',
+    catTitle: 'IT 오피스 카테고리',
+    desc: 'IT오피스형으로 분류된 고객사입니다',
+    cats: [
+      { name: 'IT소모품', icon: '🔌', subs: ['케이블','어댑터','USB','메모리','배터리'], cnt: 5 },
+      { name: '사무기기', icon: '🖨', subs: ['프린터','복합기','스캐너','파쇄기'], cnt: 4 },
+      { name: '사무용품', icon: '📎', subs: ['키보드','마우스','패드','스탠드','받침대','멀티탭'], cnt: 6 },
+      { name: '음료/간식', icon: '☕', subs: ['물','커피','주스','과자'], cnt: 4 },
+      { name: '위생용품', icon: '🧴', subs: ['손세정제','물티슈','쓰레기봉투'], cnt: 3 }
+    ],
+    products: [
+      {nm:'USB-C 케이블 1.5m',pr:'₩12,000',tag:'IT 95% 구매'},
+      {nm:'모니터암 싱글',pr:'₩45,000',tag:''},
+      {nm:'무선마우스',pr:'₩25,000',tag:''},
+      {nm:'기계식 키보드',pr:'₩65,000',tag:''},
+      {nm:'노트북 스탠드',pr:'₩32,000',tag:''},
+      {nm:'멀티탭 6구 개별',pr:'₩15,000',tag:''},
+      {nm:'HDMI 케이블 2m',pr:'₩8,500',tag:''},
+      {nm:'USB 허브 4포트',pr:'₩18,000',tag:''},
+      {nm:'마우스패드 대형',pr:'₩9,500',tag:''},
+      {nm:'USB 메모리 64GB',pr:'₩12,500',tag:''},
+      {nm:'웹캠 FHD',pr:'₩35,000',tag:''},
+      {nm:'블루투스 이어폰',pr:'₩28,000',tag:''},
+      {nm:'모니터 클리너',pr:'₩5,500',tag:''},
+      {nm:'케이블 정리기 5개',pr:'₩3,800',tag:''},
+      {nm:'노트북 파우치 15인치',pr:'₩22,000',tag:''}
+    ]
+  },
+  mfg: {
+    label: '🏭 제조/하드웨어형',
+    catTitle: '제조·하드웨어 카테고리',
+    desc: '제조/하드웨어형으로 분류된 고객사입니다',
+    cats: [
+      { name: '공구', icon: '🔨', subs: ['드릴','전동톱','망치','레벨','줄자'], cnt: 5 },
+      { name: '안전용품', icon: '⛑', subs: ['안전경','장갑','마스크','헬멧','조끼'], cnt: 5 },
+      { name: '소모품', icon: '📦', subs: ['접착제','윤활유','세제','빗자루','종이'], cnt: 5 },
+      { name: '조명', icon: '💡', subs: ['작업등','랜턴','헤드라이트','LED'], cnt: 4 },
+      { name: '포장재', icon: '📦', subs: ['박스','완충재','테이프','랩','지끈'], cnt: 5 }
+    ],
+    products: [
+      {nm:'안전장갑 코팅 10켤레',pr:'₩3,500',tag:''},{nm:'공업용 접착제 500g',pr:'₩8,900',tag:''},{nm:'작업용 LED등',pr:'₩24,000',tag:''},
+      {nm:'보호안경 3개',pr:'₩6,500',tag:''},{nm:'산업용 마스크 50매',pr:'₩15,000',tag:''},{nm:'방진 마스크 KF94',pr:'₩18,000',tag:''},
+      {nm:'줄자 5m',pr:'₩4,200',tag:''},{nm:'전동드릴 세트',pr:'₩85,000',tag:''},{nm:'안전모 PE',pr:'₩12,000',tag:''},
+      {nm:'윤활유 스프레이',pr:'₩7,500',tag:''},{nm:'포장테이프 투명 10개',pr:'₩9,800',tag:''},{nm:'에어캡 50m',pr:'₩11,000',tag:''},
+      {nm:'작업복 상의',pr:'₩25,000',tag:''},{nm:'안전화 260mm',pr:'₩45,000',tag:''},{nm:'반사조끼',pr:'₩8,000',tag:''}
+    ]
+  },
+  ecom: {
+    label: '📦 이커머스/유통형',
+    catTitle: '이커머스·유통 카테고리',
+    desc: '이커머스/유통형으로 분류된 고객사입니다',
+    cats: [
+      { name: '포장재', icon: '📦', subs: ['택배박스','완충재','에어캡','테이프','라벨'], cnt: 5 },
+      { name: '보관용품', icon: '🗄', subs: ['선반','바구니','상자','정리함','랙'], cnt: 5 },
+      { name: '배송용품', icon: '🚛', subs: ['봉투','파우치','한냉팩','보냉백','에어백'], cnt: 5 },
+      { name: '사무용품', icon: '🖨', subs: ['프린터','인쇄용지','바코드스캐너','스티커'], cnt: 4 },
+      { name: '청소용품', icon: '🧹', subs: ['청소기','물티슈','장갑','세제','걸레'], cnt: 5 }
+    ],
+    products: [
+      {nm:'택배박스 1호 100개',pr:'₩15,000',tag:'유통 90% 구매'},{nm:'기포봉투 100장',pr:'₩8,500',tag:''},{nm:'라벨프린터',pr:'₩120,000',tag:''},
+      {nm:'포장테이프 48mm 10개',pr:'₩9,800',tag:''},{nm:'택배봉투 100매',pr:'₩7,500',tag:''},{nm:'에어캡 50m',pr:'₩11,000',tag:''},
+      {nm:'바코드 스캐너',pr:'₩35,000',tag:''},{nm:'택배박스 3호 50개',pr:'₩18,000',tag:''},{nm:'완충재 크라프트',pr:'₩6,500',tag:''},
+      {nm:'보냉팩 대형 20개',pr:'₩12,000',tag:''},{nm:'스티커 라벨 1000장',pr:'₩5,500',tag:''},{nm:'PP밴드 1롤',pr:'₩8,000',tag:''},
+      {nm:'택배봉투 특대',pr:'₩12,500',tag:''},{nm:'보냉백 M 10개',pr:'₩15,000',tag:''},{nm:'에어필로우 기계',pr:'₩280,000',tag:''}
+    ]
+  },
+  pro: {
+    label: '💼 전문서비스형',
+    catTitle: '전문서비스 카테고리',
+    desc: '전문서비스형으로 분류된 고객사입니다',
+    cats: [
+      { name: '문구용품', icon: '✒', subs: ['펜','노트','바인더','클립','포스트잇'], cnt: 5 },
+      { name: '인쇄물', icon: '🖨', subs: ['명함','전단','포스터','카탈로그','편지지'], cnt: 5 },
+      { name: '사무기구', icon: '🗄', subs: ['팩스','복합기','프린터','스캐너','파쇄기'], cnt: 5 },
+      { name: '보안용품', icon: '🔐', subs: ['금고','카드리더','잠금장치','카메라'], cnt: 4 },
+      { name: '가구', icon: '🪑', subs: ['책상','의자','선반','캐비닛','회의테이블'], cnt: 5 }
+    ],
+    products: [
+      {nm:'명함인쇄 500매',pr:'₩25,000',tag:''},{nm:'전자계약패드',pr:'₩89,000',tag:''},{nm:'회의용의자',pr:'₩185,000',tag:''},
+      {nm:'A4복사용지 2500매',pr:'₩22,000',tag:''},{nm:'프리미엄 볼펜 10개',pr:'₩8,500',tag:''},{nm:'바인더 A4 5개',pr:'₩12,000',tag:''},
+      {nm:'포스트잇 번들',pr:'₩6,500',tag:''},{nm:'문서파쇄기',pr:'₩120,000',tag:''},{nm:'레이저프린터 토너',pr:'₩45,000',tag:''},
+      {nm:'화이트보드 대형',pr:'₩55,000',tag:''},{nm:'카드키 리더기',pr:'₩35,000',tag:''},{nm:'잠금캐비닛',pr:'₩95,000',tag:''},
+      {nm:'데스크 정리함',pr:'₩18,000',tag:''},{nm:'모니터받침대',pr:'₩22,000',tag:''},{nm:'회의테이블 6인',pr:'₩350,000',tag:''}
+    ]
+  }
+};
+
+const CLUSTER_ORDER = ['fb','space','it','mfg','ecom','pro'];
+
+// ===== State =====
+let curSlide = 0;
+let curHomeInd = 'fb';
+let curHomeCat = 0;
+let curFullInd = 'fb';
+let curFullCat = 0;
+let curFullSub = 0;
+
+// ===== Brand Scroll =====
+function scrollBrand(dir) {
+  const row = document.getElementById('brandRow');
+  row.scrollBy({ left: dir * 260, behavior: 'smooth' });
+}
+
+// ===== Brand Search =====
+const BRAND_DATA = {
+  'CJ제일제당': { cat:'식품 · 생활/건강', cnt:34, prods:['CJ 햇반 210g×12입','CJ 비비고 왕교자 1.05kg','CJ 다시다 1kg','CJ 스팸 340g×6입','CJ 맛밤 80g×10','CJ 비비고 진한육수 500g','CJ 고메 핫도그 400g','CJ 해찬들 고추장 1kg'] },
+  '오뚜기': { cat:'식품', cnt:28, prods:['오뚜기 진라면 순한맛 5입','오뚜기 마요네즈 500g','오뚜기 참기름 320ml','오뚜기 카레 100g×4입','오뚜기 케찹 500g','오뚜기 3분짜장 200g','오뚜기 열라면 5입','오뚜기 컵누들 소컵 37.8g'] },
+  '농심': { cat:'식품', cnt:22, prods:['농심 신라면 5입','농심 짜파게티 5입','농심 새우깡 90g','농심 너구리 5입','농심 양파링 84g','농심 안성탕면 5입','농심 감자칩 60g','농심 사리곰탕면 5입'] },
+  '롯데칠성': { cat:'식품 · 음료', cnt:18, prods:['칠성사이다 1.5L','칠성사이다제로 500ml','펩시콜라 1.5L','밀키스 250ml','트로피카나 1.5L','레쓰비 175ml×30입','칸타타 275ml','핫식스 250ml'] },
+  '해태제과': { cat:'식품 · 과자', cnt:15, prods:['해태 오예스 360g','해태 에이스 364g','해태 홈런볼 46g×12','해태 자유시간 140g','해태 맛동산 100g','해태 포키 39g×10','해태 구운감자 44g','해태 사브레 84g'] },
+  '동서식품': { cat:'식품 · 음료', cnt:20, prods:['맥심 모카골드 12g×100입','맥심 화이트골드 11.7g×100입','카누 아메리카노 36입','포스트 콘푸로스트 600g','핫초코 미떼 30g×10','맥심 아이스커피 230ml×50입','동서 보리차 10g×30','동서 녹차 1.2g×100'] },
+  '빙그레': { cat:'식품 · 유제품', cnt:12, prods:['바나나맛우유 240ml×12','투게더 바닐라 900ml','요플레 80g×4입','메로나 1박스','비비빅 8입','빙그레 끊임없는 우유 1L','빙그레 닥터캡슐 150ml×10','빙그레 아카페라 200ml×10'] },
+  '매일유업': { cat:'유제품 · 음료', cnt:16, prods:['매일우유 오리지널 1L','상하목장 유기농 900ml','바리스타룰스 250ml×10','매일 두유 99.89 190ml×24','소화가잘되는우유 900ml','셀렉스 프로틴 190ml×12','상하 아이스크림 474ml','피크닉 사과 200ml×24'] },
+  '풀무원': { cat:'식품 · 건강', cnt:14, prods:['풀무원 두부 300g','풀무원 납작면 380g','풀무원 얇은피만두 440g','풀무원 생면식감 라면 4입','풀무원 노엣지피자 370g','풀무원 국산콩두유 190ml×16','풀무원 다논 80g×4','풀무원 샐러드바 170g'] },
+  '삼양식품': { cat:'식품', cnt:11, prods:['삼양라면 5입','불닭볶음면 5입','까르보불닭 5입','짱구 115g','사또밥 110g','삼양 큰컵 육개장 110g','로제불닭 5입','삼양 감자면 5입'] }
+};
+let prevBrandTab = null;
+
+function openBrandSearch(brandName) {
+  const data = BRAND_DATA[brandName];
+  if (!data) return;
+  prevBrandTab = document.querySelector('.store-tab.on')?.dataset.tab || 'home';
+  // Hide all panes, show brand search
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-brand-search').classList.add('active');
+  document.getElementById('urlBar').textContent = '🔒 app.airsupply.kr/store?q=' + encodeURIComponent(brandName);
+  document.getElementById('contentScroll').scrollTop = 0;
+  // Highlight no tab
+  document.querySelectorAll('.store-tab').forEach(b => b.classList.remove('on'));
+  // Fill data
+  document.getElementById('bsKeyword').textContent = brandName;
+  document.getElementById('bsBrandName').textContent = brandName;
+  document.getElementById('bsBrandCat').textContent = data.cat;
+  document.getElementById('bsBrandCount').textContent = data.cnt + '개 상품';
+  // Render products
+  const grid = document.getElementById('bsProdGrid');
+  grid.innerHTML = '';
+  data.prods.forEach((name, i) => {
+    const price = (Math.floor(Math.random() * 40 + 5) * 100).toLocaleString();
+    const badges = ['', '<div class="bs-prod-badge free">무료배송</div>', '<div class="bs-prod-badge sale">특가</div>'];
+    const badge = badges[i % 3];
+    grid.innerHTML += `<div class="bs-prod"><div class="bs-prod-img">${badge}IMG</div><div class="bs-prod-body"><div class="bs-prod-brand"><svg style="width:72px;height:13px;"><use href="#as-logo"/></svg></div><div class="bs-prod-nm">${name}</div><div class="bs-prod-pr">${price}원</div><div style="margin-top:4px;"><span class="prod-tag">무료배송</span></div></div></div>`;
+  });
+}
+
+function closeBrandSearch() {
+  document.getElementById('pane-brand-search').classList.remove('active');
+  switchTab(prevBrandTab || 'home');
+}
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', () => {
+  initSearch();
+  initHomeIndustry();
+  initFullIndustry();
+  renderFreqProds('all');
+});
+
+// ===== Toast =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== Tab switching =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.store-tab').forEach(b => b.classList.remove('on'));
+  const map = { home:'pane-home', snack:'pane-snack', industry:'pane-industry', promo:'pane-promo' };
+  const urls = { home:'app.airsupply.kr/store', snack:'app.airsupply.kr/store/snack-builder', industry:'app.airsupply.kr/store/industry', promo:'app.airsupply.kr/store/promotions' };
+  document.getElementById(map[tab]).classList.add('active');
+  document.querySelector(`[data-tab="${tab}"]`).classList.add('on');
+  document.getElementById('urlBar').textContent = '🔒 ' + urls[tab];
+  document.getElementById('contentScroll').scrollTop = 0;
+}
+
+// ===== Search =====
+function initSearch() {
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-bar-wrap')) closeSearch();
+  });
+}
+function openSearch() {
+  document.getElementById('searchBar').classList.add('active');
+  document.getElementById('searchDropdown').classList.add('active');
+}
+function closeSearch() {
+  document.getElementById('searchBar').classList.remove('active');
+  document.getElementById('searchDropdown').classList.remove('active');
+}
+
+// ===== Carousel =====
+function nextSlide() { curSlide = (curSlide + 1) % 4; updateCarousel(); }
+function prevSlide() { curSlide = (curSlide - 1 + 4) % 4; updateCarousel(); }
+function goSlide(i) { curSlide = i; updateCarousel(); }
+function updateCarousel() {
+  document.querySelectorAll('.carousel-slide').forEach((s,i) => s.classList.toggle('active', i === curSlide));
+  document.querySelectorAll('#carouselDots .cdot').forEach((d,i) => d.classList.toggle('on', i === curSlide));
+}
+
+// ===== Simple tab toggles =====
+// ===== 자주구매 주기별 필터 =====
+const FREQ_PRODS = {
+  weekly: [
+    {nm:'서울우유 1L',pr:'₩2,800',cycle:'평균 4일 주기'},
+    {nm:'매일 식빵 대',pr:'₩3,200',cycle:'평균 5일 주기'},
+    {nm:'바나나 1다발',pr:'₩3,900',cycle:'평균 7일 주기'},
+    {nm:'계란 30구',pr:'₩7,500',cycle:'평균 7일 주기'},
+    {nm:'두부 300g',pr:'₩1,800',cycle:'평균 6일 주기'},
+  ],
+  biweekly: [
+    {nm:'계란 30구',pr:'₩7,500',cycle:'평균 12일 주기'},
+    {nm:'삼겹살 600g',pr:'₩14,500',cycle:'평균 14일 주기'},
+    {nm:'바나나 1다발',pr:'₩3,900',cycle:'평균 10일 주기'},
+    {nm:'두부 300g',pr:'₩1,800',cycle:'평균 13일 주기'},
+    {nm:'물티슈 캡형 100매×10',pr:'₩12,600',cycle:'평균 11일 주기'},
+  ],
+  monthly: [
+    {nm:'아이스컵 16oz 1000입',pr:'₩28,000',cycle:'평균 28일 주기'},
+    {nm:'A4 복사용지 2500매',pr:'₩22,400',cycle:'평균 30일 주기'},
+    {nm:'핸드타올 5000매',pr:'₩18,200',cycle:'평균 25일 주기'},
+    {nm:'세제 대용량 5L',pr:'₩15,000',cycle:'평균 30일 주기'},
+    {nm:'물티슈 캡형 100매×10',pr:'₩12,600',cycle:'평균 28일 주기'},
+  ],
+  all: [
+    {nm:'서울우유 1L',pr:'₩2,800',cycle:'평균 4일 주기'},
+    {nm:'매일 식빵 대',pr:'₩3,200',cycle:'평균 5일 주기'},
+    {nm:'계란 30구',pr:'₩7,500',cycle:'평균 7일 주기'},
+    {nm:'바나나 1다발',pr:'₩3,900',cycle:'평균 12일 주기'},
+    {nm:'아이스컵 16oz 1000입',pr:'₩28,000',cycle:'평균 28일 주기'},
+  ]
+};
+
+function renderFreqProds(freq) {
+  const grid = document.getElementById('freqProdGrid');
+  const items = FREQ_PRODS[freq] || FREQ_PRODS.all;
+  grid.innerHTML = items.map(p => `
+    <div class="ind-product-card">
+      <div class="ind-product-img">IMG
+        <div class="freq-cycle-badge"><span>🔄 ${p.cycle}</span></div>
+      </div>
+      <div class="ind-product-info">
+        <div class="ind-product-brand">AIRSUPPLY</div>
+        <div class="ind-product-name">${p.nm}</div>
+        <div class="ind-product-price">${p.pr}</div>
+        <div class="ind-product-tag">무료배송</div>
+      </div>
+    </div>`).join('');
+}
+
+function filterFreq(btn, freq) {
+  btn.parentElement.querySelectorAll('.cycle-tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderFreqProds(freq);
+}
+
+function addToCartToast(name) {
+  showToast(`"${name}" 폴더에 담겼습니다`);
+}
+
+function cycleTab(btn) {
+  btn.parentElement.querySelectorAll('.cycle-tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+function catPill(btn) {
+  btn.parentElement.querySelectorAll('.cat-pill').forEach(b => { b.classList.remove('on'); b.classList.add('off'); });
+  btn.classList.remove('off'); btn.classList.add('on');
+}
+
+// ===== Home Industry Section =====
+// Sidebar icon/label mapping
+const IND_SIDEBAR = {
+  fb:  {icon:'🍽',name:'F&B<br>식음업형'},
+  space:{icon:'🏢',name:'공간<br>운영형'},
+  it:  {icon:'💻',name:'IT<br>오피스형'},
+  mfg: {icon:'🔧',name:'제조/<br>하드웨어형'},
+  ecom:{icon:'🛒',name:'이커머스<br>유통형'},
+  pro: {icon:'🚗',name:'전문<br>서비스형'}
+};
+
+function initHomeIndustry() {
+  const tabsEl = document.getElementById('homeIndTabs');
+  tabsEl.innerHTML = '';
+  CLUSTER_ORDER.forEach(k => {
+    const s = IND_SIDEBAR[k];
+    const div = document.createElement('div');
+    div.className = 'ind-type-card' + (k === curHomeInd ? ' on' : '');
+    div.innerHTML = `<div class="ind-type-icon">${s.icon}</div><div class="ind-type-name">${s.name}</div>`;
+    div.onclick = () => { curHomeInd = k; curHomeCat = 0; renderHomeInd(); tabsEl.querySelectorAll('.ind-type-card').forEach(b=>b.classList.remove('on')); div.classList.add('on'); };
+    tabsEl.appendChild(div);
+  });
+  renderHomeInd();
+}
+
+function renderHomeInd() {
+  const d = DATA[curHomeInd];
+  // Category underline tabs (no count badge)
+  const catsEl = document.getElementById('homeIndCats');
+  catsEl.innerHTML = '';
+  d.cats.forEach((c,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'ind-cat' + (i === curHomeCat ? ' on' : '');
+    btn.innerHTML = `<span class="cn">${c.name}</span>`;
+    btn.onclick = () => { curHomeCat = i; renderHomeInd(); };
+    catsEl.appendChild(btn);
+  });
+  // Subcategory chips
+  const subsWrap = document.getElementById('homeIndSubsWrap');
+  const cat = d.cats[curHomeCat];
+  subsWrap.innerHTML = cat.subs.map((s,i) => `<div class="ind-sub${i===0?' on':''}" onclick="this.parentNode.querySelectorAll('.ind-sub').forEach(c=>c.classList.remove('on'));this.classList.add('on');">${s}</div>`).join('');
+  // Products — 5 cards
+  const labelParts = d.label.split(' ');
+  document.getElementById('homeIndProdTitle').textContent = labelParts.slice(1).join(' ').replace('형','') + ' 인기 상품';
+  const prodsEl = document.getElementById('homeIndProds');
+  prodsEl.innerHTML = '';
+  d.products.slice(0, 5).forEach(p => {
+    prodsEl.innerHTML += `<div class="ind-prod"><div class="ind-prod-img">IMG</div><div class="ind-prod-info"><div class="ind-prod-brand">AIRSUPPLY</div><div class="ind-prod-nm">${p.nm}</div><div class="ind-prod-pr">${p.pr}</div><div class="ind-prod-badge">무료배송</div></div></div>`;
+  });
+}
+
+// ===== Full Industry Tab =====
+// 아코디언 트리용 업종 이름 매핑
+const IND_TREE_NAMES = {
+  fb:'F&B / 식음업형', space:'공간운영형', it:'IT 오피스형',
+  mfg:'제조 / 하드웨어형', ecom:'이커머스 / 유통형', pro:'전문서비스형'
+};
+
+function initFullIndustry() {
+  buildFullTree();
+  renderFullContent();
+}
+
+function buildFullTree() {
+  const nav = document.getElementById('fullTreeNav');
+  nav.innerHTML = CLUSTER_ORDER.map(k => {
+    const d = DATA[k];
+    const s = IND_SIDEBAR[k];
+    const isOpen = k === curFullInd;
+    return `
+      <div class="type-row${isOpen?' on':''}" onclick="selectFullType('${k}')">
+        <div class="type-ico">${s.icon}</div>
+        <div class="type-row-name">${IND_TREE_NAMES[k]}</div>
+      </div>
+      <div class="cat-group${isOpen?' open':''}" id="fullCats-${k}">
+        ${d.cats.map((c,i) => `
+          <div class="cat-row${isOpen && i===curFullCat?' on':''}"
+               onclick="selectFullCat('${k}',${i})">
+            ${c.name}
+          </div>
+        `).join('')}
+      </div>`;
+  }).join('');
+}
+
+function selectFullType(typeId) {
+  if(curFullInd === typeId) return;
+  curFullInd = typeId; curFullCat = 0; curFullSub = 0;
+  buildFullTree();
+  renderFullContent();
+}
+
+function selectFullCat(typeId, idx) {
+  curFullInd = typeId; curFullCat = idx; curFullSub = 0;
+  buildFullTree();
+  renderFullContent();
+}
+
+function renderFullContent() {
+  const d = DATA[curFullInd];
+  const cat = d.cats[curFullCat];
+  // Pane title
+  document.getElementById('fullPaneTitle').textContent = cat.name;
+  // Sub-filter chips
+  const filterEl = document.getElementById('fullSubFilter');
+  filterEl.innerHTML = cat.subs.map((s,i) =>
+    `<div class="ind-chip${i===curFullSub?' on':''}" onclick="selectFullChip(${i})">${s}</div>`
+  ).join('');
+  // Product grid
+  renderFullProducts();
+}
+
+function selectFullChip(idx) {
+  curFullSub = idx;
+  document.querySelectorAll('#fullSubFilter .ind-chip').forEach((c,i) => {
+    c.classList.toggle('on', i===idx);
+  });
+  renderFullProducts();
+}
+
+function renderFullProducts() {
+  const d = DATA[curFullInd];
+  const prodsEl = document.getElementById('fullProductGrid');
+  prodsEl.innerHTML = '';
+  d.products.forEach(p => {
+    prodsEl.innerHTML += `<div class="ind-product-card"><div class="ind-product-img">IMG</div><div class="ind-product-info"><div class="ind-product-brand">AIRSUPPLY</div><div class="ind-product-name">${p.nm}</div><div class="ind-product-price">${p.pr}</div><div class="ind-product-tag">무료배송</div></div></div>`;
+  });
+}
+
+// ===== 기획전 상세 데이터 =====
+const PROMO_DATA = {
+  sparkle: {
+    name: '스파클 기획전',
+    sub: 'A4용지·복사용지 최대 30% 할인',
+    period: '2026-03-01 ~ 2026-04-30',
+    deco: '📄',
+    bgClass: 'promo-b1',
+    // 구매대행 이력과 매칭되는 상품 (가격 비교)
+    matched: [
+      { nm: 'A4 복사용지 2500매 (5묶음)', oldPrice: 32000, newPrice: 22400, oldLabel: '구매대행 최근가', cycle: '매월 1회 주문' },
+      { nm: 'A3 복사용지 500매', oldPrice: 18000, newPrice: 12600, oldLabel: '구매대행 최근가', cycle: '격월 1회 주문' },
+      { nm: '스파클 고급용지 A4 2500매', oldPrice: 45000, newPrice: 31500, oldLabel: '구매대행 최근가', cycle: '매월 1회 주문' }
+    ],
+    // 기획전 전체 상품
+    allProducts: [
+      { nm: 'A4 복사용지 2500매', old: 32000, price: 22400, matched: true },
+      { nm: 'A3 복사용지 500매', old: 18000, price: 12600, matched: true },
+      { nm: '스파클 고급용지 A4', old: 45000, price: 31500, matched: true },
+      { nm: '스파클 컬러용지 A4 5색', old: 28000, price: 19600, matched: false },
+      { nm: '레이저프린터 전용 A4', old: 38000, price: 26600, matched: false },
+      { nm: '이면지 재활용 A4 5000매', old: 22000, price: 15400, matched: false },
+      { nm: '두꺼운 용지 180g A4', old: 35000, price: 24500, matched: false },
+      { nm: 'A4 라벨용지 100매', old: 15000, price: 10500, matched: false },
+      { nm: '팩스용지 216mm 6롤', old: 12000, price: 8400, matched: false },
+      { nm: '스파클 프리미엄 A4 2500매', old: 52000, price: 36400, matched: false },
+      { nm: '복사용지 B4 500매', old: 14000, price: 9800, matched: false },
+      { nm: '재생용지 A4 2500매', old: 25000, price: 17500, matched: false }
+    ]
+  },
+  kojubu: {
+    name: '코주부 위생용지 도매가',
+    sub: '부림제지 핸드타올·화장지 특가',
+    period: '2026-03-15 ~ 2026-04-15',
+    deco: '🧻',
+    bgClass: 'promo-b2',
+    matched: [
+      { nm: '핸드타올 5000매 (대용량)', oldPrice: 28000, newPrice: 18200, oldLabel: '구매대행 최근가', cycle: '매월 2회 주문' },
+      { nm: '두루마리 화장지 30롤', oldPrice: 22000, newPrice: 15400, oldLabel: '구매대행 최근가', cycle: '매월 1회 주문' },
+      { nm: '물티슈 캡형 100매 × 10개', oldPrice: 18000, newPrice: 12600, oldLabel: '구매대행 최근가', cycle: '격주 1회 주문' }
+    ],
+    allProducts: [
+      { nm: '핸드타올 5000매', old: 28000, price: 18200, matched: true },
+      { nm: '두루마리 화장지 30롤', old: 22000, price: 15400, matched: true },
+      { nm: '물티슈 캡형 100매×10', old: 18000, price: 12600, matched: true },
+      { nm: '미니 핸드타올 3000매', old: 15000, price: 9750, matched: false },
+      { nm: '점보롤 화장지 12롤', old: 32000, price: 20800, matched: false },
+      { nm: '키친타올 150매 6롤', old: 12000, price: 7800, matched: false },
+      { nm: '냅킨 무형광 5000매', old: 18000, price: 11700, matched: false },
+      { nm: '각티슈 200매 24박스', old: 35000, price: 22750, matched: false }
+    ]
+  },
+  apple: {
+    name: '애플제품 저렴하게 구매하기',
+    sub: '수량 제한 없는 기업 특별가',
+    period: '상시 진행',
+    deco: '🍎',
+    bgClass: 'promo-b3',
+    matched: [
+      { nm: 'Apple 매직 마우스', oldPrice: 129000, newPrice: 99000, oldLabel: '구매대행 최근가', cycle: '비정기 구매' },
+      { nm: 'Apple 매직 키보드 (한글)', oldPrice: 169000, newPrice: 129000, oldLabel: '구매대행 최근가', cycle: '비정기 구매' }
+    ],
+    allProducts: [
+      { nm: 'Apple 매직 마우스', old: 129000, price: 99000, matched: true },
+      { nm: 'Apple 매직 키보드', old: 169000, price: 129000, matched: true },
+      { nm: 'Apple 매직 트랙패드', old: 199000, price: 155000, matched: false },
+      { nm: 'Apple Pencil (2세대)', old: 195000, price: 149000, matched: false },
+      { nm: 'AirPods Pro 2', old: 359000, price: 279000, matched: false },
+      { nm: 'Apple TV 4K 128GB', old: 229000, price: 179000, matched: false },
+      { nm: 'iPad 10세대 64GB', old: 679000, price: 529000, matched: false },
+      { nm: 'MacBook Air M3 256GB', old: 1590000, price: 1350000, matched: false },
+      { nm: 'USB-C 충전 케이블 1m', old: 29000, price: 22000, matched: false },
+      { nm: 'AirTag 4개입', old: 139000, price: 109000, matched: false },
+      { nm: 'Apple 20W 충전기', old: 29000, price: 22000, matched: false },
+      { nm: 'Lightning-USB-C 케이블', old: 29000, price: 22000, matched: false },
+      { nm: 'MagSafe 충전기', old: 59000, price: 45000, matched: false },
+      { nm: 'iPad mini 6세대', old: 769000, price: 599000, matched: false },
+      { nm: 'Apple Watch SE 2세대', old: 359000, price: 279000, matched: false }
+    ]
+  },
+  spring: {
+    name: '봄맞이 간식 & 차류 할인',
+    sub: '봄 시즌 필수 간식과 차',
+    period: '2026-03-01 ~ 2026-04-30',
+    deco: '🌸',
+    bgClass: 'promo-b4',
+    matched: [
+      { nm: '콘칩 대용량 268g × 6개', oldPrice: 15000, newPrice: 10500, oldLabel: '구매대행 최근가', cycle: '매월 1회 주문' },
+      { nm: '녹차 티백 100입', oldPrice: 12000, newPrice: 8400, oldLabel: '구매대행 최근가', cycle: '매월 1회 주문' },
+      { nm: '견과류 믹스 1kg', oldPrice: 28000, newPrice: 19600, oldLabel: '구매대행 최근가', cycle: '격주 1회 주문' }
+    ],
+    allProducts: [
+      { nm: '콘칩 대용량 268g×6', old: 15000, price: 10500, matched: true },
+      { nm: '녹차 티백 100입', old: 12000, price: 8400, matched: true },
+      { nm: '견과류 믹스 1kg', old: 28000, price: 19600, matched: true },
+      { nm: '오레오 쿠키 300g×4', old: 16000, price: 11200, matched: false },
+      { nm: '프레즐 대용량 500g', old: 9800, price: 6860, matched: false },
+      { nm: '캐모마일 티백 50입', old: 8500, price: 5950, matched: false },
+      { nm: '초코바 미니 40개입', old: 22000, price: 15400, matched: false },
+      { nm: '말린 망고 500g', old: 18000, price: 12600, matched: false },
+      { nm: '허브티 컬렉션 60입', old: 15000, price: 10500, matched: false },
+      { nm: '에너지바 12개입', old: 24000, price: 16800, matched: false },
+      { nm: '마카다미아 500g', old: 32000, price: 22400, matched: false },
+      { nm: '루이보스티 80입', old: 11000, price: 7700, matched: false },
+      { nm: '감자칩 클래식 160g×8', old: 14000, price: 9800, matched: false },
+      { nm: '아몬드 브리즈 190ml×24', old: 20000, price: 14000, matched: false },
+      { nm: '호두파이 10개입', old: 18000, price: 12600, matched: false },
+      { nm: '유자차 원액 1L', old: 12000, price: 8400, matched: false },
+      { nm: '쌀과자 세트 20봉', old: 16000, price: 11200, matched: false },
+      { nm: '블루베리 건조 300g', old: 15000, price: 10500, matched: false },
+      { nm: '보리차 티백 100입', old: 8000, price: 5600, matched: false },
+      { nm: '그래놀라 바 30개입', old: 25000, price: 17500, matched: false }
+    ]
+  }
+};
+
+function fmt(n) { return '₩' + n.toLocaleString(); }
+
+function openPromoDetail(key) {
+  const d = PROMO_DATA[key];
+  // Hide list, show detail
+  document.getElementById('promoList').style.display = 'none';
+  document.getElementById('promoDetail').style.display = 'block';
+  // Hero
+  const hero = document.getElementById('promoDetailHero');
+  hero.className = 'promo-detail-hero ' + d.bgClass;
+  document.getElementById('promoDetailInfo').innerHTML = `<div class="tag">${d.period}</div><div class="name">${d.name}</div><div class="sub">${d.sub}</div>`;
+  document.getElementById('promoDetailDeco').textContent = d.deco;
+  // (매칭 섹션 제거됨 — v5.0 개인화 제거)
+  // All products
+  document.getElementById('promoAllTitle').textContent = d.name + ' 전체 상품';
+  document.getElementById('promoAllDesc').textContent = `총 ${d.allProducts.length}개 상품`;
+  const allGrid = document.getElementById('promoAllGrid');
+  allGrid.innerHTML = '';
+  d.allProducts.forEach(p => {
+    const pct = Math.round(((p.old - p.price) / p.old) * 100);
+    allGrid.innerHTML += `
+      <div class="promo-prod">
+        <div class="img"><div class="my-badge">${pct}%</div>IMG</div>
+        <div class="promo-logo"><svg><use href="#as-logo"/></svg></div>
+        <div class="promo-bd">
+          <div class="promo-text">
+            <div class="nm">${p.nm}</div>
+            <div class="pr-row">
+              <span class="old-pr">${fmt(p.old)}</span>
+              <span class="new-pr">${fmt(p.price)}</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="prod-tag">무료배송</span></div>
+        </div>
+      </div>`;
+  });
+  // Scroll to top
+  document.getElementById('contentScroll').scrollTop = 0;
+  // Update URL
+  document.getElementById('urlBar').textContent = '🔒 app.airsupply.kr/store/promotions/' + key;
+}
+
+// 배너 캐러셀 → 기획전 상세 바로 이동
+function goToPromo(key) {
+  switchTab('promo');
+  setTimeout(() => openPromoDetail(key), 50);
+}
+
+function closePromoDetail() {
+  document.getElementById('promoDetail').style.display = 'none';
+  document.getElementById('promoList').style.display = 'block';
+  document.getElementById('urlBar').textContent = '🔒 app.airsupply.kr/store/promotions';
+  document.getElementById('contentScroll').scrollTop = 0;
+}
+
+// ===== 세트 이름 기본값 인터랙션 =====
+(function(){
+  const BD_DEFAULT_NAME = '4월 로랩스 간식'; // {month}월 {company} 간식
+  const nameInput = document.getElementById('bd-set-name');
+  const hintText = document.getElementById('bd-name-hint-text');
+  if(!nameInput) return;
+
+  nameInput.addEventListener('focus', function(){
+    if(nameInput.classList.contains('is-default')){
+      nameInput.classList.remove('is-default');
+      nameInput.value = '';
+      hintText.textContent = '만든 이후에는 이름을 바꿀 수 없어요';
+    }
+  });
+
+  nameInput.addEventListener('blur', function(){
+    if(nameInput.value.trim() === ''){
+      nameInput.classList.add('is-default');
+      nameInput.value = BD_DEFAULT_NAME;
+      hintText.textContent = '입력하지 않으면 이 이름으로 저장돼요';
+    }
+  });
+
+  // 타이핑 중이면 힌트 메시지 전환
+  nameInput.addEventListener('input', function(){
+    if(nameInput.value.trim() !== ''){
+      hintText.textContent = '만든 이후에는 이름을 바꿀 수 없어요';
+    }
+  });
+})();
+
+// ===== postMessage listener for spec-reviewer anchor navigation =====
+window.addEventListener('message', function(e) {
+  if (!e.data || e.data.type !== 'scroll-to-anchor') return;
+  const anchorId = e.data.anchorId;
+  if (!anchorId) return;
+
+  // Direct element ID match
+  let target = document.getElementById(anchorId);
+
+  // If not found, check data-wf-id attributes (for tab panes)
+  if (!target) {
+    target = document.querySelector('[data-wf-id="' + anchorId + '"]');
+  }
+
+  if (!target) return;
+
+  // If target is inside a tab-pane, activate that tab first
+  const pane = target.closest('.tab-pane');
+  if (pane) {
+    const tabId = pane.id.replace('pane-', '');
+    if (typeof switchTab === 'function') switchTab(tabId);
+  }
+
+  // Scroll to target
+  setTimeout(function() {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Brief highlight effect
+    target.style.outline = '3px solid #FFB800';
+    target.style.outlineOffset = '2px';
+    setTimeout(function() {
+      target.style.outline = '';
+      target.style.outlineOffset = '';
+    }, 2000);
+  }, 100);
+});
+</script>
+</body>
+</html>

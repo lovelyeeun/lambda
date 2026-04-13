@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search, FolderPlus, Check, ChevronRight, RefreshCw,
-  Coffee, Monitor, Armchair, Printer, FileText, Droplets, Cookie,
+  Coffee, Monitor, Armchair, Printer, FileText, Droplets,
   Building2, Factory, Briefcase, Landmark, Sparkles,
   Clock, TrendingUp, Star, Tag,
 } from "lucide-react";
@@ -14,8 +14,8 @@ import type { Product, ProductCategory } from "@/lib/types";
 import ProductCard from "@/components/commerce/ProductCard";
 import { useRightPanel } from "@/lib/right-panel-context";
 import ProductDetailPanel from "@/components/chat/ProductDetailPanel";
-import { PlannedTooltip } from "@/components/ui/Tooltip";
 import { usePin, sortByPinned } from "@/lib/pin-context";
+import SnackPackageBuilder from "@/components/store/SnackPackageBuilder";
 
 /* ─── Constants ─── */
 
@@ -547,29 +547,11 @@ function StoreHomeTab({
 }
 
 /* ═══════════════════════════════
-   간식 패키지 탭
+   간식 패키지 탭 — SnackPackageBuilder 위임
    ═══════════════════════════════ */
 
 function SnackPackageTab() {
-  return (
-    <div className="flex flex-col items-center pt-12">
-      <div className="w-16 h-16 rounded-2xl bg-[#f5f5f5] flex items-center justify-center mb-4">
-        <Cookie size={28} strokeWidth={1.2} color="#bbb" />
-      </div>
-      <h2 className="text-[20px] font-semibold mb-2">간식 패키지</h2>
-      <p className="text-[14px] text-[#777] text-center leading-[1.6] max-w-[400px] mb-4">
-        회사 인원과 예산에 맞는 간식 세트를 AI가 추천해드립니다.<br />
-        카테고리 비율 조정부터 상품 교체까지 한 번에.
-      </p>
-      <PlannedTooltip description="간식 패키지 빌더" position="bottom">
-        <button className="px-6 py-[10px] text-[14px] font-medium text-white bg-black rounded-full cursor-pointer transition-opacity hover:opacity-80">
-          <Sparkles size={15} strokeWidth={1.5} className="inline mr-1.5 -mt-0.5" />
-          간식 세트 만들기
-        </button>
-      </PlannedTooltip>
-      <p className="text-[12px] text-[#bbb] mt-6">3분이면 완성 · 25종 이상 · 87% 만족도</p>
-    </div>
-  );
+  return <SnackPackageBuilder />;
 }
 
 /* ═══════════════════════════════
