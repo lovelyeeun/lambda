@@ -1281,10 +1281,8 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
             <div key={msg.id}>
               <ChatBubble message={msg} />
               {msg.productIds && msg.productIds.length > 0 && (
-                <div className="flex justify-start mb-1 mt-1">
-                  <div className="max-w-[520px]">
-                    <ProductRecommendCard productIds={msg.productIds} onViewProduct={viewProduct} onAddToCart={handleAddToCart} />
-                  </div>
+                <div className="mb-1 mt-1 max-w-full">
+                  <ProductRecommendCard productIds={msg.productIds} onViewProduct={viewProduct} onAddToCart={handleAddToCart} />
                 </div>
               )}
               {msg.cardType === "expense-summary" && (
@@ -1388,20 +1386,17 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
           {/* ── 추천 결과 카드 ── */}
           {searchPhase === "results" && sourcedProducts.length > 0 && (
-            <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.4s ease-out" }}>
-              <div className="max-w-[560px]">
-                <SourcedProductCard
-                  products={sourcedProducts.map((p) => {
-                    // API 상품의 스크래핑 상태를 실시간 반영
-                    if (p.source === "api-external" && scrapingProduct && scrapingProduct.id === p.id) {
-                      return { ...p, scrapingStatus: scrapingProduct.scrapingStatus, scrapingProgress: scrapingProduct.scrapingProgress, scrapingSteps: scrapingProduct.scrapingSteps, scrapedOptions: scrapingProduct.scrapedOptions, scrapedDeliveryFee: scrapingProduct.scrapedDeliveryFee, scrapedDeliveryDays: scrapingProduct.scrapedDeliveryDays };
-                    }
-                    return p;
-                  })}
-                  onSelect={handleSourcedSelect}
-                  onAddToCart={handleSourcedAddToCart}
-                />
-              </div>
+            <div className="mb-1 max-w-full" style={{ animation: "fade-in 0.4s ease-out" }}>
+              <SourcedProductCard
+                products={sourcedProducts.map((p) => {
+                  if (p.source === "api-external" && scrapingProduct && scrapingProduct.id === p.id) {
+                    return { ...p, scrapingStatus: scrapingProduct.scrapingStatus, scrapingProgress: scrapingProduct.scrapingProgress, scrapingSteps: scrapingProduct.scrapingSteps, scrapedOptions: scrapingProduct.scrapedOptions, scrapedDeliveryFee: scrapingProduct.scrapedDeliveryFee, scrapedDeliveryDays: scrapingProduct.scrapedDeliveryDays };
+                  }
+                  return p;
+                })}
+                onSelect={handleSourcedSelect}
+                onAddToCart={handleSourcedAddToCart}
+              />
             </div>
           )}
 

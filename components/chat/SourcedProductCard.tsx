@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   Eye, ShoppingCart, Sparkles, Check, ExternalLink,
   Database, Building2, Globe, Zap, Loader2, ShieldCheck,
   TrendingDown, RefreshCw, Clock, ChevronDown, ChevronUp,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════
@@ -91,22 +92,55 @@ interface SourcedProductCardProps {
 }
 
 export default function SourcedProductCard({ products, onSelect, onAddToCart }: SourcedProductCardProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const PAGE_SIZE = 3;
+  const totalPages = Math.ceil(products.length / PAGE_SIZE);
+  const [page, setPage] = useState(0);
+  const canPrev = page > 0;
+  const canNext = page < totalPages - 1;
+  const visible = products.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-2 mt-1">
-      {/* AI 검색 헤더 */}
-      <div
-        className="flex items-center gap-2 px-3 py-2"
-        style={{ borderRadius: "10px", backgroundColor: "rgba(99,102,241,0.04)" }}
-      >
-        <Sparkles size={12} strokeWidth={1.5} color="#6366f1" />
-        <span className="text-[11px] font-medium text-[#6366f1]">3개 데이터소스에서 {products.length}개 상품을 찾았습니다</span>
+      {/* AI 검색 헤더 + 페이지네이션 */}
+      <div className="flex items-center justify-between">
+        <div
+          className="flex items-center gap-2 px-3 py-2 flex-1"
+          style={{ borderRadius: "10px", backgroundColor: "rgba(99,102,241,0.04)" }}
+        >
+          <Sparkles size={12} strokeWidth={1.5} color="#6366f1" />
+          <span className="text-[11px] font-medium text-[#6366f1]" style={{ letterSpacing: "0.14px" }}>
+            AI 추천 — {products.length}개 상품 비교
+          </span>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1 ml-2 shrink-0">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={!canPrev}
+              className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f5f5f5] disabled:opacity-30 disabled:cursor-default"
+              aria-label="이전"
+            >
+              <ChevronLeft size={14} strokeWidth={1.5} color="#4e4e4e" />
+            </button>
+            <span className="text-[11px] text-[#777169] min-w-[32px] text-center" style={{ letterSpacing: "0.14px" }}>
+              {page + 1}/{totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={!canNext}
+              className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f5f5f5] disabled:opacity-30 disabled:cursor-default"
+              aria-label="다음"
+            >
+              <ChevronRight size={14} strokeWidth={1.5} color="#4e4e4e" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {products.map((product) => {
+      {/* 3열 카드 그리드 — 부모 폭에 맞게 유동 */}
+      <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${Math.min(visible.length, 3)}, minmax(0, 240px))` }}>
+      {visible.map((product) => {
         const sc = sourceConfig[product.source];
-        const isExpanded = expandedId === product.id;
         const isApiProduct = product.source === "api-external";
         const isScraping = product.scrapingStatus === "scraping";
         const scrapeDone = product.scrapingStatus === "done";
@@ -115,7 +149,7 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
         return (
           <div
             key={product.id}
-            className="relative overflow-hidden bg-white transition-all"
+            className="relative flex flex-col overflow-hidden bg-white transition-all"
             style={{
               borderRadius: "14px",
               boxShadow: product.isRecommended
@@ -123,163 +157,136 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
                 : "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
             }}
           >
-            {/* 추천 뱃지 */}
-            {product.isRecommended && (
-              <div className="flex items-center gap-1 px-3 py-1.5" style={{ backgroundColor: "rgba(99,102,241,0.04)" }}>
-                <Zap size={10} strokeWidth={2} color="#6366f1" />
-                <span className="text-[10px] font-semibold text-[#6366f1]">AI 추천</span>
-              </div>
-            )}
-
-            <div className="p-3">
-              {/* 소싱처 뱃지 */}
-              <div className="flex items-center gap-2 mb-2">
+            {/* 상단 — 이미지 + 추천 뱃지 */}
+            <div
+              className="relative w-full h-[110px] flex items-center justify-center"
+              style={{
+                backgroundColor: product.isRecommended ? "rgba(99,102,241,0.04)" : "#f5f2ef",
+              }}
+            >
+              <span className="text-[11px] font-medium text-[#777169]">{product.brand}</span>
+              {product.isRecommended && (
                 <span
-                  className="inline-flex items-center gap-1 px-2 py-[2px] text-[10px] font-medium rounded-full"
+                  className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-[2px] text-[9px] font-semibold text-[#6366f1]"
+                  style={{ borderRadius: "6px", backgroundColor: "rgba(255,255,255,0.85)" }}
+                >
+                  <Zap size={9} strokeWidth={2} />AI 추천
+                </span>
+              )}
+              {product.savingsPercent != null && product.savingsPercent > 0 && (
+                <span
+                  className="absolute top-2 right-2 inline-flex items-center gap-0.5 px-1.5 py-[2px] text-[9px] font-medium text-[#6366f1]"
+                  style={{ borderRadius: "6px", backgroundColor: "rgba(255,255,255,0.85)" }}
+                >
+                  <TrendingDown size={9} strokeWidth={2} />{product.savingsPercent}%
+                </span>
+              )}
+            </div>
+
+            {/* 본문 */}
+            <div className="flex flex-col flex-1 p-3">
+              {/* 소싱처 뱃지 줄 */}
+              <div className="flex items-center gap-1.5 mb-2">
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-[1.5px] text-[9px] font-medium rounded-full"
                   style={{ backgroundColor: sc.bg, color: sc.color }}
                 >
                   {sc.icon}{sc.label}
                 </span>
                 {isApiProduct && product.platform && (
-                  <span
-                    className="inline-flex items-center gap-1 px-1.5 py-[2px] text-[10px] font-medium rounded"
-                    style={{ color: platColor, backgroundColor: `${platColor}10` }}
-                  >
-                    {product.platform}
-                  </span>
+                  <span className="text-[9px] font-medium" style={{ color: platColor }}>{product.platform}</span>
                 )}
                 {!isApiProduct && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-[#22c55e] font-medium">
-                    <ShieldCheck size={10} strokeWidth={2} />즉시 구매
-                  </span>
-                )}
-                {product.savingsPercent != null && product.savingsPercent > 0 && (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] ml-auto">
-                    <TrendingDown size={10} strokeWidth={2} />{product.savingsPercent}% 절감
+                  <span className="inline-flex items-center gap-0.5 text-[9px] text-[#22c55e] font-medium">
+                    <ShieldCheck size={9} strokeWidth={2} />즉시
                   </span>
                 )}
               </div>
 
-              {/* 상품 정보 */}
-              <div className="flex gap-3">
-                <div
-                  className="w-14 h-14 shrink-0 bg-[#f8f8f8] flex items-center justify-center text-[9px] text-[#bbb]"
-                  style={{ borderRadius: "8px" }}
-                >
-                  {product.brand}
-                </div>
+              {/* 상품명 + 가격 */}
+              <p className="text-[10px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>{product.brand} · {product.category}</p>
+              <p className="text-[12.5px] font-medium leading-[1.35] mt-0.5 line-clamp-2 flex-1" style={{ letterSpacing: "0.14px" }}>{product.name}</p>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-[#999]">{product.brand} · {product.category}</p>
-                  <p className="text-[13px] font-medium leading-tight mt-0.5 line-clamp-2">{product.name}</p>
+              <div className="flex items-baseline gap-1.5 mt-1.5">
+                <span className="text-[16px] font-bold" style={{ letterSpacing: "-0.3px" }}>{formatPrice(product.price)}</span>
+                {product.originalPrice && product.originalPrice > product.price && (
+                  <span className="text-[10px] text-[#b8b2a8] line-through">{formatPrice(product.originalPrice)}</span>
+                )}
+              </div>
 
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <p className="text-[15px] font-bold">{formatPrice(product.price)}</p>
-                    {product.originalPrice && product.originalPrice > product.price && (
-                      <p className="text-[11px] text-[#bbb] line-through">{formatPrice(product.originalPrice)}</p>
+              {/* 배송/구매 정보 — 컴팩트 */}
+              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-1.5 text-[9.5px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                {!isApiProduct && (
+                  <>
+                    {product.deliveryFee != null && (
+                      <span>배송{product.deliveryFee === 0 ? " 무료" : ` ${formatPrice(product.deliveryFee)}`}</span>
                     )}
-                  </div>
-
-                  {/* 에어서플라이 DB 추가 정보 */}
-                  {!isApiProduct && (
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      {product.deliveryFee != null && (
-                        <span className="text-[10px] text-[#999]">
-                          배송비 {product.deliveryFee === 0 ? "무료" : formatPrice(product.deliveryFee)}
-                        </span>
-                      )}
-                      {product.deliveryDays && (
-                        <span className="text-[10px] text-[#999]">· {product.deliveryDays}일 내 도착</span>
-                      )}
-                      {product.purchaseCount != null && (
-                        <span className="text-[10px] text-[#999]">· 최근 {product.purchaseCount}회 구매</span>
-                      )}
-                      {product.options && product.options.length > 0 && (
-                        <span className="text-[10px] text-[#999]">· 옵션 {product.options.length}종</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* API 상품 — 스크래핑 전 제한 정보 표시 */}
-                  {isApiProduct && !scrapeDone && !isScraping && (
-                    <div className="mt-1.5">
-                      <div className="flex items-center gap-3 text-[10px] text-[#bbb]">
-                        <span>배송비 —</span>
-                        <span>옵션 —</span>
-                        <span>상세 —</span>
-                      </div>
-                      <p className="text-[10px] text-[#ccc] mt-1 italic">상품 선택 시 상세 정보를 수집합니다</p>
-                    </div>
-                  )}
-
-                  {/* API 상품 — 스크래핑 중 */}
-                  {isApiProduct && isScraping && (
-                    <ScrapingIndicator
-                      progress={product.scrapingProgress ?? 0}
-                      steps={product.scrapingSteps ?? []}
-                    />
-                  )}
-
-                  {/* API 상품 — 스크래핑 완료 */}
-                  {isApiProduct && scrapeDone && (
-                    <div className="mt-1.5">
-                      <div className="flex items-center gap-2 flex-wrap text-[10px] text-[#999]">
-                        {product.scrapedDeliveryFee != null && (
-                          <span>배송비 {product.scrapedDeliveryFee === 0 ? "무료" : formatPrice(product.scrapedDeliveryFee)}</span>
-                        )}
-                        {product.scrapedDeliveryDays && <span>· {product.scrapedDeliveryDays}일 내 도착</span>}
-                        {product.scrapedOptions && <span>· 옵션 {product.scrapedOptions.length}종</span>}
-                      </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <Check size={10} strokeWidth={2} color="#22c55e" />
-                        <span className="text-[10px] text-[#22c55e] font-medium">상세 정보 수집 완료</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    {product.deliveryDays && <span>· {product.deliveryDays}일</span>}
+                    {product.purchaseCount != null && <span>· {product.purchaseCount}회 구매</span>}
+                    {product.options && product.options.length > 0 && <span>· 옵션 {product.options.length}종</span>}
+                  </>
+                )}
+                {isApiProduct && !scrapeDone && !isScraping && (
+                  <span className="text-[#b8b2a8] italic">선택 시 상세 수집</span>
+                )}
+                {isApiProduct && scrapeDone && (
+                  <>
+                    {product.scrapedDeliveryFee != null && (
+                      <span>배송{product.scrapedDeliveryFee === 0 ? " 무료" : ` ${formatPrice(product.scrapedDeliveryFee)}`}</span>
+                    )}
+                    {product.scrapedDeliveryDays && <span>· {product.scrapedDeliveryDays}일</span>}
+                    <span className="text-[#22c55e] font-medium">✓ 수집완료</span>
+                  </>
+                )}
               </div>
 
-              {/* AI 코멘트 */}
-              {product.aiNote && (
-                <div className="flex items-start gap-1.5 mt-2.5 px-2.5 py-2" style={{ borderRadius: "8px", backgroundColor: "rgba(99,102,241,0.03)" }}>
-                  <Sparkles size={10} strokeWidth={1.5} color="#6366f1" className="mt-[1px] shrink-0" />
-                  <p className="text-[11px] text-[#666] leading-[1.5]">{product.aiNote}</p>
-                </div>
+              {/* 스크래핑 중 */}
+              {isApiProduct && isScraping && (
+                <ScrapingIndicator
+                  progress={product.scrapingProgress ?? 0}
+                  steps={product.scrapingSteps ?? []}
+                />
               )}
 
-              {/* 액션 */}
-              <div className="flex gap-1.5 mt-2.5">
-                {isApiProduct && product.platformUrl && !scrapeDone && (
-                  <button
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[#555] bg-[#f5f5f5] rounded-lg cursor-pointer transition-colors hover:bg-[#eee]"
-                  >
-                    <ExternalLink size={11} strokeWidth={1.5} />
-                    원본 링크
-                  </button>
-                )}
+              {/* AI 코멘트 — 1줄 */}
+              {product.aiNote && (
+                <p className="text-[10px] text-[#4e4e4e] leading-[1.45] mt-2 line-clamp-2" style={{ letterSpacing: "0.14px" }}>
+                  {product.aiNote}
+                </p>
+              )}
+
+              {/* 액션 — 세로 적합하게 풀폭 */}
+              <div className="flex gap-1.5 mt-auto pt-3">
                 <button
                   onClick={() => onSelect(product)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[#555] bg-[#f5f5f5] rounded-lg cursor-pointer transition-colors hover:bg-[#eee]"
+                  className="flex items-center justify-center gap-1 px-2 py-[6px] text-[10.5px] font-medium text-[#4e4e4e] cursor-pointer transition-colors hover:bg-[rgba(245,242,239,0.8)]"
+                  style={{
+                    borderRadius: "8px",
+                    boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+                    letterSpacing: "0.14px",
+                  }}
                 >
-                  <Eye size={11} strokeWidth={1.5} />
-                  상세보기
+                  <Eye size={10} strokeWidth={1.5} />
+                  상세
                 </button>
                 <button
                   onClick={() => onAddToCart(product)}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium rounded-lg cursor-pointer transition-opacity hover:opacity-80 ${
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-[6px] text-[10.5px] font-medium cursor-pointer transition-opacity hover:opacity-85 ${
                     isApiProduct && !scrapeDone
                       ? "text-white bg-[#ea580c]"
-                      : "text-white bg-[#1a1a1a]"
+                      : "text-white bg-[#000]"
                   }`}
+                  style={{ borderRadius: "8px", letterSpacing: "0.14px" }}
                 >
-                  <ShoppingCart size={11} strokeWidth={1.5} />
-                  {isApiProduct && !scrapeDone ? "선택하기" : "장바구니"}
+                  <ShoppingCart size={10} strokeWidth={1.5} />
+                  {isApiProduct && !scrapeDone ? "선택" : "담기"}
                 </button>
               </div>
             </div>
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
