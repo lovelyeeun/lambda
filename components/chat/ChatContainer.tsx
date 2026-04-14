@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Sparkles, Database, Building2, Globe, Zap, Search, Clock,
-  Check, Loader2, Package, ShoppingCart,
+  Check, Loader2, Package, ShoppingCart, BarChart3, ArrowUpRight,
 } from "lucide-react";
 import type { ChatMessage, Product, WorkItem, WorkItemSnapshot, WorkItemStatus } from "@/lib/types";
 import { products } from "@/data/products";
@@ -449,11 +449,51 @@ const costAnalysisKeywords = [
   "카테고리별", "팀별 지출", "부서별 지출",
   "비용 분석", "지출 분석", "지출 리포트", "지출 현황", "지출 요약",
   "절감", "절약",
+  // 분석/인사이트 확장 — AI 추천 카드 프롬프트가 상품 검색으로 빠지지 않도록
+  "사용량", "재주문", "패턴 분석", "구매 패턴", "리포트",
+  "벤더 추천", "대안 벤더", "배송 지연",
+];
+
+/** 분석/인사이트 세부 응답 매칭 — 키워드 기반으로 맞춤 응답 반환 */
+const analysisResponses: { keywords: string[]; content: string }[] = [
+  {
+    keywords: ["사용량", "재주문"],
+    content:
+      "지난달 대비 토너 사용량이 **30% 증가**했어요.\n\n" +
+      "현재 재고 소진 예상: **4월 18일**\n평균 배송 리드타임: **3영업일**\n\n" +
+      "**4월 15일**경 재주문하면 재고 공백 없이 수급할 수 있어요.\n비용 인텔리전스에서 상세 사용 추이를 확인할 수 있습니다.",
+  },
+  {
+    keywords: ["대안 벤더", "벤더 추천", "배송 지연"],
+    content:
+      "A4용지 벤더 B의 최근 3회 배송 지연 이력을 확인했어요.\n\n" +
+      "| 벤더 | 평균 납기 | 단가 | 지연율 |\n|---|---|---|---|\n" +
+      "| 벤더 A (현재) | 2일 | 12,900원 | 0% |\n| 벤더 B | 5일 | 11,500원 | **60%** |\n| 벤더 C (신규) | 3일 | 12,200원 | 5% |\n\n" +
+      "**벤더 C**가 단가·납기 균형이 가장 좋습니다. SCM에서 상세 비교를 진행할 수 있어요.",
+  },
+  {
+    keywords: ["패턴 분석", "구매 패턴", "리포트"],
+    content:
+      "Q1 마케팅팀 구매 패턴을 분석했어요.\n\n" +
+      "- **총 지출**: 14,200,000원 (전분기 대비 -8%)\n" +
+      "- **주요 카테고리**: 사무용품 49% · 전자기기 31% · 기타 20%\n" +
+      "- **특이사항**: 3월 전자기기 지출 급증 (노트북 3대 일괄 구매)\n\n" +
+      "비용 인텔리전스에서 상세 리포트와 내보내기가 가능합니다.",
+  },
 ];
 
 function detectCostAnalysisQuery(text: string): boolean {
   const lower = text.toLowerCase();
   return costAnalysisKeywords.some((kw) => lower.includes(kw));
+}
+
+function getCostAnalysisResponse(text: string): string {
+  const lower = text.toLowerCase();
+  for (const r of analysisResponses) {
+    if (r.keywords.some((kw) => lower.includes(kw))) return r.content;
+  }
+  // 기본 응답
+  return "4월 누적 지출이 전월 대비 12% 감소했어요.\n\n카테고리별 · 팀별 상세, 절감 제안은 비용 인텔리전스에서 확인할 수 있어요.";
 }
 
 /* ─── 간식 추천 시나리오 감지 ─── */
@@ -652,9 +692,10 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       }
     }
 
-    // 추천 상품 + 검색 기록 복원 — 키워드 검색 결과 화면과 동일한 형태
+    // 추천 상품 카드 복원 비활성화 — 상품 정보는 메시지 데이터의 productIds로
+    // 인라인 렌더링. 하단 별도 AI 추천 카드를 자동 생성하면 위치 오류 + 중복 발생.
     const matchedProduct = restoredCart[0]?.product;
-    if (matchedProduct) {
+    if (false && matchedProduct) { // eslint-disable-line no-constant-condition
       // 첫 번째 사용자 메시지에서 검색 키워드 추출
       const firstUserMsg = msgs.find((m) => m.role === "user");
       const queryText = firstUserMsg?.content ?? matchedProduct.name;
@@ -1342,10 +1383,9 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       setTimeout(() => {
         addMsg({
           role: "assistant",
-          content:
-            "4월 누적 지출이 전월 대비 12% 감소했어요.\n\n카테고리별 · 팀별 상세, 절감 제안은 비용 인텔리전스에서 확인할 수 있어요.",
+          content: getCostAnalysisResponse(text),
           agent: "분석",
-          cardType: "expense-summary",
+          cardType: "cost-intel-link",
         });
         setIsTyping(false);
       }, 600);
@@ -1701,6 +1741,24 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
               {msg.cardType === "expense-summary" && (
                 <div className="flex justify-start mb-1 mt-1">
                   <ExpenseSummaryCard />
+                </div>
+              )}
+              {msg.cardType === "cost-intel-link" && (
+                <div className="flex justify-start mb-1 mt-1">
+                  <button
+                    onClick={() => router.push("/cost-intel")}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-[#6366f1] cursor-pointer transition-all hover:translate-y-[-0.5px]"
+                    style={{
+                      borderRadius: "12px",
+                      backgroundColor: "rgba(99,102,241,0.06)",
+                      boxShadow: "rgba(99,102,241,0.15) 0px 0px 0px 1px",
+                      letterSpacing: "0.14px",
+                    }}
+                  >
+                    <BarChart3 size={14} strokeWidth={1.75} />
+                    비용 인텔리전스 열기
+                    <ArrowUpRight size={12} strokeWidth={2} />
+                  </button>
                 </div>
               )}
               {msg.cardType === "snack-recommendation" && (

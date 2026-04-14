@@ -44,7 +44,7 @@ export const chats: Chat[] = [
     tags: ["주문", "잉크/토너"],
     messages: [
       { id: "m-003-1", role: "user", content: "마케팅팀 프린터 토너가 떨어졌대요. 지난번이랑 같은 걸로 3개 주문해주세요.", timestamp: "2026-04-09T11:00:00" },
-      { id: "m-003-2", role: "assistant", content: "HP 206A 정품 토너(검정) 3개 주문하겠습니다.\n\n89,000원 × 3개 = 267,000원\n배송지: 본사 5층 마케팅팀", timestamp: "2026-04-09T11:00:12", agent: "주문" },
+      { id: "m-003-2", role: "assistant", content: "HP 206A 정품 토너(검정) 3개 주문하겠습니다.\n\n89,000원 × 3개 = 267,000원\n배송지: 본사 5층 마케팅팀", timestamp: "2026-04-09T11:00:12", agent: "주문", productIds: ["prod-002"] },
       { id: "m-003-3", role: "user", content: "네 올려주세요", timestamp: "2026-04-09T11:10:00" },
       { id: "m-003-4", role: "assistant", content: "HP 206A 토너 3개 품의 요청을 올렸습니다. 승인을 기다리고 있습니다.", timestamp: "2026-04-09T11:15:00", agent: "주문" },
     ],
