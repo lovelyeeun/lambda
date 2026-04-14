@@ -57,12 +57,12 @@ export default function PaymentSelector({ totalPrice, onConfirm }: PaymentSelect
             >
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: method.type === "bnpl" ? "#f0fdf4" : "#f5f5f5" }}
+                style={{ backgroundColor: method.type === "bnpl" ? "rgba(245,242,239,0.8)" : "#f5f5f5" }}
               >
                 <CreditCard
                   size={18}
                   strokeWidth={1.5}
-                  color={method.type === "bnpl" ? "#16a34a" : "#4e4e4e"}
+                  color={method.type === "bnpl" ? "#000" : "#4e4e4e"}
                 />
               </div>
               <div className="flex-1 min-w-0">

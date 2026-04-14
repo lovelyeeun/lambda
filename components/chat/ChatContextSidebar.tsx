@@ -170,7 +170,7 @@ export default function ChatContextSidebar({
                   {onOpenFlow && !isInOrderPhase && (
                     <button
                       onClick={onOpenFlow}
-                      className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] cursor-pointer hover:underline"
+                      className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#000] cursor-pointer hover:underline"
                       style={{ letterSpacing: "0.14px" }}
                     >
                       상세보기
@@ -207,7 +207,7 @@ export default function ChatContextSidebar({
                                   style={{ borderRadius: "6px", boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px", backgroundColor: "#f9f9f9" }}
                                 >
                                   <div className="flex items-start justify-between gap-2 mb-1">
-                                    <span className="text-[11px] font-medium text-[#1a1a1a] leading-tight" style={{ letterSpacing: "0.14px" }}>
+                                    <span className="text-[12px] font-medium text-[#1a1a1a] leading-tight" style={{ letterSpacing: "0.14px" }}>
                                       &ldquo;{record.query}&rdquo;
                                     </span>
                                     <span className="text-[10px] text-[#bbb] shrink-0">{record.timestamp}</span>
@@ -295,7 +295,7 @@ export default function ChatContextSidebar({
                   {onOpenFlow && (
                     <button
                       onClick={onOpenFlow}
-                      className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] cursor-pointer hover:underline"
+                      className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#000] cursor-pointer hover:underline"
                       style={{ letterSpacing: "0.14px" }}
                     >
                       상세보기
@@ -379,13 +379,13 @@ export default function ChatContextSidebar({
               }
             />
             <PolicyPill
-              icon={<ShieldCheck size={11} strokeWidth={1.75} color="#6366f1" />}
+              icon={<ShieldCheck size={11} strokeWidth={1.75} color="#000" />}
               label={
                 context.approvalPolicy
                   ? `자동승인 ≤ ${formatShortWon(context.approvalPolicy.autoApproveLimit)}`
                   : "자동승인 미설정"
               }
-              accentColor="#6366f1"
+              accentColor="#000"
               popoverTitle="승인체계 · 내 권한"
               popoverBody={
                 context.approvalPolicy ? (
@@ -430,7 +430,7 @@ export default function ChatContextSidebar({
                     </span>
                     {onOpenBudget && (
                       <span
-                        className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
+                        className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#000] opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
                         style={{ letterSpacing: "0.14px" }}
                       >
                         분석 <ArrowUpRight size={10} strokeWidth={2} />
@@ -475,7 +475,7 @@ export default function ChatContextSidebar({
             return onOpenBudget ? (
               <button
                 onClick={onOpenBudget}
-                className="group w-full text-left cursor-pointer transition-colors hover:bg-[rgba(99,102,241,0.03)] -mx-2 px-2 py-2 rounded-[6px]"
+                className="group w-full text-left cursor-pointer transition-colors hover:bg-[rgba(245,242,239,0.6)] -mx-2 px-2 py-2 rounded-[6px]"
               >
                 {budgetContent}
               </button>
@@ -663,36 +663,27 @@ function GroupSection({
         onClick={onToggle}
         className="w-full flex items-center gap-2 px-1 py-2 cursor-pointer text-left"
       >
-        {accent && <Zap size={11} strokeWidth={1.75} color="#6366f1" />}
+        {accent && <Zap size={12} strokeWidth={1.75} color="#000" />}
         <span
-          className="text-[11px] font-semibold uppercase"
+          className="text-[12px] font-semibold uppercase"
           style={{
             letterSpacing: "0.7px",
-            color: accent ? "#6366f1" : "#4e4e4e",
+            color: accent ? "#000" : "#4e4e4e",
           }}
         >
           {title}
         </span>
         <ChevronDown
-          size={12}
+          size={13}
           strokeWidth={1.5}
-          color="#bbb"
+          color="#b8b2a8"
           className="ml-auto transition-transform"
           style={{ transform: expanded ? "rotate(0)" : "rotate(-90deg)" }}
         />
       </button>
 
       {expanded && (
-        <div
-          className="px-3.5 py-3"
-          style={{
-            borderRadius: "12px",
-            backgroundColor: accent ? "rgba(99,102,241,0.025)" : "#fff",
-            boxShadow: accent
-              ? "rgba(99,102,241,0.12) 0px 0px 0px 1px"
-              : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
-          }}
-        >
+        <div className="px-0.5 pb-1">
           {children}
         </div>
       )}
@@ -718,7 +709,7 @@ function SubGroup({
     <div>
       <div className="flex items-center gap-1.5 mb-2 px-0.5">
         <span
-          className="text-[10px] font-semibold uppercase text-[#777169]"
+          className="text-[11px] font-semibold uppercase text-[#777169]"
           style={{ letterSpacing: "0.7px" }}
         >
           {title}
@@ -726,7 +717,7 @@ function SubGroup({
         {titleBadge}
         {count != null && count > 0 && (
           <span
-            className="text-[9px] font-medium text-[#999]"
+            className="text-[10px] font-medium text-[#999]"
             style={{ letterSpacing: "0.14px" }}
           >
             {count}
@@ -743,7 +734,7 @@ function SubGroup({
 function MicroLabel({ children }: { children: React.ReactNode }) {
   return (
     <span
-      className="text-[9px] font-medium text-[#999] uppercase"
+      className="text-[10px] font-medium text-[#999] uppercase"
       style={{ letterSpacing: "0.7px" }}
     >
       {children}
@@ -782,7 +773,7 @@ function ListRow({
       </div>
       {onClick && (
         <span
-          className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] shrink-0 mt-[3px] opacity-0 group-hover:opacity-100 transition-opacity"
+          className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#000] shrink-0 mt-[3px] opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ letterSpacing: "0.14px" }}
         >
           {actionHint}
@@ -796,7 +787,7 @@ function ListRow({
     return (
       <button
         onClick={onClick}
-        className="group flex items-start gap-2 px-1 py-2 w-full text-left cursor-pointer rounded-[6px] transition-colors hover:bg-[rgba(99,102,241,0.04)]"
+        className="group flex items-start gap-2 px-1 py-2 w-full text-left cursor-pointer rounded-[6px] transition-colors hover:bg-[rgba(245,242,239,0.6)]"
       >
         {content}
       </button>
@@ -812,9 +803,9 @@ function ListRow({
 /* ── 상품 미니 카드 (선정/후보 공용) ── */
 
 const sourceColors: Record<string, string> = {
-  "airsupply-db": "#6366f1",
-  "airsupply-supplier": "#059669",
-  "api-external": "#ea580c",
+  "airsupply-db": "#000",
+  "airsupply-supplier": "#777169",
+  "api-external": "#b8b2a8",
 };
 const sourceLabels: Record<string, string> = {
   "airsupply-db": "에어서플라이",
@@ -841,7 +832,7 @@ function ProductMiniCard({
         borderRadius: "8px",
         backgroundColor: "#fff",
         boxShadow: isSelected
-          ? "rgba(99,102,241,0.2) 0px 0px 0px 1px"
+          ? "rgba(0,0,0,0.12) 0px 0px 0px 1px"
           : "rgba(0,0,0,0.05) 0px 0px 0px 1px",
         opacity: isSelected ? 1 : 0.88,
       }}
@@ -851,13 +842,13 @@ function ProductMiniCard({
           className="w-1.5 h-1.5 rounded-full shrink-0"
           style={{ backgroundColor: color }}
         />
-        <span className="text-[10px] font-medium" style={{ color, letterSpacing: "0.14px" }}>
+        <span className="text-[11px] font-medium" style={{ color, letterSpacing: "0.14px" }}>
           {sourceLabels[product.source] ?? product.source}
         </span>
         {isSelected && product.isRecommended && (
           <span
-            className="text-[8px] px-1 py-[1px] bg-[#6366f1] text-white font-bold"
-            style={{ borderRadius: "3px", letterSpacing: "0.14px" }}
+            className="text-[10px] px-1.5 py-[1px] bg-[#000] text-white font-medium"
+            style={{ borderRadius: "4px", letterSpacing: "0.14px" }}
           >
             추천
           </span>
@@ -865,7 +856,7 @@ function ProductMiniCard({
       </div>
 
       <p
-        className="text-[11px] font-medium truncate"
+        className="text-[13px] font-medium truncate"
         style={{ color: isSelected ? "#1a1a1a" : "#777169", letterSpacing: "0.14px" }}
       >
         {product.name}
@@ -874,9 +865,9 @@ function ProductMiniCard({
       {/* AI 선정/후보 이유 — 상품명 바로 아래 배치 */}
       {product.aiNote && (
         <p
-          className="text-[10px] leading-[1.45] line-clamp-2 mt-0.5 mb-1"
+          className="text-[11px] leading-[1.45] line-clamp-2 mt-0.5 mb-1"
           style={{
-            color: isSelected ? "#666" : "#999",
+            color: isSelected ? "#555" : "#999",
             letterSpacing: "0.14px",
           }}
         >
@@ -886,26 +877,26 @@ function ProductMiniCard({
 
       <div className="flex items-center gap-2">
         <span
-          className="text-[11px] font-semibold"
-          style={{ color: isSelected ? "#111" : "#555", letterSpacing: "0.14px" }}
+          className="text-[14px] font-semibold"
+          style={{ color: isSelected ? "#000" : "#555", letterSpacing: "-0.2px" }}
         >
           {product.price.toLocaleString()}원
         </span>
         {product.savingsPercent && (
-          <span className="flex items-center gap-0.5 text-[9px] text-[#4e4e4e] font-medium">
-            <TrendingDown size={8} strokeWidth={2} />{product.savingsPercent}%↓
+          <span className="flex items-center gap-0.5 text-[11px] text-[#4e4e4e] font-medium">
+            <TrendingDown size={10} strokeWidth={2} />{product.savingsPercent}%↓
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-1.5 mt-0.5">
         {product.deliveryDays != null && (
-          <span className="text-[9px] text-[#999]" style={{ letterSpacing: "0.14px" }}>
+          <span className="text-[11px] text-[#999]" style={{ letterSpacing: "0.14px" }}>
             {product.deliveryDays}일 · {product.deliveryFee === 0 ? "무료" : `${(product.deliveryFee ?? 0).toLocaleString()}원`}
           </span>
         )}
         {product.purchaseCount != null && product.purchaseCount > 0 && (
-          <span className="text-[9px] text-[#bbb]">·{product.purchaseCount}회 구매</span>
+          <span className="text-[11px] text-[#b8b2a8]">·{product.purchaseCount}회 구매</span>
         )}
       </div>
     </button>
@@ -931,13 +922,13 @@ function StepRow({
 }) {
   const dot = (
     <div
-      className="w-4 h-4 shrink-0 flex items-center justify-center rounded-full"
+      className="w-[18px] h-[18px] shrink-0 flex items-center justify-center rounded-full"
       style={{
-        backgroundColor: isDone ? "#6366f1" : isActive ? "#6366f1" : "rgba(0,0,0,0.05)",
-        boxShadow: isActive ? "rgba(99,102,241,0.25) 0px 0px 0px 3px" : undefined,
+        backgroundColor: isDone ? "#000" : isActive ? "#8a6f3f" : "rgba(0,0,0,0.06)",
+        boxShadow: isActive ? "rgba(138,111,63,0.18) 0px 0px 0px 3px" : undefined,
       }}
     >
-      {isDone ? <Check size={9} strokeWidth={2.5} color="#fff" /> : icon}
+      {isDone ? <Check size={10} strokeWidth={2.5} color="#fff" /> : icon}
     </div>
   );
 
@@ -945,10 +936,10 @@ function StepRow({
     <>
       {dot}
       <span
-        className="text-[11px]"
+        className="text-[13px]"
         style={{
-          color: isDone ? "#6366f1" : isActive ? "#111" : "#bbb",
-          fontWeight: isActive ? 600 : 400,
+          color: isDone ? "#000" : isActive ? "#8a6f3f" : "#b8b2a8",
+          fontWeight: isActive || isDone ? 500 : 400,
           letterSpacing: "0.14px",
         }}
       >
@@ -956,11 +947,11 @@ function StepRow({
       </span>
       {isActive && isClickable && (
         <span
-          className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] opacity-0 group-hover:opacity-100 transition-opacity"
+          className="ml-auto inline-flex items-center gap-0.5 text-[11px] font-medium text-[#777169] opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ letterSpacing: "0.14px" }}
         >
           상세보기
-          <ArrowRight size={10} strokeWidth={2} />
+          <ArrowRight size={11} strokeWidth={2} />
         </span>
       )}
     </>
@@ -969,15 +960,15 @@ function StepRow({
   return isClickable ? (
     <button
       onClick={onClick}
-      className="group flex items-center gap-2 py-1.5 px-2 -mx-1 cursor-pointer rounded-[6px] transition-colors w-full"
-      style={{ backgroundColor: "rgba(99,102,241,0.06)" }}
+      className="group flex items-center gap-2 py-1.5 px-2 -mx-1 cursor-pointer rounded-[8px] transition-colors w-full"
+      style={{ backgroundColor: "rgba(245,242,239,0.6)" }}
     >
       {row}
     </button>
   ) : (
     <div
-      className="flex items-center gap-2 py-1.5 px-2 -mx-1 rounded-[6px]"
-      style={{ backgroundColor: isActive ? "rgba(99,102,241,0.06)" : undefined }}
+      className="flex items-center gap-2 py-1.5 px-2 -mx-1 rounded-[8px]"
+      style={{ backgroundColor: isActive ? "rgba(245,242,239,0.6)" : undefined }}
     >
       {row}
     </div>

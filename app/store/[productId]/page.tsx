@@ -14,14 +14,19 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
+  const [toastFolderId, setToastFolderId] = useState<string | null>(null);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
 
   const product = products.find((p) => p.id === params.productId);
 
-  const showToast = useCallback((msg: string) => {
+  const showToast = useCallback((msg: string, folderId?: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2500);
+    setToastFolderId(folderId ?? null);
+    // 폴더 담기 툴팁은 X 클릭 전까지 유지, 일반 토스트만 자동 소멸
+    if (!folderId) {
+      setTimeout(() => { setToast(null); setToastFolderId(null); }, 2500);
+    }
   }, []);
 
   const toggleFolder = (folderId: string) => {
@@ -36,9 +41,9 @@ export default function ProductDetailPage() {
       .map((id) => folders.find((f) => f.id === id)?.name)
       .filter(Boolean);
     if (names.length === 1) {
-      showToast(`${names[0]} 폴더에 담기 완료`);
+      showToast(`${names[0]} 폴더에 담기 완료`, selectedFolderIds[0]);
     } else {
-      showToast(`${names.length}개 폴더(${names.join(", ")})에 담기 완료`);
+      showToast(`${names.length}개 폴더(${names.join(", ")})에 담기 완료`, selectedFolderIds[0]);
     }
     setShowFolderModal(false);
     setSelectedFolderIds([]);
@@ -54,14 +59,14 @@ export default function ProductDetailPage() {
 
   return (
     <div className="h-full overflow-y-auto relative">
-      {/* Toast */}
-      {toast && (
+      {/* Toast (폴더 담기 외 일반 알림용) */}
+      {toast && !toastFolderId && (
         <div
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 bg-[#1a1a1a] text-white text-[13px] font-medium"
           style={{ borderRadius: "10px", boxShadow: "rgba(0,0,0,0.2) 0px 4px 12px" }}
         >
           <Check size={14} strokeWidth={2} />
-          {toast}
+          <span>{toast}</span>
         </div>
       )}
 
@@ -106,14 +111,61 @@ export default function ProductDetailPage() {
               </span>
             </div>
 
-            {/* Folder button only */}
-            <button
-              onClick={() => { setShowFolderModal(true); setSelectedFolderIds([]); }}
-              className="flex items-center justify-center gap-2 w-full py-[10px] text-[14px] font-medium text-white bg-black rounded-xl cursor-pointer transition-opacity hover:opacity-80"
-            >
-              <FolderPlus size={16} strokeWidth={1.5} />
-              폴더에 담기
-            </button>
+            {/* Folder button + 담기 완료 툴팁 */}
+            <div className="relative">
+              {/* 툴팁 — X로 닫기 전까지 유지 */}
+              {toast && toastFolderId && (
+                <div
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 z-50"
+                  style={{ width: "300px" }}
+                >
+                  <div
+                    className="relative bg-white px-5 pt-5 pb-4"
+                    style={{
+                      borderRadius: "16px",
+                      boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 4px 4px, rgba(78,50,23,0.04) 0px 6px 16px",
+                    }}
+                  >
+                    <button
+                      onClick={() => { setToast(null); setToastFolderId(null); }}
+                      className="absolute top-3.5 right-3.5 flex items-center justify-center w-6 h-6 rounded-full cursor-pointer hover:bg-[#f5f2ef] transition-colors"
+                    >
+                      <X size={13} strokeWidth={1.5} color="#777169" />
+                    </button>
+
+                    <p className="text-[14px] text-[#111] font-medium mb-4" style={{ letterSpacing: "0.14px" }}>
+                      {toast}
+                    </p>
+                    <button
+                      onClick={() => { setToast(null); setToastFolderId(null); router.push(`/folders/${toastFolderId}`); }}
+                      className="w-full py-[11px] text-[14px] font-medium text-[#000] cursor-pointer transition-all hover:opacity-80"
+                      style={{
+                        borderRadius: "9999px",
+                        backgroundColor: "rgba(245,242,239,0.8)",
+                        boxShadow: "rgba(78,50,23,0.04) 0px 6px 16px, rgba(0,0,0,0.06) 0px 0px 0px 1px",
+                      }}
+                    >
+                      추가된 상품 확인하기
+                    </button>
+                  </div>
+                  {/* 삼각형 꼬리 */}
+                  <div className="flex justify-center">
+                    <svg width="20" height="10" viewBox="0 0 20 10" className="-mt-[1px]">
+                      <path d="M0 0 L10 10 L20 0" fill="white" />
+                      <path d="M0 0 L10 10 L20 0" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => { setShowFolderModal(true); setSelectedFolderIds([]); }}
+                className="flex items-center justify-center gap-2 w-full py-[10px] text-[14px] font-medium text-white bg-black rounded-xl cursor-pointer transition-opacity hover:opacity-80"
+              >
+                <FolderPlus size={16} strokeWidth={1.5} />
+                폴더에 담기
+              </button>
+            </div>
           </div>
         </div>
 

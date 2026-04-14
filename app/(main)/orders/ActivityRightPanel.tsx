@@ -276,7 +276,7 @@ function MiniActivityCard({
   return (
     <button
       onClick={onClick}
-      className="flex items-start gap-2.5 w-full p-3 text-left cursor-pointer transition-all hover:translate-y-[-0.5px]"
+      className="flex items-start gap-2 w-full px-2.5 py-2.5 text-left cursor-pointer transition-all hover:translate-y-[-0.5px]"
       style={{
         borderRadius: "10px",
         backgroundColor: muted ? "#fafafa" : "#fff",

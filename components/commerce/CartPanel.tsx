@@ -41,7 +41,7 @@ export default function CartPanel({
           </svg>
         </div>
         <p className="text-[14px] font-medium text-[#4e4e4e]">장바구니가 비어있습니다</p>
-        <p className="text-[12px] text-[#777169] mt-1">채팅에서 상품을 추천받고 담아보세요</p>
+        <p className="text-[12px] text-[#777169] mt-1">채팅에서 상품을 추천받거나, <br></br>회사 상품 폴더에서 원하는 상품을 찾아보세요</p>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export default function CartPanel({
           <div key={item.product.id} className="flex gap-3">
             {/* Image placeholder */}
             <div
-              className="w-14 h-14 shrink-0 bg-[#f5f5f5] flex items-center justify-center text-[9px] text-[#777169]"
+              className="w-14 h-14 shrink-0 bg-[#f5f5f5] flex items-center justify-center text-[10px] text-[#777169]"
               style={{ borderRadius: "8px" }}
             >
               {item.product.brand}

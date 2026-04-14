@@ -112,7 +112,7 @@ export default function MyActivityPage() {
   const handleDateClick = useCallback(
     (date: string) => {
       setSelectedDate(date);
-      openPanel(
+      const panelContent = (
         <ActivityRightPanel
           selectedDate={date}
           onActivityClick={(act) => {
@@ -120,11 +120,18 @@ export default function MyActivityPage() {
               ? orders.find((o) => o.id === act.relatedOrderId)
               : undefined;
             openPanel(
-              <ActivityDetailPanel activity={act} order={relatedOrder} />
+              <ActivityDetailPanel activity={act} order={relatedOrder} />,
+              "activity-detail",
+              {
+                label: act.title.length > 15 ? act.title.slice(0, 15) + "…" : act.title,
+                onBack: () => handleDateClick(date),
+                backLabel: "내 활동",
+              },
             );
           }}
         />
       );
+      openPanel(panelContent, "activity-list", { label: "내 활동" });
     },
     [openPanel]
   );

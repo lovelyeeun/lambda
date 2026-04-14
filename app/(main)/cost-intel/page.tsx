@@ -221,6 +221,7 @@ export default function CostIntelPage() {
       <CostIntelAnalysisPanel
         activeGUIs={activeGUIs}
         onRemoveGUI={(g) => setActiveGUIs((prev) => prev.length > 1 ? prev.filter((p) => p !== g) : prev)}
+        onReorder={setActiveGUIs}
         onReset={() => setActiveGUIs(["summary"])}
         onDrill={handleSend}
       />,
@@ -425,25 +426,64 @@ export default function CostIntelPage() {
    Right Panel — 분석 GUI 집합
    ═══════════════════════════════════════ */
 
+const guiPanelMap: Record<GUIPanel, React.ComponentType<{ onDrill: (text: string) => void }>> = {
+  summary: GUISummary,
+  monthly: GUIMonthly,
+  category: GUICategory,
+  team: GUITeam,
+  budget: GUIBudget,
+  saving: GUISaving,
+};
+
 function CostIntelAnalysisPanel({
   activeGUIs,
   onRemoveGUI,
+  onReorder,
   onReset,
   onDrill,
 }: {
   activeGUIs: GUIPanel[];
   onRemoveGUI: (g: GUIPanel) => void;
+  onReorder: (next: GUIPanel[]) => void;
   onReset: () => void;
   onDrill: (text: string) => void;
 }) {
+  /* ── 드래그앤드롭 상태 ── */
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
+
+  const handleDragStart = (i: number) => (e: React.DragEvent) => {
+    setDragIdx(i);
+    e.dataTransfer.effectAllowed = "move";
+  };
+  const handleDragOver = (i: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDropIdx(i);
+  };
+  const handleDrop = (targetIdx: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === targetIdx) { setDragIdx(null); setDropIdx(null); return; }
+    const next = [...activeGUIs];
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(targetIdx, 0, moved);
+    onReorder(next);
+    setDragIdx(null);
+    setDropIdx(null);
+  };
+  const handleDragEnd = () => { setDragIdx(null); setDropIdx(null); };
+
   return (
     <div>
-      {/* 활성 조건 태그 */}
+      {/* 활성 조건 태그 — 드래그앤드롭으로 순서 변경 가능 */}
       {activeGUIs.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-medium text-[#999]">
               분석 조건 ({activeGUIs.length}개 조합)
+              {activeGUIs.length > 1 && (
+                <span className="text-[#ccc]"> · 드래그로 순서를 바꿀 수 있어요</span>
+              )}
             </span>
             <button
               onClick={onReset}
@@ -453,16 +493,33 @@ function CostIntelAnalysisPanel({
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {activeGUIs.map((g) => (
+            {activeGUIs.map((g, i) => (
               <span
                 key={g}
-                className="inline-flex items-center gap-1 px-2.5 py-[4px] text-[11px] font-medium text-[#444] bg-white cursor-pointer transition-colors hover:bg-[#f0f0f0] group"
-                style={{ borderRadius: "9999px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px" }}
-                onClick={() => onRemoveGUI(g)}
+                draggable={activeGUIs.length > 1}
+                onDragStart={handleDragStart(i)}
+                onDragOver={handleDragOver(i)}
+                onDrop={handleDrop(i)}
+                onDragEnd={handleDragEnd}
+                className="inline-flex items-center gap-1 px-2.5 py-[4px] text-[11px] font-medium text-[#444] bg-white transition-all group select-none"
+                style={{
+                  borderRadius: "9999px",
+                  boxShadow:
+                    dropIdx === i && dragIdx !== null && dragIdx !== i
+                      ? "rgba(99,102,241,0.4) 0px 0px 0px 1.5px"
+                      : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+                  opacity: dragIdx === i ? 0.4 : 1,
+                  cursor: activeGUIs.length > 1 ? "grab" : "pointer",
+                }}
               >
                 {guiLabels[g]}
                 {activeGUIs.length > 1 && (
-                  <X size={10} strokeWidth={2} className="text-[#bbb] group-hover:text-[#666] transition-colors" />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onRemoveGUI(g); }}
+                    className="cursor-pointer"
+                  >
+                    <X size={10} strokeWidth={2} className="text-[#bbb] group-hover:text-[#666] transition-colors" />
+                  </button>
                 )}
               </span>
             ))}
@@ -470,15 +527,13 @@ function CostIntelAnalysisPanel({
         </div>
       )}
 
-      {/* 누적된 GUI 패널들 */}
+      {/* 누적된 GUI 패널들 — activeGUIs 순서대로 렌더 */}
       {activeGUIs.length === 0 && <GUIEmpty />}
       <div className="flex flex-col gap-5">
-        {activeGUIs.includes("summary") && <GUISummary onDrill={onDrill} />}
-        {activeGUIs.includes("monthly") && <GUIMonthly onDrill={onDrill} />}
-        {activeGUIs.includes("category") && <GUICategory onDrill={onDrill} />}
-        {activeGUIs.includes("team") && <GUITeam onDrill={onDrill} />}
-        {activeGUIs.includes("budget") && <GUIBudget />}
-        {activeGUIs.includes("saving") && <GUISaving />}
+        {activeGUIs.map((g) => {
+          const Panel = guiPanelMap[g];
+          return <Panel key={g} onDrill={onDrill} />;
+        })}
       </div>
 
       {/* Export always at bottom */}

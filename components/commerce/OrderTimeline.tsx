@@ -65,21 +65,24 @@ function getStatus(phase: TimelinePhase, active: TimelinePhase): StepStatus {
 function StatusDot({ status }: { status: StepStatus }) {
   if (status === "done") {
     return (
-      <div className="w-6 h-6 rounded-full bg-[#22c55e] flex items-center justify-center shrink-0">
+      <div className="w-6 h-6 rounded-full bg-[#000] flex items-center justify-center shrink-0">
         <Check size={13} color="#fff" strokeWidth={2.5} />
       </div>
     );
   }
   if (status === "active") {
     return (
-      <div className="w-6 h-6 rounded-full bg-[#3b82f6] flex items-center justify-center shrink-0">
+      <div
+        className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+        style={{ backgroundColor: "#8a6f3f", boxShadow: "rgba(138,111,63,0.18) 0px 0px 0px 3px" }}
+      >
         <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
       </div>
     );
   }
   return (
-    <div className="w-6 h-6 rounded-full bg-[#e5e5e5] flex items-center justify-center shrink-0">
-      <span className="w-2 h-2 rounded-full bg-[#d4d4d4]" />
+    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(0,0,0,0.06)" }}>
+      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#b8b2a8" }} />
     </div>
   );
 }
@@ -87,9 +90,9 @@ function StatusDot({ status }: { status: StepStatus }) {
 /* ─── Status label ─── */
 
 function StatusLabel({ status }: { status: StepStatus }) {
-  if (status === "done") return <span className="text-[11px] font-medium text-[#22c55e]">완료</span>;
-  if (status === "active") return <span className="text-[11px] font-medium text-[#3b82f6]">진행중</span>;
-  return <span className="text-[11px] text-[#d4d4d4]">대기</span>;
+  if (status === "done") return <span className="text-[12px] font-medium text-[#000]">완료</span>;
+  if (status === "active") return <span className="text-[12px] font-medium text-[#8a6f3f]">진행중</span>;
+  return <span className="text-[12px] text-[#b8b2a8]">대기</span>;
 }
 
 /* ─── Accordion step wrapper ─── */
@@ -191,7 +194,7 @@ function ShippingMini({ step, trackingNumber, estimatedDate }: { step: ShippingS
                 >
                   <Icon size={13} strokeWidth={1.5} color={done || active ? "#fff" : "#d4d4d4"} />
                 </div>
-                <span className="text-[10px] text-[#777169] mt-1">{s.label}</span>
+                <span className="text-[11px] text-[#777169] mt-1">{s.label}</span>
               </div>
               {i < shipSteps.length - 1 && (
                 <div
@@ -298,7 +301,7 @@ export default function OrderTimeline(props: OrderTimelineData) {
           {isAutoApproved ? (
             <div
               className="flex items-center gap-2 px-2.5 py-2 text-[12px]"
-              style={{ borderRadius: "8px", backgroundColor: "rgba(34,197,94,0.08)", color: "#16a34a" }}
+              style={{ borderRadius: "8px", backgroundColor: "rgba(245,242,239,0.8)", color: "#000" }}
             >
               <Zap size={13} strokeWidth={1.5} />
               <span className="font-medium">자동 승인 완료</span>
@@ -386,7 +389,7 @@ export default function OrderTimeline(props: OrderTimelineData) {
             shippingStep === "구매확정" ? (
               <div
                 className="flex items-center gap-2 px-2.5 py-2 text-[12px]"
-                style={{ borderRadius: "8px", backgroundColor: "rgba(34,197,94,0.08)", color: "#16a34a" }}
+                style={{ borderRadius: "8px", backgroundColor: "rgba(245,242,239,0.8)", color: "#000" }}
               >
                 <ThumbsUp size={13} strokeWidth={1.5} />
                 <span className="font-medium">구매 확정 완료</span>
@@ -394,7 +397,7 @@ export default function OrderTimeline(props: OrderTimelineData) {
             ) : (
               <div
                 className="flex items-center gap-2 px-2.5 py-2 text-[12px]"
-                style={{ borderRadius: "8px", backgroundColor: "rgba(239,68,68,0.08)", color: "#ef4444" }}
+                style={{ borderRadius: "8px", backgroundColor: "rgba(245,242,239,0.8)", color: "#777169" }}
               >
                 <RotateCcw size={13} strokeWidth={1.5} />
                 <span className="font-medium">반품 요청 접수됨</span>
@@ -440,7 +443,7 @@ export default function OrderTimeline(props: OrderTimelineData) {
         <div className="pt-3 mt-1" style={{ borderTop: !isFinished ? undefined : "1px solid #e5e5e5" }}>
           <button
             onClick={onViewOrders}
-            className="w-full py-[9px] text-[13px] font-medium text-[#6366f1] cursor-pointer transition-colors hover:text-[#4f46e5] hover:bg-[#f5f2ff] rounded-xl"
+            className="w-full py-[9px] text-[13px] font-medium text-[#000] cursor-pointer transition-colors hover:bg-[rgba(245,242,239,0.6)] rounded-xl"
           >
             주문내역 확인 →
           </button>

@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Search, FolderPlus, Check, ChevronRight, RefreshCw,
+  Search, FolderPlus, Check, ChevronRight, RefreshCw, X,
   Coffee, Monitor, Armchair, Printer, FileText, Droplets,
   Building2, Factory, Briefcase, Landmark, Sparkles,
   Clock, TrendingUp, Star, Tag,
@@ -105,26 +105,23 @@ function StorePage() {
   }, [router, searchParams]);
 
   const [toast, setToast] = useState<string | null>(null);
+  const [toastFolderId, setToastFolderId] = useState<string | null>(null);
   const [folderDropdown, setFolderDropdown] = useState<string | null>(null);
 
-  const showToast = useCallback((msg: string) => {
+  const showToast = useCallback((msg: string, folderId?: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2500);
+    setToastFolderId(folderId ?? null);
+    if (!folderId) {
+      setTimeout(() => { setToast(null); setToastFolderId(null); }, 2500);
+    }
   }, []);
 
   const handleView = useCallback((product: Product) => {
     router.push(`/store/${product.id}`);
   }, [router]);
 
-  const handleAddToCart = useCallback((product: Product) => {
-    openPanel(
-      <ProductDetailPanel
-        product={product}
-        onAddToCart={() => {}}
-        showCartButton={false}
-      />
-    );
-  }, [openPanel]);
+  // 레거시 — ProductCard 내부 드롭다운으로 대체됨
+  const handleAddToCart = useCallback(() => {}, []);
 
   const handlePin = useCallback((product: Product) => {
     const wasPinned = pinnedIds.includes(product.id);
@@ -145,19 +142,58 @@ function StorePage() {
     showToast(
       names.length === 1
         ? `${names[0]} 폴더에 담기 완료`
-        : `${names.length}개 폴더(${names.join(", ")})에 담기 완료`
+        : `${names.length}개 폴더(${names.join(", ")})에 담기 완료`,
+      folderIds[0],
     );
   }, [showToast]);
 
   return (
     <div className="h-full overflow-y-auto relative">
-      {/* Toast */}
+      {/* Toast / 폴더 담기 알림 */}
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 bg-[#1a1a1a] text-white text-[13px] font-medium"
-          style={{ borderRadius: "10px", boxShadow: "rgba(0,0,0,0.2) 0px 4px 12px" }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+          style={{ width: toastFolderId ? "auto" : undefined }}
         >
-          <Check size={14} strokeWidth={2} />{toast}
+          {toastFolderId ? (
+            /* 폴더 담기 — 말풍선 스타일, X로 닫기 전까지 유지 */
+            <div
+              className="relative bg-white px-5 pt-5 pb-4"
+              style={{
+                borderRadius: "16px",
+                boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 4px 4px, rgba(78,50,23,0.04) 0px 6px 16px",
+                minWidth: "280px",
+              }}
+            >
+              <button
+                onClick={() => { setToast(null); setToastFolderId(null); }}
+                className="absolute top-3.5 right-3.5 flex items-center justify-center w-6 h-6 rounded-full cursor-pointer hover:bg-[#f5f2ef] transition-colors"
+              >
+                <X size={13} strokeWidth={1.5} color="#777169" />
+              </button>
+              <p className="text-[14px] text-[#111] font-medium mb-4" style={{ letterSpacing: "0.14px" }}>{toast}</p>
+              <button
+                onClick={() => { setToast(null); setToastFolderId(null); router.push(`/folders/${toastFolderId}`); }}
+                className="w-full py-[11px] text-[14px] font-medium text-[#000] cursor-pointer transition-all hover:opacity-80"
+                style={{
+                  borderRadius: "9999px",
+                  backgroundColor: "rgba(245,242,239,0.8)",
+                  boxShadow: "rgba(78,50,23,0.04) 0px 6px 16px, rgba(0,0,0,0.06) 0px 0px 0px 1px",
+                }}
+              >
+                추가된 상품 확인하기
+              </button>
+            </div>
+          ) : (
+            /* 일반 토스트 */
+            <div
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#1a1a1a] text-white text-[13px] font-medium"
+              style={{ borderRadius: "10px", boxShadow: "rgba(0,0,0,0.2) 0px 4px 12px" }}
+            >
+              <Check size={14} strokeWidth={2} />
+              <span>{toast}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -192,6 +228,7 @@ function StorePage() {
           <StoreHomeTab
             onView={handleView}
             onAddToCart={handleAddToCart}
+            onFolderAdd={handleAddToFolders}
             onPin={handlePin}
             folderDropdown={folderDropdown}
             setFolderDropdown={setFolderDropdown}
@@ -202,10 +239,10 @@ function StorePage() {
         )}
         {activeTab === "간식 패키지" && <SnackPackageTab />}
         {activeTab === "업종별 탐색" && (
-          <IndustryBrowseTab onView={handleView} onAddToCart={handleAddToCart} onPin={handlePin} />
+          <IndustryBrowseTab onView={handleView} onAddToCart={handleAddToCart} onFolderAdd={handleAddToFolders} onPin={handlePin} />
         )}
         {activeTab === "기획전" && (
-          <PromotionsTab onView={handleView} onAddToCart={handleAddToCart} onPin={handlePin} />
+          <PromotionsTab onView={handleView} onAddToCart={handleAddToCart} onFolderAdd={handleAddToFolders} onPin={handlePin} />
         )}
       </div>
     </div>
@@ -217,10 +254,11 @@ function StorePage() {
    ═══════════════════════════════ */
 
 function StoreHomeTab({
-  onView, onAddToCart, onPin, folderDropdown, setFolderDropdown, onAddToFolders, pinnedIds, showToast,
+  onView, onAddToCart, onFolderAdd, onPin, folderDropdown, setFolderDropdown, onAddToFolders, pinnedIds, showToast,
 }: {
   onView: (p: Product) => void;
   onAddToCart: (p: Product) => void;
+  onFolderAdd?: (id: string, folderIds: string[]) => void;
   onPin?: (p: Product) => void;
   folderDropdown: string | null;
   setFolderDropdown: (v: string | null) => void;
@@ -338,21 +376,7 @@ function StoreHomeTab({
         </div>
         <div className="grid grid-cols-5 gap-3">
           {frequentProducts.map((fp) => (
-            <button
-              key={fp.id}
-              onClick={() => onView(fp)}
-              className="flex flex-col items-center p-3 bg-white cursor-pointer transition-all hover:translate-y-[-2px]"
-              style={{ borderRadius: "12px", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px" }}
-            >
-              <div className="w-full h-[80px] bg-[#f5f5f5] rounded-lg flex items-center justify-center text-[10px] text-[#999] mb-2">
-                {fp.brand}
-              </div>
-              <p className="text-[12px] font-medium text-center line-clamp-2 leading-tight mb-1">{fp.name}</p>
-              <p className="text-[13px] font-semibold">{formatPrice(fp.price)}</p>
-              <span className="mt-1 px-2 py-0.5 text-[10px] font-medium text-[#3b82f6] bg-[#eff6ff] rounded-full">
-                {fp.cycle}
-              </span>
-            </button>
+            <ProductCard key={fp.id} product={fp} onView={onView} onFolderAdd={onFolderAdd} onPin={onPin} cycleBadge={fp.cycle} />
           ))}
         </div>
       </section>
@@ -400,7 +424,7 @@ function StoreHomeTab({
         <div className="grid grid-cols-4 lg:grid-cols-5 gap-3">
           {filtered.slice(0, 10).map((product) => (
             <div key={product.id} className="relative">
-              <ProductCard product={product} onView={onView} onAddToCart={onAddToCart} onPin={onPin} />
+              <ProductCard product={product} onView={onView} onAddToCart={onAddToCart} onFolderAdd={onFolderAdd} onPin={onPin} />
               <div className="relative mt-1.5 px-1">
                 <button
                   onClick={() => setFolderDropdown(folderDropdown === product.id ? null : product.id)}
@@ -559,7 +583,7 @@ function SnackPackageTab() {
    업종별 탐색 탭
    ═══════════════════════════════ */
 
-function IndustryBrowseTab({ onView, onAddToCart, onPin }: { onView: (p: Product) => void; onAddToCart: (p: Product) => void; onPin?: (p: Product) => void }) {
+function IndustryBrowseTab({ onView, onAddToCart, onFolderAdd, onPin }: { onView: (p: Product) => void; onAddToCart: (p: Product) => void; onFolderAdd?: (id: string, folderIds: string[]) => void; onPin?: (p: Product) => void }) {
   const [selectedIndustry, setSelectedIndustry] = useState("it");
   const [subCategory, setSubCategory] = useState("전체");
 
@@ -624,7 +648,7 @@ function IndustryBrowseTab({ onView, onAddToCart, onPin }: { onView: (p: Product
 
         <div className="grid grid-cols-3 lg:grid-cols-4 gap-3">
           {filteredProducts.map((p) => (
-            <ProductCard key={p.id} product={p} onView={onView} onAddToCart={onAddToCart} onPin={onPin} />
+            <ProductCard key={p.id} product={p} onView={onView} onAddToCart={onAddToCart} onFolderAdd={onFolderAdd} onPin={onPin} />
           ))}
         </div>
       </div>
@@ -636,7 +660,7 @@ function IndustryBrowseTab({ onView, onAddToCart, onPin }: { onView: (p: Product
    기획전 탭
    ═══════════════════════════════ */
 
-function PromotionsTab({ onView, onAddToCart, onPin }: { onView: (p: Product) => void; onAddToCart: (p: Product) => void; onPin?: (p: Product) => void }) {
+function PromotionsTab({ onView, onAddToCart, onFolderAdd, onPin }: { onView: (p: Product) => void; onAddToCart: (p: Product) => void; onFolderAdd?: (id: string, folderIds: string[]) => void; onPin?: (p: Product) => void }) {
   const [selectedPromo, setSelectedPromo] = useState<string | null>(null);
 
   if (selectedPromo) {
@@ -657,7 +681,7 @@ function PromotionsTab({ onView, onAddToCart, onPin }: { onView: (p: Product) =>
         </div>
         <div className="grid grid-cols-3 lg:grid-cols-4 gap-3">
           {products.slice(0, promo.count).map((p) => (
-            <ProductCard key={p.id} product={p} onView={onView} onAddToCart={onAddToCart} onPin={onPin} />
+            <ProductCard key={p.id} product={p} onView={onView} onAddToCart={onAddToCart} onFolderAdd={onFolderAdd} onPin={onPin} />
           ))}
         </div>
       </div>

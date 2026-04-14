@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 import type { Activity, Order, OrderStatus } from "@/lib/types";
 import { users } from "@/data/users";
 import Badge from "@/components/ui/Badge";
@@ -12,15 +12,15 @@ import {
   Home,
   Zap,
   CreditCard,
-  MessageSquare,
   Sparkles,
   AlertCircle,
   ShieldCheck,
   RotateCcw,
   Headphones,
-  ArrowRight,
   ChevronRight,
-  ExternalLink,
+  Bell,
+  Send,
+  X,
 } from "lucide-react";
 
 /* ─── Helpers ─── */
@@ -103,11 +103,13 @@ function TimelineStep({
   label,
   done,
   active,
+  rightAction,
   children,
 }: {
   label: string;
   done: boolean;
   active: boolean;
+  rightAction?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
@@ -130,15 +132,18 @@ function TimelineStep({
         <div className="w-[1.5px] flex-1 bg-[#e5e5e5] mt-1 min-h-[16px]" />
       </div>
       <div className="flex-1 pb-3">
-        <p
-          className="text-[13px]"
-          style={{
-            fontWeight: done || active ? 500 : 400,
-            color: done || active ? "#111" : "#999",
-          }}
-        >
-          {label}
-        </p>
+        <div className="flex items-center justify-between">
+          <p
+            className="text-[13px]"
+            style={{
+              fontWeight: done || active ? 500 : 400,
+              color: done || active ? "#111" : "#999",
+            }}
+          >
+            {label}
+          </p>
+          {rightAction}
+        </div>
         {children && <div className="mt-1.5">{children}</div>}
       </div>
     </div>
@@ -156,6 +161,37 @@ export default function ActivityDetailPanel({
   activity: Activity;
   order?: Order;
 }) {
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [reminderMsg, setReminderMsg] = useState("");
+  const [reminderSent, setReminderSent] = useState(false);
+  const reminderRef = useRef<HTMLDivElement>(null);
+
+  // 외부 클릭 닫기
+  useEffect(() => {
+    if (!reminderOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (reminderRef.current && !reminderRef.current.contains(e.target as Node)) {
+        setReminderOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [reminderOpen]);
+
+  // 승인 담당자 목록
+  const approvers = order?.approvedBy
+    ? [users.find((u) => u.id === order.approvedBy)]
+    : [users.find((u) => u.role === "매니저"), users.find((u) => u.role === "관리자")];
+  const approverList = approvers.filter(Boolean);
+
+  const handleSendReminder = () => {
+    setReminderSent(true);
+    setTimeout(() => {
+      setReminderOpen(false);
+      setReminderSent(false);
+      setReminderMsg("");
+    }, 1500);
+  };
   const Icon = activityTypeIcon[activity.type];
   const color = activityTypeColor[activity.type];
 
@@ -289,11 +325,87 @@ export default function ActivityDetailPanel({
             진행 상태
           </p>
           <div className="flex-1 overflow-y-auto mb-3">
-            {/* 1. Approval */}
+            {/* 1. Approval + 리마인드 종 아이콘 */}
             <TimelineStep
               label={isRejected ? "품의 반려" : "품의 승인"}
               done={!isRejected && ci >= 1}
               active={isActive(0)}
+              rightAction={
+                isActive(0) && activity.actionLabel === "리마인드 보내기" ? (
+                  <div className="relative" ref={reminderRef}>
+                    <button
+                      onClick={() => setReminderOpen((v) => !v)}
+                      className="group relative flex items-center justify-center w-6 h-6 rounded-md cursor-pointer transition-colors hover:bg-[#fff3e0]"
+                      title="리마인드 보내기"
+                    >
+                      <Bell size={13} strokeWidth={1.5} color={reminderOpen ? "#ea580c" : "#999"} />
+                    </button>
+
+                    {/* 리마인드 팝오버 */}
+                    {reminderOpen && (
+                      <div
+                        className="absolute right-0 top-full mt-1.5 w-[260px] bg-white z-50"
+                        style={{
+                          borderRadius: "12px",
+                          boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px, rgba(0,0,0,0.12) 0px 8px 24px",
+                        }}
+                      >
+                        {reminderSent ? (
+                          <div className="flex flex-col items-center gap-2 py-6">
+                            <div className="w-8 h-8 rounded-full bg-[#22c55e] flex items-center justify-center">
+                              <Check size={16} color="#fff" strokeWidth={2} />
+                            </div>
+                            <p className="text-[13px] font-medium text-[#22c55e]">리마인드를 보냈습니다</p>
+                          </div>
+                        ) : (
+                          <div className="p-3">
+                            <div className="flex items-center justify-between mb-2.5">
+                              <p className="text-[12px] font-semibold">승인 리마인드</p>
+                              <button onClick={() => setReminderOpen(false)} className="cursor-pointer hover:bg-[#f5f5f5] rounded-md p-0.5">
+                                <X size={12} strokeWidth={2} color="#999" />
+                              </button>
+                            </div>
+
+                            {/* 승인 담당자 */}
+                            <p className="text-[11px] text-[#999] mb-1.5">승인 담당자</p>
+                            <div className="flex flex-col gap-1 mb-3">
+                              {approverList.map((u) => u && (
+                                <div key={u.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[#f9f9f9]">
+                                  <div className="w-5 h-5 rounded-full bg-[#e5e5e5] flex items-center justify-center text-[10px] font-medium text-[#666]">
+                                    {u.name.charAt(0)}
+                                  </div>
+                                  <span className="text-[12px] font-medium">{u.name}</span>
+                                  <span className="text-[11px] text-[#999]">{u.role}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* 메시지 입력 */}
+                            <p className="text-[11px] text-[#999] mb-1">메시지 (선택)</p>
+                            <textarea
+                              value={reminderMsg}
+                              onChange={(e) => setReminderMsg(e.target.value)}
+                              placeholder="승인 부탁드립니다."
+                              className="w-full px-2.5 py-2 text-[12px] rounded-lg border-0 resize-none focus:outline-none"
+                              style={{ boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px", minHeight: "56px" }}
+                              rows={2}
+                            />
+
+                            {/* 보내기 */}
+                            <button
+                              onClick={handleSendReminder}
+                              className="flex items-center justify-center gap-1.5 w-full mt-2.5 py-[7px] text-[12px] font-medium text-white bg-[#ea580c] rounded-lg cursor-pointer transition-opacity hover:opacity-80"
+                            >
+                              <Send size={12} strokeWidth={2} />
+                              리마인드 보내기
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : undefined
+              }
             >
               {order.approvedBy && (
                 <p className="text-[12px] text-[#777169]">
@@ -390,10 +502,10 @@ export default function ActivityDetailPanel({
         </>
       )}
 
-      {/* ── Action button ── */}
-      {activity.actionLabel && (
+      {/* ── Action buttons (리마인드 제외 — 리마인드는 타임라인 종 아이콘으로 이동) ── */}
+      {activity.actionLabel && activity.actionLabel !== "리마인드 보내기" && (
         <div
-          className="py-3 mb-2"
+          className="py-3"
           style={{ borderTop: "1px solid #e5e5e5" }}
         >
           <button
@@ -404,24 +516,10 @@ export default function ActivityDetailPanel({
             }}
           >
             {activity.actionLabel}
-            <ArrowRight size={14} strokeWidth={2} />
+            <ChevronRight size={14} strokeWidth={2} />
           </button>
         </div>
       )}
-
-      {/* ── Chat link ── */}
-      <div
-        className="pt-3"
-        style={{ borderTop: activity.actionLabel ? "none" : "1px solid #e5e5e5" }}
-      >
-        <Link
-          href="/chat"
-          className="flex items-center justify-center gap-2 w-full py-[9px] text-[13px] font-medium text-[#4e4e4e] bg-[#f5f5f5] rounded-xl cursor-pointer transition-colors hover:bg-[#ebebeb]"
-        >
-          <MessageSquare size={15} strokeWidth={1.5} />
-          채팅에서 확인하기
-        </Link>
-      </div>
     </div>
   );
 }
