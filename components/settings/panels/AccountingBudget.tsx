@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Clock } from "lucide-react";
 import { useSettingsStore } from "@/lib/settings-store";
+import VersionHistoryPopover from "@/components/ui/VersionHistoryPopover";
 import { useLastFocus, useScrollOnFocus } from "@/lib/settings-events";
 
 function formatPrice(n: number) { return (n / 10000).toLocaleString() + "만원"; }
@@ -25,7 +26,18 @@ export default function AccountingBudget() {
 
   return (
     <div className="max-w-[520px]">
-      <h2 className="text-[18px] font-semibold mb-5">예산 설정</h2>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-[18px] font-semibold">예산 설정</h2>
+        <VersionHistoryPopover domain="budget">
+          <button
+            type="button"
+            aria-label="변경기록"
+            className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+          >
+            <Clock size={15} strokeWidth={1.5} color="#999" />
+          </button>
+        </VersionHistoryPopover>
+      </div>
 
       {/* Total */}
       <div

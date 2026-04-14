@@ -5,7 +5,8 @@ import { users } from "@/data/users";
 import type { User } from "@/lib/types";
 import Table, { type Column } from "@/components/ui/Table";
 import Badge from "@/components/ui/Badge";
-import { X, UserPlus, Bot, Mail, FileSpreadsheet, Trash2 } from "lucide-react";
+import { X, UserPlus, Bot, Mail, FileSpreadsheet, Trash2, Clock } from "lucide-react";
+import VersionHistoryPopover from "@/components/ui/VersionHistoryPopover";
 import { useAgentPolicy, modeLabels, type AgentMode } from "@/lib/agent-policy-context";
 import { useSettingsStore } from "@/lib/settings-store";
 import TeamInviteModal from "@/components/settings/TeamInviteModal";
@@ -38,7 +39,18 @@ export default function CompanyTeam() {
   return (
     <div className="max-w-[640px] relative">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-[18px] font-semibold">팀원 관리</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-[18px] font-semibold">팀원 관리</h2>
+          <VersionHistoryPopover domain="team-members">
+            <button
+              type="button"
+              aria-label="변경기록"
+              className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+            >
+              <Clock size={15} strokeWidth={1.5} color="#999" />
+            </button>
+          </VersionHistoryPopover>
+        </div>
         <button onClick={() => setInviteOpen(true)} className="flex items-center gap-1.5 px-4 py-[7px] text-[13px] font-medium text-white bg-black rounded-lg cursor-pointer hover:opacity-80">
           <UserPlus size={14} strokeWidth={1.5} />팀원 초대
         </button>

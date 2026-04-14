@@ -159,6 +159,88 @@ const DEFAULT_PAYMENTS: PaymentMethod[] = [
   { id: "pm-7", type: "BNPL", name: "자산 구매용", subLabel: "[로랩스] 2948701037", active: false },
 ];
 
+/* ───────── Version History (general) ───────── */
+
+export type VersionDomain =
+  | "approval-rules"
+  | "agent-policy"
+  | "budget"
+  | "description-rules"
+  | "payment-methods"
+  | "team-members"
+  | "company-info"
+  | "shipping";
+
+export interface VersionHistoryEntry {
+  id: string;
+  ts: number;
+  domain: VersionDomain;
+  action: "add" | "update" | "delete" | "toggle";
+  userId: string;
+  userName: string;
+  source: "chat" | "manual" | "ai-auto";
+  summary: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+}
+
+const DEFAULT_VERSION_HISTORY: VersionHistoryEntry[] = [
+  {
+    id: "vh-seed-1", ts: Date.now() - 86400000 * 3,
+    domain: "approval-rules", action: "update",
+    userId: "user-001", userName: "김원균",
+    source: "manual",
+    summary: "소액 자동승인 기준을 30만원에서 50만원으로 상향",
+    before: { threshold: 300000 }, after: { threshold: 500000 },
+  },
+  {
+    id: "vh-seed-2", ts: Date.now() - 86400000 * 2.5,
+    domain: "budget", action: "update",
+    userId: "user-001", userName: "김원균",
+    source: "chat",
+    summary: "마케팅팀 연간 예산을 4,200만원에서 4,800만원으로 증액",
+    before: { annual: 42000000 }, after: { annual: 48000000 },
+  },
+  {
+    id: "vh-seed-3", ts: Date.now() - 86400000 * 2,
+    domain: "agent-policy", action: "update",
+    userId: "user-002", userName: "박은서",
+    source: "manual",
+    summary: "에이전트 모드를 가이드 모드로 전환",
+    before: { mode: "open" }, after: { mode: "guided" },
+  },
+  {
+    id: "vh-seed-4", ts: Date.now() - 86400000 * 1,
+    domain: "team-members", action: "add",
+    userId: "user-001", userName: "김원균",
+    source: "manual",
+    summary: "이준호(마케팅)님을 팀원으로 초대",
+  },
+  {
+    id: "vh-seed-5", ts: Date.now() - 3600000 * 8,
+    domain: "approval-rules", action: "add",
+    userId: "user-002", userName: "박은서",
+    source: "chat",
+    summary: "디자인팀 전용 승인라인 추가 (1차 팀장 → 최종결제)",
+  },
+  {
+    id: "vh-seed-6", ts: Date.now() - 3600000 * 4,
+    domain: "budget", action: "toggle",
+    userId: "user-001", userName: "김원균",
+    source: "ai-auto",
+    summary: "미사용 예산 이월 규칙 활성화",
+    before: { carryOver: false }, after: { carryOver: true },
+  },
+  {
+    id: "vh-seed-7", ts: Date.now() - 3600000 * 1,
+    domain: "agent-policy", action: "toggle",
+    userId: "user-002", userName: "박은서",
+    source: "manual",
+    summary: "채팅 구매 기능 비활성화",
+    before: { chatPurchaseEnabled: true }, after: { chatPurchaseEnabled: false },
+  },
+];
+
 /* ───────── Patches ───────── */
 
 export type SettingsPatch =
@@ -222,6 +304,8 @@ interface SettingsStore {
   descriptionRules: DescriptionRule[];
   descriptionRuleHistory: RuleHistoryEntry[];
   aiDescriptionEnabled: boolean;
+  versionHistory: VersionHistoryEntry[];
+  pushVersionHistory: (entry: Omit<VersionHistoryEntry, "id" | "ts">) => void;
 
   // Budget setters
   updateDeptAnnual: (dept: string, annual: number) => void;
@@ -276,6 +360,14 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
   const [descriptionRules, setDescriptionRules] = useState<DescriptionRule[]>(DEFAULT_DESC_RULES);
   const [descriptionRuleHistory, setDescriptionRuleHistory] = useState<RuleHistoryEntry[]>([]);
   const [aiDescriptionEnabled, setAiDescriptionEnabled] = useState(true);
+  const [versionHistory, setVersionHistory] = useState<VersionHistoryEntry[]>(DEFAULT_VERSION_HISTORY);
+
+  const pushVersionHistory = useCallback((entry: Omit<VersionHistoryEntry, "id" | "ts">) => {
+    setVersionHistory((prev) => [
+      { ...entry, id: `vh-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ts: Date.now() },
+      ...prev,
+    ]);
+  }, []);
 
   const pushHistory = useCallback((entry: Omit<RuleHistoryEntry, "id" | "ts">) => {
     setDescriptionRuleHistory((prev) => [
@@ -448,6 +540,7 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
   const value = useMemo<SettingsStore>(() => ({
     budget, company, shipping, payments, invitedMembers,
     descriptionRules, descriptionRuleHistory, aiDescriptionEnabled,
+    versionHistory, pushVersionHistory,
     updateDeptAnnual, setCarryOver, setRenewPeriod,
     updateCompanyField,
     addShipping, removeShipping, setDefaultShipping, updateShipping,
@@ -459,6 +552,7 @@ export function SettingsStoreProvider({ children }: { children: React.ReactNode 
   }), [
     budget, company, shipping, payments, invitedMembers,
     descriptionRules, descriptionRuleHistory, aiDescriptionEnabled,
+    versionHistory, pushVersionHistory,
     updateDeptAnnual, setCarryOver, setRenewPeriod,
     updateCompanyField,
     addShipping, removeShipping, setDefaultShipping, updateShipping,

@@ -4,9 +4,10 @@ import { useState, useCallback, useMemo } from "react";
 import {
   GitBranch, Plus, ArrowLeft, X, ChevronDown,
   User as UserIcon, CreditCard, Check, AlertCircle,
-  Trash2, Users, Repeat, PlusCircle, Wallet,
+  Trash2, Users, Repeat, PlusCircle, Wallet, Clock,
 } from "lucide-react";
 import { users } from "@/data/users";
+import VersionHistoryPopover from "@/components/ui/VersionHistoryPopover";
 
 /* ═══════════════════════════════════════
    타입 & 더미 데이터
@@ -402,9 +403,20 @@ export default function ApprovalRulesPanel() {
     <div className="max-w-full">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-2">
-        <div>
-          <h2 className="text-[20px] font-semibold" style={{ letterSpacing: "-0.3px" }}>승인 체계</h2>
-          <p className="text-[13px] text-[#777] mt-1">구매요청이 처리되는 결재 절차를 설정합니다.</p>
+        <div className="flex items-center gap-2">
+          <div>
+            <h2 className="text-[20px] font-semibold" style={{ letterSpacing: "-0.3px" }}>승인 체계</h2>
+            <p className="text-[13px] text-[#777] mt-1">구매요청이 처리되는 결재 절차를 설정합니다.</p>
+          </div>
+          <VersionHistoryPopover domain="approval-rules">
+            <button
+              type="button"
+              aria-label="변경기록"
+              className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+            >
+              <Clock size={15} strokeWidth={1.5} color="#999" />
+            </button>
+          </VersionHistoryPopover>
         </div>
         <div className="flex items-center gap-2">
           {/* 뷰 토글 */}

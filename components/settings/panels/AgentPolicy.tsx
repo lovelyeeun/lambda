@@ -5,8 +5,9 @@ import {
   Sparkles, Shield, Lock, Globe, Database,
   ShoppingCart, UserPlus, UserCheck, Gauge,
   Eye, Check, Info, ChevronDown, Users, Building2, UserCog,
-  Upload, X, RefreshCw, Brain, ArrowLeft,
+  Upload, X, RefreshCw, Brain, ArrowLeft, Clock,
 } from "lucide-react";
+import VersionHistoryPopover from "@/components/ui/VersionHistoryPopover";
 import { PlannedTooltip } from "@/components/ui/Tooltip";
 import {
   useAgentPolicy,
@@ -108,13 +109,24 @@ export default function AgentPolicyPanel() {
   return (
     <div className="max-w-[720px]">
       {/* 제목 */}
-      <div className="mb-6">
-        <h2 className="text-[20px] font-semibold mb-1" style={{ letterSpacing: "-0.3px" }}>
-          구매 에이전트 정책
-        </h2>
-        <p className="text-[13px] text-[#777] leading-[1.6]">
-          에이전트의 작동 범위와 직원의 구매 권한을 설정합니다.
-        </p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h2 className="text-[20px] font-semibold mb-1" style={{ letterSpacing: "-0.3px" }}>
+            구매 에이전트 정책
+          </h2>
+          <p className="text-[13px] text-[#777] leading-[1.6]">
+            에이전트의 작동 범위와 직원의 구매 권한을 설정합니다.
+          </p>
+        </div>
+        <VersionHistoryPopover domain="agent-policy">
+          <button
+            type="button"
+            aria-label="변경기록"
+            className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+          >
+            <Clock size={15} strokeWidth={1.5} color="#999" />
+          </button>
+        </VersionHistoryPopover>
       </div>
 
       {/* ── 적용 방식 선택 ── */}

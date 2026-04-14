@@ -3,12 +3,14 @@
 import { useState } from "react";
 import {
   Building2, Users, MapPin, CreditCard, FileText, PiggyBank,
-  ChevronDown, ChevronUp, Bot, GitBranch,
+  ChevronDown, ChevronUp, Bot, GitBranch, Clock,
 } from "lucide-react";
 import { useSettings, type SettingsSection } from "@/lib/settings-context";
 import { useAgentPolicy, modeLabels as agentModeLabels } from "@/lib/agent-policy-context";
 import { useSettingsStore } from "@/lib/settings-store";
 import { users } from "@/data/users";
+import VersionHistoryPopover from "@/components/ui/VersionHistoryPopover";
+import { Check } from "lucide-react";
 
 /* ═══════════════════════════════════════
    Utilities
@@ -83,6 +85,7 @@ export default function SettingsDashboard() {
     company, shipping, payments, defaultShipping, activePaymentsCount,
     invitedMembers, descriptionRules, aiDescriptionEnabled,
     toggleAiDescription,
+    versionHistory,
   } = useSettingsStore();
 
   // 예산은 기본 펼침 — 이미지 기준
@@ -102,12 +105,115 @@ export default function SettingsDashboard() {
 
   return (
     <div className="px-5 pt-14 pb-6 flex flex-col gap-2.5">
-      {/* ── 헤더 ── */}
-      <div className="mb-1">
+      {/* ── 헤더 + 변경기록 트리거 ── */}
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-[16px] font-semibold text-[#1a1a1a]" style={{ letterSpacing: "0.14px" }}>
           설정 현황
         </h2>
+        <VersionHistoryPopover>
+          <button
+            className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-[#777169] cursor-pointer transition-colors hover:text-[#000] hover:bg-[rgba(245,242,239,0.6)]"
+            style={{
+              borderRadius: "9999px",
+              boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+              letterSpacing: "0.14px",
+            }}
+          >
+            <Clock size={11} strokeWidth={1.5} />
+            변경기록 {versionHistory.length > 0 && <span className="text-[#000]">{versionHistory.length}</span>}
+          </button>
+        </VersionHistoryPopover>
       </div>
+
+      {/* ── 전체 설정 진행률 — 웜 스톤 시그니처 블록 ── */}
+      {(() => {
+        const totalCards = 8;
+        const doneCount = [
+          !!company.name,
+          teamMembers.length >= 2,
+          shipping.length > 0,
+          activePaymentsCount > 0,
+          descriptionRules.length > 0,
+          Object.keys(budget).length > 0,
+          true, /* agent policy — always configured */
+          true, /* approval rules — always configured */
+        ].filter(Boolean).length;
+        const progressPct = Math.round((doneCount / totalCards) * 100);
+
+        return (
+          <div
+            className="p-5"
+            style={{
+              borderRadius: "20px",
+              backgroundColor: "rgba(245,242,239,0.8)",
+              boxShadow: "rgba(0,0,0,0.075) 0px 0px 0px 0.5px inset, rgba(78,50,23,0.04) 0px 6px 16px",
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-[11px] font-bold uppercase text-[#4e4e4e]"
+                  style={{
+                    fontFamily: "WaldenburgFH, 'WaldenburgFH Fallback', sans-serif",
+                    letterSpacing: "0.7px",
+                  }}
+                >
+                  설정 진행률
+                </span>
+                {progressPct === 100 && (
+                  <span
+                    className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-white"
+                    style={{
+                      borderRadius: "9999px",
+                      backgroundColor: "#000",
+                      letterSpacing: "0.14px",
+                    }}
+                  >
+                    <Check size={10} strokeWidth={2.5} />
+                    완료
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-baseline gap-1.5 mb-3">
+              <span
+                className="text-[48px] font-light text-[#000]"
+                style={{
+                  fontFamily: "Waldenburg, 'Waldenburg Fallback', sans-serif",
+                  letterSpacing: "-0.96px",
+                  lineHeight: 1.08,
+                }}
+              >
+                {progressPct}
+              </span>
+              <span
+                className="text-[16px] font-light text-[#777169]"
+                style={{
+                  fontFamily: "Waldenburg, 'Waldenburg Fallback', sans-serif",
+                  letterSpacing: "-0.16px",
+                }}
+              >
+                %
+              </span>
+            </div>
+
+            <div
+              className="h-[4px] rounded-full overflow-hidden mb-2"
+              style={{ backgroundColor: "rgba(0,0,0,0.08)" }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${progressPct}%`, backgroundColor: "#000" }}
+              />
+            </div>
+            <p className="text-[12px] text-[#4e4e4e]" style={{ letterSpacing: "0.14px" }}>
+              {totalCards}개 중 <span className="font-medium text-[#000]">{doneCount}개 완료</span>
+              {progressPct < 100 && <> · {totalCards - doneCount}개 남음</>}
+            </p>
+          </div>
+        );
+      })()}
 
       {/* ── 회사 정보 ── */}
       <Card
