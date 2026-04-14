@@ -1,7 +1,7 @@
 "use client";
 
 import type { Product } from "@/lib/types";
-import { ShoppingCart, Pin, Truck } from "lucide-react";
+import { FolderPlus, Pin, Truck } from "lucide-react";
 import { usePin } from "@/lib/pin-context";
 
 interface ProductCardProps {
@@ -122,13 +122,13 @@ export default function ProductCard({ product, onView, onAddToCart, onPin, compa
         </div>
       </div>
 
-      {/* Cart button — separate click zone */}
+      {/* Folder button — 상품을 회사 폴더에 추가 */}
       <div className="px-3.5 pb-3.5">
         <button
           onClick={(e) => { e.stopPropagation(); onAddToCart?.(product); }}
           className="w-full flex items-center justify-center gap-1.5 py-[7px] text-[13px] font-medium text-white bg-black rounded-lg cursor-pointer transition-opacity hover:opacity-80"
         >
-          <ShoppingCart size={14} strokeWidth={1.5} />
+          <FolderPlus size={14} strokeWidth={1.5} />
           담기
         </button>
       </div>

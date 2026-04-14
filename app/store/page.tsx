@@ -121,6 +121,7 @@ function StorePage() {
       <ProductDetailPanel
         product={product}
         onAddToCart={() => {}}
+        showCartButton={false}
       />
     );
   }, [openPanel]);

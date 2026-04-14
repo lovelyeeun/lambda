@@ -8,13 +8,17 @@ import { folders } from "@/data/folders";
 interface ProductDetailPanelProps {
   product: Product;
   onAddToCart: () => void;
+  /** 장바구니 담기 버튼 노출 여부 — 채팅: true(기본), 스토어: false */
+  showCartButton?: boolean;
+  /** 장바구니 보기 콜백 — 토스트에서 "장바구니 보기" 액션용. 없으면 액션 숨김. */
+  onViewCart?: () => void;
 }
 
 function formatPrice(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
-export default function ProductDetailPanel({ product, onAddToCart }: ProductDetailPanelProps) {
+export default function ProductDetailPanel({ product, onAddToCart, showCartButton = true, onViewCart }: ProductDetailPanelProps) {
   const [folderDropdownOpen, setFolderDropdownOpen] = useState(false);
   const [pickedFolderIds, setPickedFolderIds] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -58,8 +62,6 @@ export default function ProductDetailPanel({ product, onAddToCart }: ProductDeta
 
   const handleAddToCartClick = () => {
     onAddToCart();
-    setToast(`${product.name} 장바구니에 담았어요`);
-    setTimeout(() => setToast(null), 2500);
   };
 
   return (
@@ -134,15 +136,17 @@ export default function ProductDetailPanel({ product, onAddToCart }: ProductDeta
         <span className="text-[13px] text-[#22c55e] font-medium">재고 있음</span>
       </div>
 
-      {/* Actions — 장바구니 담기 (primary) + 폴더에 담기 (secondary w/ dropdown) */}
+      {/* Actions — 장바구니 담기 (채팅에서만) + 폴더에 담기 (항상) */}
       <div className="flex flex-col gap-2">
-        <button
-          onClick={handleAddToCartClick}
-          className="flex items-center justify-center gap-2 w-full py-[11px] text-[14px] font-medium text-white bg-black rounded-xl cursor-pointer transition-opacity hover:opacity-80"
-        >
-          <ShoppingCart size={16} strokeWidth={1.5} />
-          장바구니 담기
-        </button>
+        {showCartButton && (
+          <button
+            onClick={handleAddToCartClick}
+            className="flex items-center justify-center gap-2 w-full py-[11px] text-[14px] font-medium text-white bg-black rounded-xl cursor-pointer transition-opacity hover:opacity-80"
+          >
+            <ShoppingCart size={16} strokeWidth={1.5} />
+            장바구니 담기
+          </button>
+        )}
 
         <div ref={folderWrapRef} className="relative">
           <button
@@ -226,9 +230,12 @@ export default function ProductDetailPanel({ product, onAddToCart }: ProductDeta
         </div>
       </div>
 
-      {/* Toast */}
+      {/* Toast — 폴더 담기 등 패널 내부 알림 */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 px-4 py-2.5 bg-[#1a1a1a] text-white text-[13px] font-medium" style={{ borderRadius: "10px" }}>
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 px-4 py-2.5 bg-[#1a1a1a] text-white text-[13px] font-medium"
+          style={{ borderRadius: "10px" }}
+        >
           <Check size={14} strokeWidth={2} />{toast}
         </div>
       )}
