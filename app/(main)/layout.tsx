@@ -3,7 +3,6 @@ import MainSidebar from "@/components/shell/MainSidebar";
 import RightPanel from "@/components/shell/RightPanel";
 import { SidebarProvider } from "@/lib/sidebar-context";
 import { RightPanelProvider } from "@/lib/right-panel-context";
-import { CartProvider } from "@/lib/cart-context";
 
 export default function MainLayout({
   children,
@@ -13,7 +12,6 @@ export default function MainLayout({
   return (
     <SidebarProvider>
     <RightPanelProvider>
-    <CartProvider>
       <AppShell>
         {/* Left sidebar */}
         <MainSidebar />
@@ -26,7 +24,6 @@ export default function MainLayout({
         {/* Right GUI panel */}
         <RightPanel />
       </AppShell>
-    </CartProvider>
     </RightPanelProvider>
     </SidebarProvider>
   );

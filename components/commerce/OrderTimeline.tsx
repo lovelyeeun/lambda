@@ -40,6 +40,8 @@ export interface OrderTimelineData {
   onAdvance: () => void;
   onConfirmPurchase: () => void;
   onRequestReturn: () => void;
+  /** "주문내역 확인" 버튼 콜백 — 제공되면 타임라인 하단에 링크 표시 */
+  onViewOrders?: () => void;
 }
 
 /* ─── Helpers ─── */
@@ -234,7 +236,7 @@ export default function OrderTimeline(props: OrderTimelineData) {
     approvalStep, approver, approvalDate, isAutoApproved,
     paymentMethod, paymentDate,
     shippingStep, trackingNumber, estimatedDate,
-    onAdvance, onConfirmPurchase, onRequestReturn,
+    onAdvance, onConfirmPurchase, onRequestReturn, onViewOrders,
   } = props;
 
   // Track which section is expanded — default to active phase
@@ -429,6 +431,18 @@ export default function OrderTimeline(props: OrderTimelineData) {
             className="w-full py-[9px] text-[13px] font-medium text-[#4e4e4e] bg-[#f5f5f5] rounded-xl cursor-pointer transition-colors hover:bg-[#ebebeb]"
           >
             데모: 다음 단계 →
+          </button>
+        </div>
+      )}
+
+      {/* 주문내역 확인 링크 */}
+      {onViewOrders && (
+        <div className="pt-3 mt-1" style={{ borderTop: !isFinished ? undefined : "1px solid #e5e5e5" }}>
+          <button
+            onClick={onViewOrders}
+            className="w-full py-[9px] text-[13px] font-medium text-[#6366f1] cursor-pointer transition-colors hover:text-[#4f46e5] hover:bg-[#f5f2ff] rounded-xl"
+          >
+            주문내역 확인 →
           </button>
         </div>
       )}

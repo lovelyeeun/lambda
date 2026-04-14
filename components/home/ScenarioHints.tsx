@@ -69,7 +69,7 @@ export default function ScenarioHints() {
           className="text-[12px] font-medium text-[#999] group-hover:text-[#666] transition-colors"
           style={{ letterSpacing: "0.14px" }}
         >
-          (시나리오 체크용) 추천 키워드 확인하기
+          키워드 기반 데모 시나리오
         </span>
         <ChevronDown
           size={13}
@@ -129,7 +129,7 @@ export default function ScenarioHints() {
             className="text-[10px] text-[#bbb] mt-4"
             style={{ letterSpacing: "0.14px" }}
           >
-            클릭하면 해당 프롬프트가 채팅으로 전송됩니다 · 키워드 기반 데모 시나리오
+            클릭하면 해당 프롬프트가 채팅으로 전송됩니다
           </p>
         </div>
       )}

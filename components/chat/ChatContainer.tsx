@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Sparkles, Database, Building2, Globe, Zap, Search, Clock,
-  Check, Loader2, Package,
+  Check, Loader2, Package, ShoppingCart,
 } from "lucide-react";
 import type { ChatMessage, Product, WorkItem, WorkItemSnapshot, WorkItemStatus } from "@/lib/types";
 import { products } from "@/data/products";
 import { chats } from "@/data/chats";
 import { users } from "@/data/users";
+import { useCart } from "@/lib/cart-context";
 import { useSettingsStore } from "@/lib/settings-store";
 import { useRightPanel } from "@/lib/right-panel-context";
 import { useSettings } from "@/lib/settings-context";
@@ -20,6 +21,7 @@ import ExpenseSummaryCard from "./ExpenseSummaryCard";
 import SnackRecommendationCard from "./SnackRecommendationCard";
 import SourcedProductCard, {
   type SourcedProduct,
+  type SourceType,
   type ScrapingStatus,
 } from "./SourcedProductCard";
 import ProductDetailPanel from "./ProductDetailPanel";
@@ -491,7 +493,13 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialChat.messages);
   const [isTyping, setIsTyping] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
+
+  // 글로벌 장바구니 (CartProvider)
+  const globalCart = useCart();
+  const cart = globalCart.items;
+  const addToCart = useCallback((product: Product) => { globalCart.addItem(product); }, [globalCart]);
+  const updateQty = useCallback((id: string, q: number) => { globalCart.updateQuantity(id, q); }, [globalCart]);
+  const removeItem = useCallback((id: string) => { globalCart.removeItem(id); }, [globalCart]);
 
   // 3-DB 검색 상태
   const [searchPhase, setSearchPhase] = useState<"idle" | "analyzing" | "searching" | "results">("idle");
@@ -780,7 +788,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   /* ── 간식 시나리오 단계 ── */
   const [snackStep, setSnackStep] = useState<"idle" | "awaiting-confirm" | "completed">("idle");
 
-  const totalPrice = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const totalPrice = globalCart.totalPrice;
 
   /* ── Helpers ── */
 
@@ -800,23 +808,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const addSys = useCallback((text: string) => addMsg({ role: "system", content: text }), [addMsg]);
   const addAI = useCallback((text: string, agent?: string) => addMsg({ role: "assistant", content: text, agent }), [addMsg]);
 
-  /* ── Cart ── */
-
-  const addToCart = useCallback((product: Product) => {
-    setCart((prev) => {
-      const ex = prev.find((i) => i.product.id === product.id);
-      if (ex) return prev.map((i) => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { product, quantity: 1 }];
-    });
-  }, []);
-
-  const updateQty = useCallback((id: string, q: number) => {
-    setCart((prev) => prev.map((i) => i.product.id === id ? { ...i, quantity: q } : i));
-  }, []);
-
-  const removeItem = useCallback((id: string) => {
-    setCart((prev) => prev.filter((i) => i.product.id !== id));
-  }, []);
+  /* ── Cart (aliases defined above with globalCart) ── */
 
   /* ═══════════════════════════════════════
      3-DB 검색 플로우
@@ -1034,7 +1026,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         setPaymentDate("2026-04-10");
         setTimelinePhase("shipping");
         setShippingStep("접수");
-        setCart([]);
+        globalCart.clearCart();
       }, 600);
     } else if (timelinePhase === "shipping") {
       const order: ShippingStep[] = ["접수", "준비", "배송중", "배송완료"];
@@ -1074,7 +1066,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         setPaymentDate("2026-04-10");
         setTimelinePhase("shipping");
         setShippingStep("접수");
-        setCart([]);
+        globalCart.clearCart();
       }, 600);
     } else {
       // 수동 승인 → 품의 요청 접수 → (김지현 매니저 대기) → advanceFlow에서 승인 후 배송 진입
@@ -1105,7 +1097,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   const confirmPayment = useCallback((methodId: string) => {
     const label = PAYMENT_LABELS[methodId] ?? methodId;
-    setPaymentMethod(label); setPaymentDate("2026-04-10"); setTimelinePhase("shipping"); setShippingStep("접수"); setCart([]);
+    setPaymentMethod(label); setPaymentDate("2026-04-10"); setTimelinePhase("shipping"); setShippingStep("접수"); globalCart.clearCart();
     addSys(`결제 완료 — ${label}`);
     addAI(`결제가 완료되었습니다!\n\n결제수단: **${label}**\n결제 금액: **${frozenTotal.toLocaleString()}원**`, "주문");
   }, [addSys, addAI, frozenTotal]);
@@ -1120,6 +1112,8 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   // 상호 참조를 위한 ref (createWorkItem → openContext 순환, handleSourcedSelect → viewProduct forward ref)
   const openContextRef = useRef<() => void>(() => {});
+  /** 비구매 분기(비용 분석/간식)에서 패널 자동 오픈을 억제하는 플래그 */
+  const panelSuppressedRef = useRef(false);
   const openFlowRef = useRef<() => void>(() => {});
   const openCartRef = useRef<() => void>(() => {});
   const viewProductRef = useRef<(p: Product) => void>(() => {});
@@ -1162,7 +1156,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   //  - cart/order-timeline/payment 페이지에 있으면 → 자동으로 최신 플로우 페이지로 (사용자가 명시적 액션으로 진입한 맥락)
   //  - 루트(chat-context) 또는 product-detail 등에 있으면 → dot 알림만 (drill-down은 사용자가 직접)
   useEffect(() => {
-    if (!flowActive) return;
+    if (!flowActive || panelSuppressedRef.current) return;
     if (
       contentKey === "cart" ||
       contentKey === "order-timeline" ||
@@ -1212,11 +1206,11 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const buildSnapshot = useCallback((): WorkItemSnapshot => ({
     searchPhase, intentText,
     sourcedProducts, candidateProducts, searchRecords,
-    cart,
+    cart: [], // cart is now global — snapshot placeholder only
     flowActive, timelinePhase, approvalStep, isAutoApproved,
     approvalDate, paymentMethod, paymentDate, shippingStep,
     frozenCart, frozenTotal,
-  }), [searchPhase, intentText, sourcedProducts, candidateProducts, searchRecords, cart, flowActive, timelinePhase, approvalStep, isAutoApproved, approvalDate, paymentMethod, paymentDate, shippingStep, frozenCart, frozenTotal]);
+  }), [searchPhase, intentText, sourcedProducts, candidateProducts, searchRecords, flowActive, timelinePhase, approvalStep, isAutoApproved, approvalDate, paymentMethod, paymentDate, shippingStep, frozenCart, frozenTotal]);
 
   // 현재 live state에서 Work Item의 상태 도출
   const deriveStatus = useCallback((): WorkItemStatus => {
@@ -1260,7 +1254,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     setSourcedProducts(snap.sourcedProducts as SourcedProduct[]);
     setCandidateProducts(snap.candidateProducts as SourcedProduct[]);
     setSearchRecords(snap.searchRecords as SearchRecord[]);
-    setCart(snap.cart as CartItem[]);
+    // cart is now global — skip snap.cart
     setFlowActive(snap.flowActive);
     setTimelinePhase(snap.timelinePhase);
     setApprovalStep(snap.approvalStep);
@@ -1336,8 +1330,14 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     addMsg({ role: "user", content: text });
 
     /* ── 비용 분석 질문 감지 — 짧은 답 + 비용 인텔리전스 카드 ──
-       채팅에서 깊이 다루지 않고 /cost-intel으로 유도. Work Item 생성도 안 함. */
+       채팅에서 깊이 다루지 않고 /cost-intel으로 유도. Work Item 생성도 안 함.
+       이전 검색 상태를 초기화해 AI 추천 카드/패널이 남지 않도록. */
     if (detectCostAnalysisQuery(text)) {
+      setSourcedProducts([]);
+      setCandidateProducts([]);
+      setSearchPhase("idle");
+      panelSuppressedRef.current = true;
+      closePanel();
       setIsTyping(true);
       setTimeout(() => {
         addMsg({
@@ -1356,6 +1356,11 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
        턴 1: 키워드 감지 → 설정에서 팀 인원·예산 읽어와 확인 질문
        턴 2: 확인 응답 후 분석 요약 + 추천 카드 (간식 패키지 탭 유도) */
     if (snackStep === "idle" && detectSnackQuery(text)) {
+      setSourcedProducts([]);
+      setCandidateProducts([]);
+      setSearchPhase("idle");
+      panelSuppressedRef.current = true;
+      closePanel();
       setIsTyping(true);
       setTimeout(() => {
         addMsg({
@@ -1388,6 +1393,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     /* ── Work Item 자동 생성 — 키워드 매칭 ──
        1) 활성 WI가 없으면 → 첫 WI 생성 (타이틀/색은 키워드로 결정, 못 찾으면 "구매 요청")
        2) 활성 WI가 있고, 새 키워드가 현재와 다른 구매 의도면 → 새 WI 생성 후 활성화 */
+    panelSuppressedRef.current = false; // 구매 분기 진입 → 패널 억제 해제
     const intentMatch = detectPurchaseIntent(text);
     if (intentMatch) {
       const needsNewWI =
@@ -1437,29 +1443,62 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     setTimeout(() => {
       // 3a) 정확 키워드 매칭
       const matchedIds = findProductIds(text);
-      if (matchedIds) {
-        const count = matchedIds.filter((id) => products.find((p) => p.id === id)).length;
-        addMsg({ role: "assistant", content: `검색 결과 ${count}개 상품을 찾았습니다. 상품을 확인해보시고, 필요하시면 장바구니에 담아주세요.`, agent: "주문", productIds: matchedIds });
-      }
       // 3b) fuzzy 텍스트/카테고리 검색
+      const fuzzy = !matchedIds ? searchProductsFuzzy(text) : null;
+      const resolvedIds = matchedIds ?? fuzzy?.ids ?? null;
+
+      if (resolvedIds && resolvedIds.length > 0) {
+        const matchedProducts = resolvedIds
+          .map((id) => products.find((p) => p.id === id))
+          .filter((p): p is Product => !!p);
+
+        // 채팅 메시지 — productIds는 넣지 않음 (sourcedProducts → AI 추천 카드로 노출)
+        const chatMsg = fuzzy?.method === "category"
+          ? `"${text}"에 대한 정확한 상품은 없지만, 관련 카테고리에서 ${matchedProducts.length}개 상품을 찾았습니다.`
+          : `검색 결과 ${matchedProducts.length}개 상품을 찾았습니다. 상품을 확인해보시고, 필요하시면 장바구니에 담아주세요.`;
+        addMsg({ role: "assistant", content: chatMsg, agent: "주문" });
+
+        // 우측 패널 데이터 갱신 — 3-DB 시나리오와 동일하게 결과 상태로 전환
+        const sourced: SourcedProduct[] = matchedProducts.map((p, i) => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          brand: p.brand,
+          category: p.category,
+          source: (i === 0 ? "airsupply-db" : i === 1 ? "airsupply-supplier" : "api-external") as SourceType,
+          deliveryDays: p.inStock ? 3 + i : 7 + i,
+          deliveryFee: i === 0 ? 0 : 3000,
+          purchaseCount: Math.max(0, 30 - i * 12),
+          aiNote: p.description,
+          isRecommended: i === 0,
+        }));
+        setSourcedProducts(sourced);
+        setCandidateProducts([]);
+        setSearchPhase("results");
+
+        // 검색 기록 추가
+        const newRecord: SearchRecord = {
+          id: `sr-${Date.now()}`,
+          query: text,
+          timestamp: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+          resultCount: sourced.length,
+          sources: [
+            { name: "에어서플라이", count: sourced.filter((s) => s.source === "airsupply-db").length, color: "#6366f1" },
+            { name: "입점공급사", count: sourced.filter((s) => s.source === "airsupply-supplier").length, color: "#059669" },
+            { name: "외부마켓", count: sourced.filter((s) => s.source === "api-external").length, color: "#ea580c" },
+          ].filter((s) => s.count > 0),
+          products: sourced.map((s) => ({ name: s.name, price: s.price, source: s.source })),
+        };
+        setSearchRecords((prev) => [newRecord, ...prev]);
+      }
+      // 3c) 완전 미매칭
       else {
-        const fuzzy = searchProductsFuzzy(text);
-        if (fuzzy) {
-          const count = fuzzy.ids.length;
-          const msg = fuzzy.method === "category"
-            ? `"${text}"에 대한 정확한 상품은 없지만, 관련 카테고리에서 ${count}개 상품을 찾았습니다.`
-            : `검색 결과 ${count}개 상품을 찾았습니다.`;
-          addMsg({ role: "assistant", content: msg, agent: "주문", productIds: fuzzy.ids });
-        }
-        // 3c) 완전 미매칭 — 구매 의도가 있어 보이는 경우 명확한 안내
-        else {
-          addMsg({
-            role: "assistant",
-            agent: "주문",
-            content:
-              `"${text}"에 해당하는 상품을 찾지 못했습니다.\n\n현재 등록된 카테고리: **용지 · 잉크/토너 · 사무기기 · 가구 · 전자기기 · 사무용품 · 생활용품 · 간식**\n\n카테고리나 구체적인 상품명으로 다시 검색해보시겠어요?`,
-          });
-        }
+        addMsg({
+          role: "assistant",
+          agent: "주문",
+          content:
+            `"${text}"에 해당하는 상품을 찾지 못했습니다.\n\n현재 등록된 카테고리: **용지 · 잉크/토너 · 사무기기 · 가구 · 전자기기 · 사무용품 · 생활용품 · 간식**\n\n카테고리나 구체적인 상품명으로 다시 검색해보시겠어요?`,
+        });
       }
       setIsTyping(false);
     }, 800 + Math.random() * 1000);
@@ -1480,18 +1519,16 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
      ═══════════════════════════════════════ */
 
   /* ── 컨텍스트 사이드바 Phase 매핑 ──
-     플로우 비활성 상태에서 카트에 담긴 상품이 있으면 "cart" 단계로 advance.
-     (results → cart 자연스러운 진행. 이후 품의/결제 진입 시 flowActive 분기로 넘어감) */
+     장바구니는 플로팅 아이콘으로 분리됨 → 타임라인에서 제거.
+     탐색 단계: searchPhase 그대로.
+     구매 단계: flowActive일 때 timelinePhase 매핑. */
   const sidebarPhase = flowActive
-    ? (timelinePhase === "products" ? "cart" as const
-      : timelinePhase === "approval" ? "approval" as const
+    ? (timelinePhase === "approval" ? "approval" as const
       : timelinePhase === "payment" ? "payment" as const
       : timelinePhase === "shipping" ? "shipping" as const
       : timelinePhase === "complete" ? "complete" as const
-      : "idle" as const)
-    : cart.length > 0
-      ? "cart" as const
-      : searchPhase;
+      : searchPhase)
+    : searchPhase;
 
   const contextInfo: ContextInfo = {
     budget: { monthly: 10000000, used: 5089000, department: "개발팀" },
@@ -1525,17 +1562,12 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         cart={cart}
         context={contextInfo}
         onProductClick={handleSourcedSelect}
-        onOpenFlow={
-          flowActive
-            ? () => openFlowRef.current()
-            : cart.length > 0
-              ? () => openCartRef.current()
-              : undefined
-        }
+        onOpenFlow={flowActive ? () => openFlowRef.current() : undefined}
         progressNotification={false}
         onOpenBudget={() => router.push("/cost-intel")}
         onOpenShipping={() => openSettings("company-shipping")}
         onOpenPayment={() => openSettings("accounting-payment")}
+        onOpenOrders={() => router.push("/orders")}
       />,
       "chat-context",
       { label: "작업 현황" },  // 루트 — onBack 없음
@@ -1593,21 +1625,15 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     };
   }, [setWorkItemStrip, closePanel]);
 
-  // 마운트 시 1회 자동 오픈
-  const contextOpenedRef = useRef(false);
+  // 패널 자동 오픈 + 데이터 변화 시 갱신
+  // panelSuppressedRef: 비구매 분기(비용 분석/간식)에서 true → 패널 열기를 억제
+  // 구매 분기 진입 시 false로 리셋됨
   useEffect(() => {
-    if (contextOpenedRef.current) return;
-    contextOpenedRef.current = true;
-    openContext();
-  }, [openContext]);
-
-  // chat-context가 현재 노출 중이면 의존성 변화 시 갱신
-  useEffect(() => {
-    if (contentKey === "chat-context") {
+    if (panelSuppressedRef.current) return;
+    if (!contentKey || contentKey === "chat-context") {
       openContext();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sidebarPhase, searchRecords, sourcedProducts, candidateProducts, cart]);
+  }, [openContext, contentKey]);
 
   return (
     <div className="flex h-full">
@@ -1660,7 +1686,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       ` }} />
 
       {/* ── 메인 채팅 영역 ── */}
-      <div className="flex-1 flex flex-col h-full min-w-0">
+      <div className="flex-1 flex flex-col h-full min-w-0 relative">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 pt-2" style={{ scrollbarGutter: "stable" }}>
         <div className="max-w-[720px] mx-auto flex flex-col gap-1">
@@ -1866,6 +1892,29 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
             }
           />
         </div>
+
+        {/* 글로벌 장바구니 플로팅 아이콘 */}
+        {globalCart.totalItems > 0 && (
+          <button
+            onClick={() => openCartRef.current()}
+            className="absolute bottom-20 right-5 z-20 flex items-center justify-center w-12 h-12 bg-[#000] text-white rounded-full cursor-pointer transition-all hover:scale-105"
+            style={{
+              boxShadow: "rgba(0,0,0,0.2) 0px 4px 16px, rgba(0,0,0,0.1) 0px 0px 0px 1px",
+            }}
+            aria-label="장바구니"
+          >
+            <ShoppingCart size={20} strokeWidth={1.5} />
+            <span
+              className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[10px] font-bold text-[#000] bg-white rounded-full"
+              style={{
+                boxShadow: "rgba(0,0,0,0.1) 0px 0px 0px 1px, rgba(0,0,0,0.08) 0px 2px 4px",
+                letterSpacing: "0.14px",
+              }}
+            >
+              {globalCart.totalItems}
+            </span>
+          </button>
+        )}
       </div>
 
     </div>

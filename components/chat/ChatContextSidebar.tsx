@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import {
   Search, Package, Check, ChevronDown,
   MapPin, CreditCard, PiggyBank, Bot, Sparkles, FileText,
-  TrendingDown, ShoppingCart, Zap, ArrowRight, ArrowUpRight,
-  ShieldCheck, Unlock, Info,
+  TrendingDown, Zap, ArrowRight, ArrowUpRight,
+  ShieldCheck,
 } from "lucide-react";
 import type { SourcedProduct } from "./SourcedProductCard";
 import type { CartItem } from "@/components/commerce/CartPanel";
@@ -44,7 +44,7 @@ export interface ContextInfo {
 }
 
 interface ChatContextSidebarProps {
-  currentPhase: "idle" | "analyzing" | "searching" | "results" | "cart" | "approval" | "payment" | "shipping" | "complete";
+  currentPhase: "idle" | "analyzing" | "searching" | "results" | "approval" | "payment" | "shipping" | "complete";
   searchRecords: SearchRecord[];
   extractedProducts: SourcedProduct[];
   candidateProducts: SourcedProduct[];
@@ -54,27 +54,33 @@ interface ChatContextSidebarProps {
   onOpenFlow?: () => void;
   /** 플로우 진행 상태에 확인하지 않은 변화가 있을 때 "진행 상황" 섹션에 알림 dot 표시 */
   progressNotification?: boolean;
-  /** 외부 페이지 점프 핸들러 — 각각 /cost-intel / settings(deep link) 로 연결 */
+  /** 외부 페이지 점프 핸들러 */
   onOpenBudget?: () => void;
   onOpenShipping?: () => void;
   onOpenPayment?: () => void;
+  onOpenOrders?: () => void;
 }
 
 /* ═══════════════════════════════════════
    진행 단계 정의
    ═══════════════════════════════════════ */
 
-const phaseSteps = [
+/* 탐색 단계 — 채팅에서의 검색/추천 */
+const searchSteps = [
   { key: "analyzing", label: "의도 분석", icon: Sparkles },
   { key: "searching", label: "상품 검색", icon: Search },
   { key: "results", label: "추천 결과", icon: Package },
-  { key: "cart", label: "장바구니", icon: ShoppingCart },
+] as const;
+
+/* 구매·배송 단계 — 품의 이후 (flowActive일 때만 노출) */
+const orderSteps = [
   { key: "approval", label: "품의 승인", icon: FileText },
   { key: "payment", label: "결제", icon: CreditCard },
   { key: "shipping", label: "배송", icon: MapPin },
   { key: "complete", label: "완료", icon: Check },
 ] as const;
 
+const phaseSteps = [...searchSteps, ...orderSteps];
 const phaseOrder: string[] = phaseSteps.map((s) => s.key);
 
 /* ═══════════════════════════════════════
@@ -96,6 +102,7 @@ export default function ChatContextSidebar({
   onOpenBudget,
   onOpenShipping,
   onOpenPayment,
+  onOpenOrders,
 }: ChatContextSidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<GroupKey, boolean>>({
     ongoing: true,
@@ -121,6 +128,10 @@ export default function ChatContextSidebar({
   const showOngoingEmpty =
     currentPhase === "idle" && !hasSearch && !hasProducts && !hasCart;
 
+  /* 탐색 / 구매 단계 분리 계산 */
+  const isInOrderPhase = orderSteps.some((s) => s.key === currentPhase);
+  const searchAllDone = isInOrderPhase;
+
   return (
     <div className="flex flex-col">
       {/* ════════════════════════════════════════
@@ -137,26 +148,26 @@ export default function ChatContextSidebar({
             채팅에 구매와 관련된 질문을 입력해보세요. 진행상황이 표시됩니다
           </p>
         ) : (
-          <div className="flex flex-col gap-4">
-            {/* ── 진행 상황 ── */}
+          <div className="flex flex-col gap-3">
+
+            {/* ── 탐색 단계 — 독립 카드 ── */}
             {currentPhase !== "idle" && (
-              <SubGroup
-                title="진행 상황"
-                titleBadge={
-                  progressNotification ? (
-                    <span
-                      className="w-1.5 h-1.5 shrink-0"
-                      style={{
-                        borderRadius: "9999px",
-                        backgroundColor: "#ef4444",
-                        boxShadow: "rgba(239,68,68,0.3) 0px 0px 0px 2px",
-                      }}
-                      aria-label="확인하지 않은 진행 상황 변화"
-                    />
-                  ) : undefined
-                }
-                rightAction={
-                  onOpenFlow && (
+              <div
+                className="px-3 py-3"
+                style={{
+                  borderRadius: "12px",
+                  backgroundColor: "#fff",
+                  boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
+                }}
+              >
+                <div className="flex items-center justify-between mb-2 px-0.5">
+                  <span
+                    className="text-[10px] font-semibold uppercase text-[#777169]"
+                    style={{ letterSpacing: "0.7px" }}
+                  >
+                    탐색
+                  </span>
+                  {onOpenFlow && !isInOrderPhase && (
                     <button
                       onClick={onOpenFlow}
                       className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] cursor-pointer hover:underline"
@@ -165,258 +176,153 @@ export default function ChatContextSidebar({
                       상세보기
                       <ArrowRight size={10} strokeWidth={2} />
                     </button>
-                  )
-                }
-              >
+                  )}
+                </div>
                 <div className="flex flex-col gap-0.5">
-                  {phaseSteps.map((step) => {
+                  {searchSteps.map((step) => {
                     const stepIdx = phaseOrder.indexOf(step.key);
                     const isActive = step.key === currentPhase;
-                    const isDone = stepIdx < currentPhaseIdx;
+                    const isDone = stepIdx < currentPhaseIdx || searchAllDone;
                     const Icon = step.icon;
-                    const isClickable = isActive && !!onOpenFlow;
-
-                    const dot = (
-                      <div
-                        className="w-4 h-4 shrink-0 flex items-center justify-center rounded-full"
-                        style={{
-                          backgroundColor: isDone
-                            ? "#6366f1"
-                            : isActive
-                            ? "#6366f1"
-                            : "rgba(0,0,0,0.05)",
-                          // 현재 단계를 두꺼운 링으로 강조 (스피너 대체)
-                          boxShadow: isActive
-                            ? "rgba(99,102,241,0.25) 0px 0px 0px 3px"
-                            : undefined,
-                        }}
-                      >
-                        {isDone ? (
-                          <Check size={9} strokeWidth={2.5} color="#fff" />
-                        ) : isActive ? (
-                          <Icon size={9} strokeWidth={2} color="#fff" />
-                        ) : (
-                          <Icon size={9} strokeWidth={1.5} color="#bbb" />
-                        )}
-                      </div>
-                    );
-
-                    const row = (
-                      <>
-                        {dot}
-                        <span
-                          className="text-[11px]"
-                          style={{
-                            color: isDone
-                              ? "#6366f1"
-                              : isActive
-                              ? "#111"
-                              : "#bbb",
-                            fontWeight: isActive ? 600 : 400,
-                            letterSpacing: "0.14px",
-                          }}
-                        >
-                          {step.label}
-                        </span>
-                        {isActive && isClickable && (
-                          <span
-                            className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ letterSpacing: "0.14px" }}
-                          >
-                            상세보기
-                            <ArrowRight size={10} strokeWidth={2} />
-                          </span>
-                        )}
-                      </>
-                    );
-
-                    const stepNode = isClickable ? (
-                      <button
-                        onClick={onOpenFlow}
-                        className="group flex items-center gap-2 py-1.5 px-2 -mx-1 cursor-pointer rounded-[6px] transition-colors w-full"
-                        style={{
-                          backgroundColor: "rgba(99,102,241,0.06)",
-                        }}
-                      >
-                        {row}
-                      </button>
-                    ) : (
-                      <div
-                        className="flex items-center gap-2 py-1.5 px-2 -mx-1 rounded-[6px]"
-                        style={{
-                          backgroundColor: isActive ? "rgba(99,102,241,0.06)" : undefined,
-                        }}
-                      >
-                        {row}
-                      </div>
-                    );
-
-                    /* ── 단계별 인라인 상세 블록 ──
-                       활성 단계: 기본 펼침
-                       과거(완료) 단계: 기본 접힘, 클릭으로 토글 가능 */
-                    const hasStepDetail =
-                      (step.key === "searching" && hasSearch) ||
-                      (step.key === "results" && hasProducts) ||
-                      (step.key === "cart" && hasCart);
-                    const showDetail = hasStepDetail && (isActive || !!expandedPastSteps[step.key]);
-                    // 과거 단계에 접힌 상세가 있으면 요약 한 줄 표시
-                    const showCollapsedHint = hasStepDetail && isDone && !expandedPastSteps[step.key];
+                    const isClickable = isActive && !!onOpenFlow && !isInOrderPhase;
 
                     return (
                       <div key={step.key} className="flex flex-col">
-                        {stepNode}
+                        <StepRow
+                          icon={<Icon size={9} strokeWidth={isDone ? 2.5 : isActive ? 2 : 1.5} color={isDone || isActive ? "#fff" : "#bbb"} />}
+                          label={step.label}
+                          isDone={isDone}
+                          isActive={isActive}
+                          isClickable={isClickable}
+                          onClick={isClickable ? onOpenFlow : undefined}
+                        />
 
-                        {/* 접힌 과거 단계 — 클릭으로 펼칠 수 있는 요약 힌트 */}
-                        {showCollapsedHint && (
-                          <button
-                            onClick={() => togglePastStep(step.key)}
-                            className="ml-8 mt-0.5 mb-0.5 text-[10px] text-[#b8b2a8] cursor-pointer hover:text-[#777169] transition-colors text-left"
-                            style={{ letterSpacing: "0.14px" }}
-                          >
-                            {step.key === "searching" && `검색 ${searchRecords.length}건 ▾`}
-                            {step.key === "results" && `추천 ${extractedProducts.length + candidateProducts.length}건 ▾`}
-                            {step.key === "cart" && `${cart.length}종 · ${cart.reduce((s, i) => s + i.quantity, 0)}개 ▾`}
+                        {step.key === "searching" && hasSearch && (isActive || !!expandedPastSteps[step.key]) && (
+                          <StepDetail isDone={isDone} onCollapse={() => togglePastStep(step.key)}>
+                            <div className="flex flex-col gap-1.5">
+                              {searchRecords.map((record) => (
+                                <div
+                                  key={record.id}
+                                  className="py-1.5 px-2"
+                                  style={{ borderRadius: "6px", boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px", backgroundColor: "#f9f9f9" }}
+                                >
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <span className="text-[11px] font-medium text-[#1a1a1a] leading-tight" style={{ letterSpacing: "0.14px" }}>
+                                      &ldquo;{record.query}&rdquo;
+                                    </span>
+                                    <span className="text-[10px] text-[#bbb] shrink-0">{record.timestamp}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[10px] text-[#999]">
+                                    <span>{record.resultCount}건</span>
+                                    <span className="text-[#e5e5e5]">·</span>
+                                    <span>{record.sources.map((s) => `${s.name} ${s.count}`).join(" / ")}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </StepDetail>
+                        )}
+                        {step.key === "searching" && hasSearch && isDone && !expandedPastSteps[step.key] && !isActive && (
+                          <button onClick={() => togglePastStep(step.key)} className="ml-8 mt-0.5 mb-0.5 text-[10px] text-[#b8b2a8] cursor-pointer hover:text-[#777169] transition-colors text-left" style={{ letterSpacing: "0.14px" }}>
+                            검색 {searchRecords.length}건 ▾
                           </button>
                         )}
 
-                        {/* 펼쳐진 상세 블록 — 활성이거나 수동 펼침 */}
-                        {showDetail && (
-                          <div className="mt-1 ml-5 mb-1.5">
-                            {/* 과거 단계면 접기 버튼 */}
-                            {isDone && (
-                              <button
-                                onClick={() => togglePastStep(step.key)}
-                                className="text-[10px] text-[#b8b2a8] cursor-pointer hover:text-[#777169] mb-1.5 transition-colors"
-                                style={{ letterSpacing: "0.14px" }}
-                              >
-                                접기 ▴
-                              </button>
-                            )}
-
-                            {/* 검색 기록 — "상품 검색" 단계 */}
-                            {step.key === "searching" && hasSearch && (
-                              <div className="flex flex-col gap-1.5">
-                                {searchRecords.map((record) => (
-                                  <div
-                                    key={record.id}
-                                    className="py-1.5 px-2"
-                                    style={{
-                                      borderRadius: "6px",
-                                      boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px",
-                                      backgroundColor: "#fff",
-                                    }}
-                                  >
-                                    <div className="flex items-start justify-between gap-2 mb-1">
-                                      <span
-                                        className="text-[11px] font-medium text-[#1a1a1a] leading-tight"
-                                        style={{ letterSpacing: "0.14px" }}
-                                      >
-                                        &ldquo;{record.query}&rdquo;
-                                      </span>
-                                      <span className="text-[10px] text-[#bbb] shrink-0">
-                                        {record.timestamp}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-[#999]">
-                                      <span>{record.resultCount}건</span>
-                                      <span className="text-[#e5e5e5]">·</span>
-                                      <span>
-                                        {record.sources.map((s) => `${s.name} ${s.count}`).join(" / ")}
-                                      </span>
-                                    </div>
+                        {step.key === "results" && hasProducts && (isActive || !!expandedPastSteps[step.key]) && (
+                          <StepDetail isDone={isDone} onCollapse={() => togglePastStep(step.key)}>
+                            <div className="flex flex-col gap-2">
+                              {extractedProducts.length > 0 && (
+                                <div>
+                                  <MicroLabel>AI 선정 — 구매이력 · 가격 · 배송속도 기반</MicroLabel>
+                                  <div className="flex flex-col gap-1.5 mt-1.5">
+                                    {extractedProducts.map((p) => (
+                                      <ProductMiniCard key={p.id} product={p} isSelected onClick={() => onProductClick?.(p)} />
+                                    ))}
                                   </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* 추천 상품 — "추천 결과" 단계 */}
-                            {step.key === "results" && hasProducts && (
-                              <div className="flex flex-col gap-2">
-                                {extractedProducts.length > 0 && (
-                                  <div>
-                                    <MicroLabel>선정 · 채팅에서 추천</MicroLabel>
-                                    <div className="flex flex-col gap-1.5 mt-1.5">
-                                      {extractedProducts.map((p) => (
-                                        <ProductMiniCard
-                                          key={p.id}
-                                          product={p}
-                                          isSelected
-                                          onClick={() => onProductClick?.(p)}
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {candidateProducts.length > 0 && (
-                                  <div>
-                                    <MicroLabel>후보 · 추가 {candidateProducts.length}건 발견</MicroLabel>
-                                    <div className="flex flex-col gap-1.5 mt-1.5">
-                                      {candidateProducts.map((p) => (
-                                        <ProductMiniCard
-                                          key={p.id}
-                                          product={p}
-                                          isSelected={false}
-                                          onClick={() => onProductClick?.(p)}
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* 장바구니 — "장바구니" 단계 */}
-                            {step.key === "cart" && hasCart && (
-                              <button
-                                onClick={onOpenFlow}
-                                disabled={!onOpenFlow}
-                                className="group/cart text-left w-full px-3 py-2.5 transition-all cursor-pointer hover:bg-[rgba(245,242,239,0.6)] disabled:cursor-default disabled:hover:bg-transparent"
-                                style={{
-                                  borderRadius: "10px",
-                                  backgroundColor: "#fff",
-                                  boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
-                                }}
-                              >
-                                <div className="flex items-baseline justify-between mb-1.5">
-                                  <div className="flex items-baseline gap-1">
-                                    <span
-                                      className="text-[14px] font-semibold text-[#000]"
-                                      style={{ letterSpacing: "-0.2px", lineHeight: 1.1 }}
-                                    >
-                                      {cart.reduce((s, i) => s + i.product.price * i.quantity, 0).toLocaleString()}
-                                    </span>
-                                    <span className="text-[10px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>원</span>
-                                  </div>
-                                  <span className="text-[10px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
-                                    {cart.length}종 · {cart.reduce((s, i) => s + i.quantity, 0)}개
-                                  </span>
                                 </div>
-                                <div className="flex flex-col gap-0.5">
-                                  {cart.slice(0, 2).map((item) => (
-                                    <div key={item.product.id} className="flex items-center justify-between gap-2">
-                                      <span className="text-[11px] text-[#4e4e4e] truncate" style={{ letterSpacing: "0.14px" }}>
-                                        {item.product.name}
-                                      </span>
-                                      <span className="text-[10px] text-[#777169] shrink-0" style={{ letterSpacing: "0.14px" }}>
-                                        ×{item.quantity}
-                                      </span>
-                                    </div>
-                                  ))}
-                                  {cart.length > 2 && (
-                                    <span className="text-[10px] text-[#999] mt-0.5" style={{ letterSpacing: "0.14px" }}>
-                                      외 {cart.length - 2}종 더보기
-                                    </span>
-                                  )}
+                              )}
+                              {candidateProducts.length > 0 && (
+                                <div>
+                                  <MicroLabel>비교 옵션 {candidateProducts.length}건 — 가격대 · 브랜드 다양화</MicroLabel>
+                                  <div className="flex flex-col gap-1.5 mt-1.5">
+                                    {candidateProducts.map((p) => (
+                                      <ProductMiniCard key={p.id} product={p} isSelected={false} onClick={() => onProductClick?.(p)} />
+                                    ))}
+                                  </div>
                                 </div>
-                              </button>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          </StepDetail>
+                        )}
+                        {step.key === "results" && hasProducts && isDone && !expandedPastSteps[step.key] && !isActive && (
+                          <button onClick={() => togglePastStep(step.key)} className="ml-8 mt-0.5 mb-0.5 text-[10px] text-[#b8b2a8] cursor-pointer hover:text-[#777169] transition-colors text-left" style={{ letterSpacing: "0.14px" }}>
+                            추천 {extractedProducts.length + candidateProducts.length}건 ▾
+                          </button>
                         )}
                       </div>
                     );
                   })}
                 </div>
-              </SubGroup>
+              </div>
+            )}
+
+            {/* ── 구매 · 배송 단계 — 독립 카드 ── */}
+            {isInOrderPhase && (
+              <div
+                className="px-3 py-3"
+                style={{
+                  borderRadius: "12px",
+                  backgroundColor: "#fff",
+                  boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
+                }}
+              >
+                <div className="flex items-center justify-between mb-2 px-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-[10px] font-semibold uppercase text-[#777169]"
+                      style={{ letterSpacing: "0.7px" }}
+                    >
+                      구매 · 배송
+                    </span>
+                    {progressNotification && (
+                      <span
+                        className="w-1.5 h-1.5 shrink-0"
+                        style={{ borderRadius: "9999px", backgroundColor: "#ef4444", boxShadow: "rgba(239,68,68,0.3) 0px 0px 0px 2px" }}
+                        aria-label="확인하지 않은 진행 상황 변화"
+                      />
+                    )}
+                  </div>
+                  {onOpenFlow && (
+                    <button
+                      onClick={onOpenFlow}
+                      className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] cursor-pointer hover:underline"
+                      style={{ letterSpacing: "0.14px" }}
+                    >
+                      상세보기
+                      <ArrowRight size={10} strokeWidth={2} />
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {orderSteps.map((step) => {
+                    const stepIdx = phaseOrder.indexOf(step.key);
+                    const isActive = step.key === currentPhase;
+                    const isDone = stepIdx < currentPhaseIdx;
+                    const Icon = step.icon;
+
+                    return (
+                      <StepRow
+                        key={step.key}
+                        icon={<Icon size={9} strokeWidth={isDone ? 2.5 : isActive ? 2 : 1.5} color={isDone || isActive ? "#fff" : "#bbb"} />}
+                        label={step.label}
+                        isDone={isDone}
+                        isActive={isActive}
+                        isClickable={false}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
           </div>
@@ -959,11 +865,24 @@ function ProductMiniCard({
       </div>
 
       <p
-        className="text-[11px] font-medium truncate mb-0.5"
+        className="text-[11px] font-medium truncate"
         style={{ color: isSelected ? "#1a1a1a" : "#777169", letterSpacing: "0.14px" }}
       >
         {product.name}
       </p>
+
+      {/* AI 선정/후보 이유 — 상품명 바로 아래 배치 */}
+      {product.aiNote && (
+        <p
+          className="text-[10px] leading-[1.45] line-clamp-2 mt-0.5 mb-1"
+          style={{
+            color: isSelected ? "#666" : "#999",
+            letterSpacing: "0.14px",
+          }}
+        >
+          {product.aiNote}
+        </p>
+      )}
 
       <div className="flex items-center gap-2">
         <span
@@ -989,15 +908,105 @@ function ProductMiniCard({
           <span className="text-[9px] text-[#bbb]">·{product.purchaseCount}회 구매</span>
         )}
       </div>
+    </button>
+  );
+}
 
-      {product.aiNote && (
-        <p
-          className="text-[9px] text-[#aaa] mt-1 leading-[1.4] line-clamp-2 group-hover:text-[#777169] transition-colors"
+/* ── 타임라인 스텝 행 ── */
+
+function StepRow({
+  icon,
+  label,
+  isDone,
+  isActive,
+  isClickable,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  isDone: boolean;
+  isActive: boolean;
+  isClickable: boolean;
+  onClick?: () => void;
+}) {
+  const dot = (
+    <div
+      className="w-4 h-4 shrink-0 flex items-center justify-center rounded-full"
+      style={{
+        backgroundColor: isDone ? "#6366f1" : isActive ? "#6366f1" : "rgba(0,0,0,0.05)",
+        boxShadow: isActive ? "rgba(99,102,241,0.25) 0px 0px 0px 3px" : undefined,
+      }}
+    >
+      {isDone ? <Check size={9} strokeWidth={2.5} color="#fff" /> : icon}
+    </div>
+  );
+
+  const row = (
+    <>
+      {dot}
+      <span
+        className="text-[11px]"
+        style={{
+          color: isDone ? "#6366f1" : isActive ? "#111" : "#bbb",
+          fontWeight: isActive ? 600 : 400,
+          letterSpacing: "0.14px",
+        }}
+      >
+        {label}
+      </span>
+      {isActive && isClickable && (
+        <span
+          className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium text-[#6366f1] opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ letterSpacing: "0.14px" }}
         >
-          {product.aiNote}
-        </p>
+          상세보기
+          <ArrowRight size={10} strokeWidth={2} />
+        </span>
       )}
+    </>
+  );
+
+  return isClickable ? (
+    <button
+      onClick={onClick}
+      className="group flex items-center gap-2 py-1.5 px-2 -mx-1 cursor-pointer rounded-[6px] transition-colors w-full"
+      style={{ backgroundColor: "rgba(99,102,241,0.06)" }}
+    >
+      {row}
     </button>
+  ) : (
+    <div
+      className="flex items-center gap-2 py-1.5 px-2 -mx-1 rounded-[6px]"
+      style={{ backgroundColor: isActive ? "rgba(99,102,241,0.06)" : undefined }}
+    >
+      {row}
+    </div>
+  );
+}
+
+/* ── 단계별 인라인 상세 래퍼 ── */
+
+function StepDetail({
+  isDone,
+  onCollapse,
+  children,
+}: {
+  isDone: boolean;
+  onCollapse: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-1 ml-5 mb-1.5">
+      {isDone && (
+        <button
+          onClick={onCollapse}
+          className="text-[10px] text-[#b8b2a8] cursor-pointer hover:text-[#777169] mb-1.5 transition-colors"
+          style={{ letterSpacing: "0.14px" }}
+        >
+          접기 ▴
+        </button>
+      )}
+      {children}
+    </div>
   );
 }

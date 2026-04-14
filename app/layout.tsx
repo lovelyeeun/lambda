@@ -3,6 +3,7 @@ import "./globals.css";
 import { SettingsProvider } from "@/lib/settings-context";
 import { SettingsStoreProvider } from "@/lib/settings-store";
 import { AgentPolicyProvider } from "@/lib/agent-policy-context";
+import { CartProvider } from "@/lib/cart-context";
 import SettingsOverlay from "@/components/settings/SettingsOverlay";
 
 export const metadata: Metadata = {
@@ -20,10 +21,12 @@ export default function RootLayout({
       <body style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
         <AgentPolicyProvider>
         <SettingsStoreProvider>
+        <CartProvider>
         <SettingsProvider>
           {children}
           <SettingsOverlay />
         </SettingsProvider>
+        </CartProvider>
         </SettingsStoreProvider>
         </AgentPolicyProvider>
       </body>
