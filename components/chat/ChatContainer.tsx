@@ -538,34 +538,172 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     const hasShipping = msgs.some((m) => m.role === "assistant" && (m.content.includes("배송 예정") || m.content.includes("배송이 완료")));
     const hasDeliveryComplete = msgs.some((m) => m.role === "assistant" && m.content.includes("배송이 완료"));
     const hasOrderConfirm = msgs.some((m) => m.role === "assistant" && m.content.includes("주문이 확정"));
+    const hasReturn = msgs.some((m) => m.role === "assistant" && (m.content.includes("반품 수거") || m.content.includes("반품요청")));
 
-    // 가격·상품 파싱 — 메시지에서 "89,000원 × 3개" 같은 패턴 추출
-    const pricePattern = /([\d,]+)원\s*×?\s*(\d+)개?/;
-    const productNamePattern = /(.+?)\s+(\d+)개\s*(품의|주문)/;
+    // 가격·상품·수량 파싱 — 다양한 메시지 패턴 지원
     let restoredCart: CartItem[] = [];
     let restoredTotal = 0;
 
+    // 여러 패턴을 순회하며 매칭 시도
+    const pricePatterns = [
+      // "89,000원 × 3개 = 267,000원"  (단가 × 수량)
+      { re: /([\d,]+)원\s*×\s*(\d+)\s*(?:개|팩|대|세트|박스)?/,       group: { price: 1, qty: 2 } },
+      // "5개 × 498,000원 = 2,490,000원"  (수량 × 단가)
+      { re: /(\d+)\s*(?:개|팩|대|세트|박스)\s*×\s*([\d,]+)원/,         group: { price: 2, qty: 1 } },
+      // "459,000원 × 2 = 918,000원"  (단가 × 숫자)
+      { re: /([\d,]+)원\s*×\s*(\d+)\s*=/,                             group: { price: 1, qty: 2 } },
+      // "1,890,000원" + 별도 수량 없음 (단품)
+      { re: /(?:추천드립니다|주문하겠습니다)[^]*?([\d,]+)원/,            group: { price: 1, qty: 0 } },
+      // fallback: "N대를 추천" + "금액원"
+      { re: /([\d,]+)원/,                                              group: { price: 1, qty: 0 } },
+    ];
+
+    // 수량 별도 추출 (메시지 전체에서)
+    const qtyPatterns = [
+      /(\d+)\s*(?:개|팩|대|세트|박스)\s*(?:주문|품의|결제)/,
+      /(\d+)\s*(?:개|팩|대|세트|박스)\s*×/,
+      /×\s*(\d+)\s*(?:개|팩|대|세트|박스)?/,
+    ];
+
     for (const m of msgs) {
       if (m.role !== "assistant") continue;
-      const priceMatch = m.content.match(pricePattern);
-      const nameMatch = m.content.match(productNamePattern);
-      if (priceMatch) {
-        const unitPrice = parseInt(priceMatch[1].replace(/,/g, ""), 10);
-        const qty = parseInt(priceMatch[2], 10);
-        restoredTotal = unitPrice * qty;
 
-        // 상품 DB에서 매칭 시도
-        const matched = products.find((p) => m.content.includes(p.name) || (p.brand && m.content.includes(p.brand) && m.content.includes(p.category)));
-        if (matched) {
-          restoredCart = [{ product: matched, quantity: qty }];
-        } else if (nameMatch) {
-          // DB에 없으면 더미 상품 생성
-          restoredCart = [{
-            product: { id: "restored-001", name: nameMatch[1].trim(), price: unitPrice, category: "사무용품", brand: "", image: "", description: "", specs: {}, inStock: true, source: "", tags: [] },
-            quantity: qty,
-          }];
+      // 상품 DB 매칭 — 정확 매칭 → 부분 매칭(브랜드+카테고리 키워드)
+      const matched = products.find((p) => m.content.includes(p.name))
+        ?? products.find((p) => {
+          // "HP 206A 정품 토너(검정)" ↔ "HP 206A 정품 토너 검정" 같은 부분 매칭
+          const nameCore = p.name.replace(/\s+/g, "");
+          const contentClean = m.content.replace(/[()（）]/g, "").replace(/\s+/g, "");
+          return contentClean.includes(nameCore);
+        })
+        ?? products.find((p) => {
+          // 브랜드 + 모델번호 조합 매칭 ("HP 206A", "시디즈 T50")
+          if (!p.brand) return false;
+          const words = p.name.split(/\s+/).filter((w) => w.length >= 2);
+          const brandInContent = m.content.includes(p.brand);
+          const modelInContent = words.some((w) => w !== p.brand && m.content.includes(w));
+          return brandInContent && modelInContent;
+        });
+      if (!matched && !restoredCart.length) continue;
+
+      const product = matched ?? restoredCart[0]?.product;
+      if (!product) continue;
+
+      // 가격·수량 추출
+      let unitPrice = product.price;
+      let qty = 1;
+
+      for (const { re, group } of pricePatterns) {
+        const match = m.content.match(re);
+        if (match) {
+          unitPrice = parseInt(match[group.price].replace(/,/g, ""), 10);
+          if (group.qty > 0 && match[group.qty]) {
+            qty = parseInt(match[group.qty], 10);
+          }
+          break;
         }
       }
+
+      // 수량이 1이면 별도 패턴으로 재시도
+      if (qty === 1) {
+        const allText = msgs.map((x) => x.content).join(" ");
+        for (const qp of qtyPatterns) {
+          const qm = allText.match(qp);
+          if (qm) { qty = parseInt(qm[1], 10); break; }
+        }
+      }
+
+      restoredTotal = unitPrice * qty;
+      restoredCart = [{ product: matched ?? product, quantity: qty }];
+      break; // 첫 매칭만 사용
+    }
+
+    // DB 매칭 안 됐으면 메시지에서 상품명 추출 시도
+    if (restoredCart.length === 0) {
+      const namePatterns = [
+        /\*\*(.+?)\*\*/,                          // **시디즈 T50 AIR**
+        /(.+?)\s+(\d+)(?:개|팩|대)\s*(?:품의|주문|결제)/, // "HP 206A 토너 3개 품의"
+      ];
+      for (const m of msgs) {
+        if (m.role !== "assistant") continue;
+        for (const np of namePatterns) {
+          const nm = m.content.match(np);
+          if (nm) {
+            const name = nm[1].trim();
+            // DB에서 부분 매칭
+            const dbMatch = products.find((p) => name.includes(p.name) || p.name.includes(name));
+            if (dbMatch) {
+              const qty = nm[2] ? parseInt(nm[2], 10) : 1;
+              restoredCart = [{ product: dbMatch, quantity: qty }];
+              restoredTotal = dbMatch.price * qty;
+              break;
+            }
+          }
+        }
+        if (restoredCart.length > 0) break;
+      }
+    }
+
+    // 추천 상품 + 검색 기록 복원 — 키워드 검색 결과 화면과 동일한 형태
+    const matchedProduct = restoredCart[0]?.product;
+    if (matchedProduct) {
+      // 첫 번째 사용자 메시지에서 검색 키워드 추출
+      const firstUserMsg = msgs.find((m) => m.role === "user");
+      const queryText = firstUserMsg?.content ?? matchedProduct.name;
+
+      // 선정 상품: DB 매칭된 상품을 SourcedProduct로 변환
+      const mainSourced: SourcedProduct = {
+        id: `restored-${matchedProduct.id}`,
+        name: matchedProduct.name,
+        price: matchedProduct.price,
+        brand: matchedProduct.brand || "브랜드",
+        category: matchedProduct.category || "기타",
+        source: "airsupply-db",
+        purchaseCount: Math.floor(Math.random() * 40) + 10,
+        deliveryFee: 0,
+        deliveryDays: 2,
+        isRecommended: true,
+        aiNote: `사내 구매 이력 기반 추천 상품. ${matchedProduct.name} — 최근 30일 기준 가장 많이 선택된 모델입니다.`,
+      };
+
+      // 후보 상품: 같은 카테고리에서 2~3개 + 외부마켓 1개
+      const sameCat = products.filter((p) => p.category === matchedProduct.category && p.id !== matchedProduct.id);
+      const candidateSourcing: SourcedProduct[] = sameCat.slice(0, 2).map((p, i) => ({
+        id: `restored-cand-${p.id}`,
+        name: p.name,
+        price: p.price,
+        brand: p.brand,
+        category: p.category,
+        source: (i === 0 ? "airsupply-supplier" : "api-external") as SourcedProduct["source"],
+        platform: i === 1 ? "쿠팡" : undefined,
+        deliveryFee: i === 0 ? 0 : 3000,
+        deliveryDays: i + 3,
+        purchaseCount: i === 0 ? Math.floor(Math.random() * 20) + 5 : undefined,
+        scrapingStatus: (i === 1 ? "done" : undefined) as ScrapingStatus | undefined,
+        aiNote: i === 0
+          ? "입점 공급사 직거래 — 대량 구매 시 추가 할인 가능."
+          : "외부마켓 최저가 — 상세 정보 수집 완료.",
+      }));
+
+      setSourcedProducts([mainSourced]);
+      setCandidateProducts(candidateSourcing);
+      setSearchPhase("results");
+
+      // 검색 기록
+      const allProducts = [mainSourced, ...candidateSourcing];
+      const restoredRecord: SearchRecord = {
+        id: `sr-restored-${Date.now()}`,
+        query: queryText.length > 20 ? queryText.slice(0, 20) + "…" : queryText,
+        timestamp: new Date(msgs[0].timestamp).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+        resultCount: allProducts.length,
+        sources: [
+          { name: "에어서플라이", count: allProducts.filter((p) => p.source === "airsupply-db").length, color: "#6366f1" },
+          { name: "입점공급사", count: allProducts.filter((p) => p.source === "airsupply-supplier").length, color: "#059669" },
+          { name: "외부마켓", count: allProducts.filter((p) => p.source === "api-external").length, color: "#ea580c" },
+        ].filter((s) => s.count > 0),
+        products: allProducts.map((p) => ({ name: p.name, price: p.price, source: p.source })),
+      };
+      setSearchRecords([restoredRecord]);
     }
 
     // 플로우 단계 결정 (가장 진행된 단계 기준)
@@ -605,6 +743,14 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       setFlowActive(true);
       setTimelinePhase("approval");
       setApprovalStep("대기");
+      setFrozenCart(restoredCart);
+      setFrozenTotal(restoredTotal);
+    } else if (hasReturn) {
+      // 반품 수거 시나리오 — 배송완료 후 반품요청 상태
+      setFlowActive(true);
+      setTimelinePhase("complete");
+      setApprovalStep("승인");
+      setShippingStep("반품요청");
       setFrozenCart(restoredCart);
       setFrozenTotal(restoredTotal);
     }
