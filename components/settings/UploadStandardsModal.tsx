@@ -227,7 +227,7 @@ function ExcelInput({ fileName, onUpload, onClear }: { fileName: string | null; 
         <div className="flex gap-2">
           <div className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-white" style={inputStyle}>
             <FileSpreadsheet size={16} strokeWidth={1.5} color="#777" />
-            <span className="text-[13px] text-[#444]">cockpit_description_rules_template.xlsx</span>
+            <span className="text-[13px] text-[#444]">lambda_description_rules_template.xlsx</span>
           </div>
           <PlannedTooltip description="더존 회계코드 매핑 템플릿 다운로드 (실파일 미생성)">
             <button className="px-5 py-2.5 text-[13px] font-medium text-white bg-black rounded-lg cursor-pointer hover:opacity-80">다운로드</button>

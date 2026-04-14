@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MessageSquare, FileCheck, BarChart3, Building2 } from "lucide-react";
+import { SERVICE_NAME } from "@/lib/constants";
 
 const features = [
   { icon: MessageSquare, title: "AI 구매 상담", desc: "대화 한 번으로 상품 검색부터 주문까지" },
@@ -17,7 +18,7 @@ export default function LandingPage() {
           className="text-[48px] leading-[1.08] mb-4"
           style={{ fontFamily: "var(--font-display, Inter)", fontWeight: 300, letterSpacing: "-0.96px", color: "#000" }}
         >
-          cockpit
+          {SERVICE_NAME}
         </h1>
         <p className="text-[20px] text-[#000] mb-2" style={{ fontWeight: 400 }}>
           기업 구매, AI가 대신합니다
@@ -71,7 +72,7 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <p className="text-[12px] text-[#bbb]">cockpit by 로랩스</p>
+      <p className="text-[12px] text-[#bbb]">{`${SERVICE_NAME} by 로랩스`}</p>
     </div>
   );
 }

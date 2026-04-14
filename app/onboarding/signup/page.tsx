@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
+import { SERVICE_NAME } from "@/lib/constants";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function SignupPage() {
     <div className="flex items-center justify-center min-h-screen bg-[#f5f5f5] px-6">
       <div className="w-full max-w-[420px]">
         <h1 className="text-[24px] font-semibold text-center mb-1" style={{ letterSpacing: "-0.3px" }}>회원가입</h1>
-        <p className="text-[14px] text-[#777] text-center mb-8">cockpit과 함께 시작하세요</p>
+        <p className="text-[14px] text-[#777] text-center mb-8">{`${SERVICE_NAME}과 함께 시작하세요`}</p>
 
         <div className="flex flex-col gap-4">
           <Field label="이메일" type="email" value={form.email} onChange={(v) => update("email", v)} error={errors.email} placeholder="email@company.com" />

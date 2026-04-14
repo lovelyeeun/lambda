@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlannedTooltip } from "@/components/ui/Tooltip";
+import { SERVICE_NAME } from "@/lib/constants";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-[#f5f5f5] px-6">
       <div className="w-full max-w-[380px]">
         <h1 className="text-[24px] font-semibold text-center mb-1" style={{ letterSpacing: "-0.3px" }}>로그인</h1>
-        <p className="text-[14px] text-[#777] text-center mb-8">cockpit에 돌아오셨군요</p>
+        <p className="text-[14px] text-[#777] text-center mb-8">{`${SERVICE_NAME}에 돌아오셨군요`}</p>
 
         <div className="flex flex-col gap-4">
           <div>

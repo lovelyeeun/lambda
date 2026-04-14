@@ -295,7 +295,7 @@ function ExcelTab({
             style={inputStyle}
           >
             <FileSpreadsheet size={16} strokeWidth={1.5} color="#777" />
-            <span className="text-[13px] text-[#444]">cockpit_team_invite_template.xlsx</span>
+            <span className="text-[13px] text-[#444]">lambda_team_invite_template.xlsx</span>
           </div>
           <PlannedTooltip description="엑셀 템플릿 다운로드 (실제 파일 생성 미구현)">
             <button

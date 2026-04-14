@@ -6,8 +6,8 @@ import { AgentPolicyProvider } from "@/lib/agent-policy-context";
 import SettingsOverlay from "@/components/settings/SettingsOverlay";
 
 export const metadata: Metadata = {
-  title: "Cockpit — 구매대행 AI 에이전트",
-  description: "기업 구매대행 AI 에이전트 cockpit 프로토타입",
+  title: "Lambda — 기업 구매대행 에이전트",
+  description: "기업 구매대행 AI 에이전트 Lambda 프로토타입",
 };
 
 export default function RootLayout({

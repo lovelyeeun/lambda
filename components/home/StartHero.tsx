@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUp, Building2, Cpu, ChevronDown } from "lucide-react";
 import { HOME_CONTEXTS, HOME_MODELS } from "@/data/home-tasks";
+import { SERVICE_NAME } from "@/lib/constants";
 
 export default function StartHero() {
   const router = useRouter();
@@ -41,13 +42,13 @@ export default function StartHero() {
         className="text-[28px] font-medium text-[#1a1a1a]"
         style={{ letterSpacing: "-0.2px", lineHeight: "1.3" }}
       >
-        오늘 구매 업무, 어디서부터 시작할까요?
+        어떤 상품을 찾고 계신가요?
       </h1>
       <p
         className="text-[14px] text-[#777169] mt-2"
         style={{ letterSpacing: "0.14px" }}
       >
-        cockpit은 구매담당자를 위한 AI 에이전트입니다
+        {SERVICE_NAME}은 구매담당자를 위한 AI 에이전트입니다
       </p>
 
       {/* 입력 폼 */}

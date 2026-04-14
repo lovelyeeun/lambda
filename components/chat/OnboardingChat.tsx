@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ChatMessage } from "@/lib/types";
 import ChatBubble from "./ChatBubble";
 import { Sparkles } from "lucide-react";
+import { SERVICE_NAME } from "@/lib/constants";
 
 /* ─── Onboarding steps ─── */
 
@@ -36,7 +37,7 @@ export default function OnboardingChat() {
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([
-        { id: "ob-welcome", role: "assistant", content: "cockpit에 오신 것을 환영합니다! 몇 가지 질문을 통해 최적의 환경을 설정해드리겠습니다.", timestamp: new Date().toISOString() },
+        { id: "ob-welcome", role: "assistant", content: `${SERVICE_NAME}에 오신 것을 환영합니다! 몇 가지 질문을 통해 최적의 환경을 설정해드리겠습니다.`, timestamp: new Date().toISOString() },
         { id: "ob-q0", role: "assistant", content: steps[0].question, timestamp: new Date().toISOString() },
       ]);
     }

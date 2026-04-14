@@ -1,4 +1,5 @@
 import type { Chat } from "@/lib/types";
+import { SERVICE_NAME } from "@/lib/constants";
 
 export const chats: Chat[] = [
   {
@@ -182,7 +183,7 @@ export const chats: Chat[] = [
     status: "진행중",
     tags: ["온보딩"],
     messages: [
-      { id: "m-ob-1", role: "assistant", content: "cockpit에 오신 것을 환영합니다! 몇 가지 질문을 통해 최적의 환경을 설정해드리겠습니다.", timestamp: "2026-04-10T10:00:00" },
+      { id: "m-ob-1", role: "assistant", content: `${SERVICE_NAME}에 오신 것을 환영합니다! 몇 가지 질문을 통해 최적의 환경을 설정해드리겠습니다.`, timestamp: "2026-04-10T10:00:00" },
       { id: "m-ob-2", role: "assistant", content: "어떤 업종이신가요?", timestamp: "2026-04-10T10:00:05" },
     ],
   },

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { PlannedTooltip } from "@/components/ui/Tooltip";
+import { SERVICE_NAME } from "@/lib/constants";
 
 /* ─── Manual sections ─── */
 
@@ -21,7 +22,7 @@ const sections: ManualItem[] = [
         id: "start-account",
         title: "계정 설정",
         content:
-          "cockpit에 처음 가입하면 사업자등록증을 업로드하고, 회사 정보를 입력합니다.\n\n1. 이메일로 회원가입\n2. 사업자등록증 업로드 (자동 인식)\n3. 회사명, 주소, 대표자 확인\n4. 관리자 계정 생성 완료\n\n가입 후 '설정 > 회사 정보'에서 언제든 수정할 수 있습니다.",
+          `${SERVICE_NAME}에 처음 가입하면 사업자등록증을 업로드하고, 회사 정보를 입력합니다.\n\n1. 이메일로 회원가입\n2. 사업자등록증 업로드 (자동 인식)\n3. 회사명, 주소, 대표자 확인\n4. 관리자 계정 생성 완료\n\n가입 후 '설정 > 회사 정보'에서 언제든 수정할 수 있습니다.`,
       },
       {
         id: "start-team",

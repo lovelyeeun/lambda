@@ -1,7 +1,7 @@
-# Cockpit Prototype — 구매대행 AI 에이전트
+# Lambda Prototype — 구매대행 AI 에이전트
 
 ## 프로젝트 개요
-기업 구매대행 AI 에이전트 "cockpit"의 인터랙티브 프로토타입.
+기업 구매대행 AI 에이전트 "Lambda"의 인터랙티브 프로토타입.
 팀 공유 → MVP 범위 설정 + 개발 디테일 조율 용도.
 
 ## 기술 스택
@@ -12,7 +12,7 @@
 
 ## 디렉토리 구조
 ```
-cockpit-prototype/
+Lambda-prototype/
 ├── CLAUDE.md              ← 이 파일
 ├── DESIGN.md              ← 디자인 시스템 (색상, 타이포, 섀도, 컴포넌트)
 ├── app/

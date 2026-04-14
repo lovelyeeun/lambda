@@ -7,7 +7,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
    localStorage에 영속화하여 새로고침 후에도 유지
    ═══════════════════════════════════════ */
 
-const STORAGE_KEY = "cockpit:pinned-products";
+const STORAGE_KEY = "lambda:pinned-products";
 
 interface PinContextValue {
   pinnedIds: string[];

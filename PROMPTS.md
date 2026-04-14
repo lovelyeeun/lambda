@@ -1,6 +1,6 @@
 # Claude Code 프롬프트 가이드
 
-> cockpit-prototype 프로젝트를 Claude Code에서 작업할 때 사용하는 프롬프트 모음.
+> Lambda-prototype 프로젝트를 Claude Code에서 작업할 때 사용하는 프롬프트 모음.
 > 반드시 Phase 순서대로 진행할 것.
 
 ---
@@ -9,7 +9,7 @@
 
 터미널에서 직접 실행:
 ```bash
-cd ~/Documents/Claude/Projects/cockpit/cockpit-prototype
+cd ~/Documents/Claude/Projects/Lambda/Lambda-prototype
 
 # 1. 이전 코드 파일 삭제 (DESIGN.md, CLAUDE.md, PROMPTS.md, 설정파일 보존)
 rm -rf app/ components/ lib/ data/ .next/
@@ -244,7 +244,7 @@ B-8: 구매확정/반품
   전환: width transition 0.2s ease
 
 === 시각적 위계 ===
-sidebar-draft.html (프로젝트 루트 cockpit/ 폴더)의 배치를 참고해줘.
+sidebar-draft.html (프로젝트 루트 Lambda/ 폴더)의 배치를 참고해줘.
 핵심은 "그룹 배경으로 위계 구분" — 단순 여백이나 구분선만으로는 부족.
 
 === 절대 하지 말 것 ===
@@ -759,7 +759,7 @@ Module A 온보딩을 만들어줘.
    - 부제: 간단한 3~4개 키 피처 (아이콘 + 설명)
      - AI 구매 상담, 품의 자동화, 비용 인텔리전스, SCM
    - CTA 버튼 2개: "무료로 시작하기" → /onboarding/signup, "로그인" → /onboarding/login
-   - 하단: "cockpit by 로랩스"
+   - 하단: "Lambda by 로랩스"
    - DESIGN.md 스타일: near-white 배경, Waldenburg 300 헤딩, pill 버튼
 
 2. app/onboarding/signup/page.tsx — A-2: 회원가입
