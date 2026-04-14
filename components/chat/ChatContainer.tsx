@@ -517,6 +517,100 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const [frozenCart, setFrozenCart] = useState<CartItem[]>([]);
   const [frozenTotal, setFrozenTotal] = useState(0);
 
+  /* ── 기존 채팅 메시지에서 플로우 상태 복원 ──
+     chat-003 등 이미 진행 중인 시나리오를 열 때, 메시지 히스토리를 파싱하여
+     cart / flowActive / timelinePhase 등을 초기화합니다. */
+  const didRestoreRef = useRef(false);
+  useEffect(() => {
+    if (didRestoreRef.current) return;
+    didRestoreRef.current = true;
+
+    const msgs = initialChat.messages;
+    if (msgs.length === 0) return;
+
+    // 패턴 감지: 메시지 내용에서 플로우 단계 추론
+    const hasApprovalRequest = msgs.some((m) => m.role === "assistant" && m.content.includes("품의 요청"));
+    const hasApprovalDone = msgs.some((m) =>
+      (m.role === "system" && m.content.includes("승인")) ||
+      (m.role === "assistant" && m.content.includes("승인 완료")),
+    );
+    const hasPaymentDone = msgs.some((m) => m.role === "assistant" && (m.content.includes("결제가 완료") || m.content.includes("결제를 진행")));
+    const hasShipping = msgs.some((m) => m.role === "assistant" && (m.content.includes("배송 예정") || m.content.includes("배송이 완료")));
+    const hasDeliveryComplete = msgs.some((m) => m.role === "assistant" && m.content.includes("배송이 완료"));
+    const hasOrderConfirm = msgs.some((m) => m.role === "assistant" && m.content.includes("주문이 확정"));
+
+    // 가격·상품 파싱 — 메시지에서 "89,000원 × 3개" 같은 패턴 추출
+    const pricePattern = /([\d,]+)원\s*×?\s*(\d+)개?/;
+    const productNamePattern = /(.+?)\s+(\d+)개\s*(품의|주문)/;
+    let restoredCart: CartItem[] = [];
+    let restoredTotal = 0;
+
+    for (const m of msgs) {
+      if (m.role !== "assistant") continue;
+      const priceMatch = m.content.match(pricePattern);
+      const nameMatch = m.content.match(productNamePattern);
+      if (priceMatch) {
+        const unitPrice = parseInt(priceMatch[1].replace(/,/g, ""), 10);
+        const qty = parseInt(priceMatch[2], 10);
+        restoredTotal = unitPrice * qty;
+
+        // 상품 DB에서 매칭 시도
+        const matched = products.find((p) => m.content.includes(p.name) || (p.brand && m.content.includes(p.brand) && m.content.includes(p.category)));
+        if (matched) {
+          restoredCart = [{ product: matched, quantity: qty }];
+        } else if (nameMatch) {
+          // DB에 없으면 더미 상품 생성
+          restoredCart = [{
+            product: { id: "restored-001", name: nameMatch[1].trim(), price: unitPrice, category: "사무용품", brand: "", image: "", description: "", specs: {}, inStock: true, source: "", tags: [] },
+            quantity: qty,
+          }];
+        }
+      }
+    }
+
+    // 플로우 단계 결정 (가장 진행된 단계 기준)
+    if (hasOrderConfirm || hasDeliveryComplete) {
+      setFlowActive(true);
+      setTimelinePhase("complete");
+      setApprovalStep("승인");
+      setApprovalDate(msgs.find((m) => m.content.includes("승인"))?.timestamp?.split("T")[0]);
+      setShippingStep("배송완료");
+      setFrozenCart(restoredCart);
+      setFrozenTotal(restoredTotal);
+    } else if (hasShipping) {
+      setFlowActive(true);
+      setTimelinePhase("shipping");
+      setApprovalStep("승인");
+      setApprovalDate(msgs.find((m) => m.content.includes("승인"))?.timestamp?.split("T")[0]);
+      setShippingStep(hasDeliveryComplete ? "배송완료" : "배송중");
+      setFrozenCart(restoredCart);
+      setFrozenTotal(restoredTotal);
+    } else if (hasPaymentDone) {
+      setFlowActive(true);
+      setTimelinePhase("shipping");
+      setApprovalStep("승인");
+      setPaymentMethod("하나 법인카드 (****-1234)");
+      setShippingStep("접수");
+      setFrozenCart(restoredCart);
+      setFrozenTotal(restoredTotal);
+    } else if (hasApprovalDone) {
+      setFlowActive(true);
+      setTimelinePhase("shipping");
+      setApprovalStep("승인");
+      setApprovalDate(msgs.find((m) => m.content.includes("승인"))?.timestamp?.split("T")[0]);
+      setShippingStep("접수");
+      setFrozenCart(restoredCart);
+      setFrozenTotal(restoredTotal);
+    } else if (hasApprovalRequest) {
+      setFlowActive(true);
+      setTimelinePhase("approval");
+      setApprovalStep("대기");
+      setFrozenCart(restoredCart);
+      setFrozenTotal(restoredTotal);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /* ── Work Item state ──
      한 채팅에서 여러 구매가 동시 진행될 때, 각 구매 여정을 독립 객체로 다룸.
      - singleton state(cart/flowActive/...)는 "현재 활성 WI의 live state"

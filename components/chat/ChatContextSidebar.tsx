@@ -102,6 +102,10 @@ export default function ChatContextSidebar({
     settings: true,
   });
   const [detailOpen, setDetailOpen] = useState(false);
+  /** 과거(완료) 단계의 인라인 상세를 수동으로 펼쳤는지 추적 */
+  const [expandedPastSteps, setExpandedPastSteps] = useState<Record<string, boolean>>({});
+  const togglePastStep = (key: string) =>
+    setExpandedPastSteps((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const toggle = (key: GroupKey) =>
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -247,158 +251,170 @@ export default function ChatContextSidebar({
                       </div>
                     );
 
-                    // 장바구니 단계가 active일 때 상세(총액/상품 요약)를 인라인 확장 블록으로 노출
-                    const showCartDetail = step.key === "cart" && isActive && hasCart;
+                    /* ── 단계별 인라인 상세 블록 ──
+                       활성 단계: 기본 펼침
+                       과거(완료) 단계: 기본 접힘, 클릭으로 토글 가능 */
+                    const hasStepDetail =
+                      (step.key === "searching" && hasSearch) ||
+                      (step.key === "results" && hasProducts) ||
+                      (step.key === "cart" && hasCart);
+                    const showDetail = hasStepDetail && (isActive || !!expandedPastSteps[step.key]);
+                    // 과거 단계에 접힌 상세가 있으면 요약 한 줄 표시
+                    const showCollapsedHint = hasStepDetail && isDone && !expandedPastSteps[step.key];
 
                     return (
                       <div key={step.key} className="flex flex-col">
                         {stepNode}
-                        {showCartDetail && (
-                          <div className="mt-1 ml-5 mb-1">
-                            <button
-                              onClick={onOpenFlow}
-                              disabled={!onOpenFlow}
-                              className="group/cart text-left w-full px-3 py-2.5 transition-all cursor-pointer hover:bg-[rgba(245,242,239,0.6)] disabled:cursor-default disabled:hover:bg-transparent"
-                              style={{
-                                borderRadius: "10px",
-                                backgroundColor: "#fff",
-                                boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
-                              }}
-                            >
-                              {/* 상단: 총 금액 / 상품 수 */}
-                              <div className="flex items-baseline justify-between mb-1.5">
-                                <div className="flex items-baseline gap-1">
-                                  <span
-                                    className="text-[14px] font-semibold text-[#000]"
-                                    style={{ letterSpacing: "-0.2px", lineHeight: 1.1 }}
-                                  >
-                                    {cart.reduce((s, i) => s + i.product.price * i.quantity, 0).toLocaleString()}
-                                  </span>
-                                  <span
-                                    className="text-[10px] text-[#777169]"
-                                    style={{ letterSpacing: "0.14px" }}
-                                  >
-                                    원
-                                  </span>
-                                </div>
-                                <span
-                                  className="text-[10px] text-[#777169]"
-                                  style={{ letterSpacing: "0.14px" }}
-                                >
-                                  {cart.length}종 · {cart.reduce((s, i) => s + i.quantity, 0)}개
-                                </span>
-                              </div>
 
-                              {/* 아이템 미리보기 (최대 2건) */}
-                              <div className="flex flex-col gap-0.5">
-                                {cart.slice(0, 2).map((item) => (
-                                  <div key={item.product.id} className="flex items-center justify-between gap-2">
-                                    <span
-                                      className="text-[11px] text-[#4e4e4e] truncate"
-                                      style={{ letterSpacing: "0.14px" }}
-                                    >
-                                      {item.product.name}
-                                    </span>
-                                    <span
-                                      className="text-[10px] text-[#777169] shrink-0"
-                                      style={{ letterSpacing: "0.14px" }}
-                                    >
-                                      ×{item.quantity}
-                                    </span>
+                        {/* 접힌 과거 단계 — 클릭으로 펼칠 수 있는 요약 힌트 */}
+                        {showCollapsedHint && (
+                          <button
+                            onClick={() => togglePastStep(step.key)}
+                            className="ml-8 mt-0.5 mb-0.5 text-[10px] text-[#b8b2a8] cursor-pointer hover:text-[#777169] transition-colors text-left"
+                            style={{ letterSpacing: "0.14px" }}
+                          >
+                            {step.key === "searching" && `검색 ${searchRecords.length}건 ▾`}
+                            {step.key === "results" && `추천 ${extractedProducts.length + candidateProducts.length}건 ▾`}
+                            {step.key === "cart" && `${cart.length}종 · ${cart.reduce((s, i) => s + i.quantity, 0)}개 ▾`}
+                          </button>
+                        )}
+
+                        {/* 펼쳐진 상세 블록 — 활성이거나 수동 펼침 */}
+                        {showDetail && (
+                          <div className="mt-1 ml-5 mb-1.5">
+                            {/* 과거 단계면 접기 버튼 */}
+                            {isDone && (
+                              <button
+                                onClick={() => togglePastStep(step.key)}
+                                className="text-[10px] text-[#b8b2a8] cursor-pointer hover:text-[#777169] mb-1.5 transition-colors"
+                                style={{ letterSpacing: "0.14px" }}
+                              >
+                                접기 ▴
+                              </button>
+                            )}
+
+                            {/* 검색 기록 — "상품 검색" 단계 */}
+                            {step.key === "searching" && hasSearch && (
+                              <div className="flex flex-col gap-1.5">
+                                {searchRecords.map((record) => (
+                                  <div
+                                    key={record.id}
+                                    className="py-1.5 px-2"
+                                    style={{
+                                      borderRadius: "6px",
+                                      boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px",
+                                      backgroundColor: "#fff",
+                                    }}
+                                  >
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                      <span
+                                        className="text-[11px] font-medium text-[#1a1a1a] leading-tight"
+                                        style={{ letterSpacing: "0.14px" }}
+                                      >
+                                        &ldquo;{record.query}&rdquo;
+                                      </span>
+                                      <span className="text-[10px] text-[#bbb] shrink-0">
+                                        {record.timestamp}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] text-[#999]">
+                                      <span>{record.resultCount}건</span>
+                                      <span className="text-[#e5e5e5]">·</span>
+                                      <span>
+                                        {record.sources.map((s) => `${s.name} ${s.count}`).join(" / ")}
+                                      </span>
+                                    </div>
                                   </div>
                                 ))}
-                                {cart.length > 2 && (
-                                  <span
-                                    className="text-[10px] text-[#999] mt-0.5"
-                                    style={{ letterSpacing: "0.14px" }}
-                                  >
-                                    외 {cart.length - 2}종 더보기
-                                  </span>
+                              </div>
+                            )}
+
+                            {/* 추천 상품 — "추천 결과" 단계 */}
+                            {step.key === "results" && hasProducts && (
+                              <div className="flex flex-col gap-2">
+                                {extractedProducts.length > 0 && (
+                                  <div>
+                                    <MicroLabel>선정 · 채팅에서 추천</MicroLabel>
+                                    <div className="flex flex-col gap-1.5 mt-1.5">
+                                      {extractedProducts.map((p) => (
+                                        <ProductMiniCard
+                                          key={p.id}
+                                          product={p}
+                                          isSelected
+                                          onClick={() => onProductClick?.(p)}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {candidateProducts.length > 0 && (
+                                  <div>
+                                    <MicroLabel>후보 · 추가 {candidateProducts.length}건 발견</MicroLabel>
+                                    <div className="flex flex-col gap-1.5 mt-1.5">
+                                      {candidateProducts.map((p) => (
+                                        <ProductMiniCard
+                                          key={p.id}
+                                          product={p}
+                                          isSelected={false}
+                                          onClick={() => onProductClick?.(p)}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
                                 )}
                               </div>
-                            </button>
+                            )}
+
+                            {/* 장바구니 — "장바구니" 단계 */}
+                            {step.key === "cart" && hasCart && (
+                              <button
+                                onClick={onOpenFlow}
+                                disabled={!onOpenFlow}
+                                className="group/cart text-left w-full px-3 py-2.5 transition-all cursor-pointer hover:bg-[rgba(245,242,239,0.6)] disabled:cursor-default disabled:hover:bg-transparent"
+                                style={{
+                                  borderRadius: "10px",
+                                  backgroundColor: "#fff",
+                                  boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
+                                }}
+                              >
+                                <div className="flex items-baseline justify-between mb-1.5">
+                                  <div className="flex items-baseline gap-1">
+                                    <span
+                                      className="text-[14px] font-semibold text-[#000]"
+                                      style={{ letterSpacing: "-0.2px", lineHeight: 1.1 }}
+                                    >
+                                      {cart.reduce((s, i) => s + i.product.price * i.quantity, 0).toLocaleString()}
+                                    </span>
+                                    <span className="text-[10px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>원</span>
+                                  </div>
+                                  <span className="text-[10px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                                    {cart.length}종 · {cart.reduce((s, i) => s + i.quantity, 0)}개
+                                  </span>
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                  {cart.slice(0, 2).map((item) => (
+                                    <div key={item.product.id} className="flex items-center justify-between gap-2">
+                                      <span className="text-[11px] text-[#4e4e4e] truncate" style={{ letterSpacing: "0.14px" }}>
+                                        {item.product.name}
+                                      </span>
+                                      <span className="text-[10px] text-[#777169] shrink-0" style={{ letterSpacing: "0.14px" }}>
+                                        ×{item.quantity}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {cart.length > 2 && (
+                                    <span className="text-[10px] text-[#999] mt-0.5" style={{ letterSpacing: "0.14px" }}>
+                                      외 {cart.length - 2}종 더보기
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
                     );
                   })}
-                </div>
-              </SubGroup>
-            )}
-
-            {/* ── 추천 상품 ── */}
-            {hasProducts && (
-              <SubGroup
-                title="추천 상품"
-                count={extractedProducts.length + candidateProducts.length}
-              >
-                {extractedProducts.length > 0 && (
-                  <div className={candidateProducts.length > 0 ? "mb-2" : ""}>
-                    <MicroLabel>선정 · 채팅에서 추천</MicroLabel>
-                    <div className="flex flex-col gap-1.5 mt-1.5">
-                      {extractedProducts.map((p) => (
-                        <ProductMiniCard
-                          key={p.id}
-                          product={p}
-                          isSelected
-                          onClick={() => onProductClick?.(p)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {candidateProducts.length > 0 && (
-                  <div>
-                    <MicroLabel>후보 · 추가 {candidateProducts.length}건 발견</MicroLabel>
-                    <div className="flex flex-col gap-1.5 mt-1.5">
-                      {candidateProducts.map((p) => (
-                        <ProductMiniCard
-                          key={p.id}
-                          product={p}
-                          isSelected={false}
-                          onClick={() => onProductClick?.(p)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </SubGroup>
-            )}
-
-            {/* ── 검색 기록 ── */}
-            {hasSearch && (
-              <SubGroup title="검색 기록" count={searchRecords.length}>
-                <div className="flex flex-col gap-1.5">
-                  {searchRecords.map((record) => (
-                    <div
-                      key={record.id}
-                      className="py-1.5 px-2"
-                      style={{
-                        borderRadius: "6px",
-                        boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px",
-                        backgroundColor: "#fff",
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <span
-                          className="text-[11px] font-medium text-[#1a1a1a] leading-tight"
-                          style={{ letterSpacing: "0.14px" }}
-                        >
-                          &ldquo;{record.query}&rdquo;
-                        </span>
-                        <span className="text-[10px] text-[#bbb] shrink-0">
-                          {record.timestamp}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px] text-[#999]">
-                        <span>{record.resultCount}건</span>
-                        <span className="text-[#e5e5e5]">·</span>
-                        <span>
-                          {record.sources.map((s) => `${s.name} ${s.count}`).join(" / ")}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </SubGroup>
             )}
