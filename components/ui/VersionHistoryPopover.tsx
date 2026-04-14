@@ -89,7 +89,7 @@ export default function VersionHistoryPopover({ domain, children }: VersionHisto
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 z-30 bg-white overflow-hidden"
+          className="absolute left-0 top-full mt-2 z-[100] bg-white overflow-hidden"
           style={{
             width: 340,
             borderRadius: "16px",

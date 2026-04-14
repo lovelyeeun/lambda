@@ -134,6 +134,21 @@ export default function ApprovalRulesPanel() {
     showToast("새 결재 라인이 추가되었습니다");
   }, []);
 
+  const duplicateLine = useCallback((lineId: string) => {
+    setLines((prev) => {
+      const source = prev.find((l) => l.id === lineId);
+      if (!source) return prev;
+      const newLine: ApprovalLine = {
+        ...source,
+        id: `line-${Date.now()}`,
+        name: `${source.name} (복사)`,
+        steps: source.steps.map((s) => ({ ...s, id: `step-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
+      };
+      return [...prev, newLine];
+    });
+    showToast("결재 라인이 복제되었습니다");
+  }, []);
+
   /* ── 단계 조작 ── */
 
   const addStep = useCallback((lineId: string, afterIdx: number) => {
@@ -226,7 +241,7 @@ export default function ApprovalRulesPanel() {
         {/* 좌측: 편집 영역 */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* 헤더 */}
-          <div className="flex items-center gap-3 px-6 py-4 shrink-0" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <div className="flex items-center gap-3 px-8 py-5 shrink-0" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
             <button
               onClick={() => { setEditView(null); setSelectedStepId(null); setRightPanel(null); }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-[#555] cursor-pointer hover:bg-[#f0f0f0] transition-colors"
@@ -249,18 +264,18 @@ export default function ApprovalRulesPanel() {
             )}
             <button
               onClick={() => { setEditView(null); setSelectedStepId(null); setRightPanel(null); showToast("저장되었습니다"); }}
-              className="ml-auto px-4 py-1.5 text-[13px] font-medium text-white bg-[#111] cursor-pointer hover:opacity-80 transition-opacity"
-              style={{ borderRadius: "8px" }}
+              className="ml-auto px-5 py-1.5 text-[13px] font-medium text-white bg-[#111] cursor-pointer hover:opacity-80 transition-opacity"
+              style={{ borderRadius: "9999px", boxShadow: "rgba(0,0,0,0.4) 0px 0px 1px, rgba(0,0,0,0.04) 0px 4px 4px" }}
             >
               저장
             </button>
           </div>
 
           {/* 편집 폼 */}
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="flex-1 overflow-y-auto px-8 py-6">
             {/* 라인 이름 */}
-            <div className="mb-4">
-              <label className="block text-[12px] text-[#999] mb-1">결재 라인 이름</label>
+            <div className="mb-6">
+              <label className="block text-[12px] text-[#999] mb-2" style={{ letterSpacing: "0.14px" }}>결재 라인 이름</label>
               <input
                 value={editingLine.name}
                 onChange={(e) => updateLineName(editingLine.id, e.target.value)}
@@ -270,8 +285,8 @@ export default function ApprovalRulesPanel() {
             </div>
 
             {/* 적용 조직 */}
-            <div className="mb-6">
-              <label className="block text-[12px] text-[#999] mb-1">적용 조직 · 이 라인을 따를 조직 선택</label>
+            <div className="mb-8">
+              <label className="block text-[12px] text-[#999] mb-2" style={{ letterSpacing: "0.14px" }}>적용 조직 · 이 라인을 따를 조직 선택</label>
               <DepartmentPicker
                 selected={editingLine.departments}
                 onChange={(d) => updateLineDepts(editingLine.id, d)}
@@ -279,8 +294,8 @@ export default function ApprovalRulesPanel() {
             </div>
 
             {/* 결재 흐름 */}
-            <div className="flex flex-col items-center max-w-[480px] mx-auto">
-              <p className="text-[12px] text-[#999] mb-4">결재 흐름</p>
+            <div className="flex flex-col items-center max-w-[520px] mx-auto pt-2">
+              <p className="text-[12px] text-[#999] mb-5" style={{ letterSpacing: "0.14px" }}>결재 흐름</p>
 
               {/* 시작: 구매요청 */}
               <FlowCard
@@ -293,8 +308,8 @@ export default function ApprovalRulesPanel() {
               {editingLine.steps.map((step, idx) => (
                 <div key={step.id} className="flex flex-col items-center w-full">
                   {/* 연결선 + 단계 추가 */}
-                  <div className="flex flex-col items-center py-1">
-                    <div className="w-px h-4 bg-[#ddd]" />
+                  <div className="flex flex-col items-center py-2">
+                    <div className="w-px h-5 bg-[#ddd]" />
                     <button
                       onClick={() => addStep(editingLine.id, idx - 1)}
                       className="px-3 py-1.5 text-[11px] text-[#bbb] cursor-pointer hover:text-[#666] hover:bg-[#f5f5f5] transition-colors"
@@ -302,7 +317,7 @@ export default function ApprovalRulesPanel() {
                     >
                       + 단계 추가
                     </button>
-                    <div className="w-px h-4 bg-[#ddd]" />
+                    <div className="w-px h-5 bg-[#ddd]" />
                   </div>
 
                   {/* 단계 카드 */}
@@ -402,21 +417,21 @@ export default function ApprovalRulesPanel() {
   return (
     <div className="max-w-full">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-2">
             <h2 className="text-[20px] font-semibold" style={{ letterSpacing: "-0.3px" }}>승인 체계</h2>
-            <p className="text-[13px] text-[#777] mt-1">구매요청이 처리되는 결재 절차를 설정합니다.</p>
+            <VersionHistoryPopover domain="approval-rules">
+              <button
+                type="button"
+                aria-label="변경기록"
+                className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+              >
+                <Clock size={15} strokeWidth={1.5} color="#999" />
+              </button>
+            </VersionHistoryPopover>
           </div>
-          <VersionHistoryPopover domain="approval-rules">
-            <button
-              type="button"
-              aria-label="변경기록"
-              className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f5f5f5]"
-            >
-              <Clock size={15} strokeWidth={1.5} color="#999" />
-            </button>
-          </VersionHistoryPopover>
+          <p className="text-[13px] text-[#777] mt-1">구매요청이 처리되는 결재 절차를 설정합니다.</p>
         </div>
         <div className="flex items-center gap-2">
           {/* 뷰 토글 */}
@@ -439,16 +454,31 @@ export default function ApprovalRulesPanel() {
           </div>
           <button
             onClick={addLine}
-            className="flex items-center gap-1.5 px-4 py-[7px] text-[13px] font-medium text-white bg-[#111] cursor-pointer hover:opacity-80 transition-opacity"
-            style={{ borderRadius: "8px" }}
+            className="flex items-center gap-1.5 px-5 py-[7px] text-[13px] font-medium text-white bg-[#111] cursor-pointer hover:opacity-80 transition-opacity"
+            style={{ borderRadius: "9999px", boxShadow: "rgba(0,0,0,0.4) 0px 0px 1px, rgba(0,0,0,0.04) 0px 4px 4px" }}
           >
             <Plus size={14} strokeWidth={2} /> 결재 라인 추가
           </button>
         </div>
       </div>
 
+      {/* 기본라인 안내 배너 */}
+      <div
+        className="flex items-center gap-2.5 p-3 mb-4"
+        style={{
+          borderRadius: "10px",
+          backgroundColor: "rgba(245,242,239,0.8)",
+          boxShadow: "rgba(0,0,0,0.075) 0px 0px 0px 0.5px inset",
+        }}
+      >
+        <span className="text-[13px]">📌</span>
+        <p className="text-[12px] text-[#4e4e4e]" style={{ letterSpacing: "0.14px" }}>
+          <strong>기본 결재 라인</strong>은 모든 조직에 자동 적용됩니다. 조직별 별도 라인을 추가하면 해당 조직은 커스텀 라인으로 전환됩니다.
+        </p>
+      </div>
+
       {/* 안내 박스 */}
-      <div className="p-4 mb-6" style={{ borderRadius: "12px", backgroundColor: "#fffbe6", boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px" }}>
+      <div className="p-4 mb-6" style={{ borderRadius: "12px", backgroundColor: "rgba(245,242,239,0.6)", boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px" }}>
         <div className="flex items-start gap-3">
           <span className="text-[18px] mt-0.5">💡</span>
           <div>
@@ -527,44 +557,52 @@ export default function ApprovalRulesPanel() {
           </div>
         </div>
       ) : (
-        /* ── 리스트 뷰 ── */
-        <div className="flex flex-col gap-2">
-          {lines.map((line) => (
-            <button
-              key={line.id}
-              onClick={() => setEditView({ lineId: line.id })}
-              className="text-left w-full p-4 cursor-pointer transition-all hover:bg-[#fafafa]"
-              style={{ borderRadius: "12px", boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px" }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <GitBranch size={15} strokeWidth={1.5} color="#6366f1" />
-                  <span className="text-[14px] font-semibold text-[#111]">{line.name}</span>
-                  {line.departments.length === 0 && (
-                    <span className="text-[10px] px-1.5 py-[2px] bg-[#111] text-white font-medium" style={{ borderRadius: "4px" }}>기본</span>
-                  )}
-                </div>
-                <span className="text-[12px] text-[#999]">{line.steps.length}단계</span>
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {line.departments.length > 0
-                  ? line.departments.map((d) => (
-                      <span key={d} className="text-[11px] px-2 py-[2px] bg-[#f5f5f5] text-[#666]" style={{ borderRadius: "4px" }}>{d}</span>
-                    ))
-                  : <span className="text-[11px] text-[#bbb]">(전체)</span>
-                }
-              </div>
-              <div className="flex items-center gap-1.5 mt-2 text-[11px] text-[#999]">
-                {line.steps.map((s, i) => (
-                  <span key={s.id} className="flex items-center gap-1">
-                    {i > 0 && <span className="text-[#ddd]">→</span>}
-                    {s.label}
-                    {s.assigneeId && <span className="text-[#bbb]">({getUserName(s.assigneeId)})</span>}
-                  </span>
-                ))}
-              </div>
-            </button>
-          ))}
+        /* ── 리스트 뷰 — 테이블 형태 + 드롭다운 액션 ── */
+        <div
+          className="overflow-hidden"
+          style={{
+            borderRadius: "12px",
+            boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
+          }}
+        >
+          {/* 테이블 헤더 */}
+          <div
+            className="grid items-center px-4 py-2.5"
+            style={{
+              gridTemplateColumns: "1fr 160px 160px 60px",
+              backgroundColor: "rgba(245,242,239,0.5)",
+              borderBottom: "1px solid rgba(0,0,0,0.06)",
+            }}
+          >
+            <span className="text-[11px] font-medium text-[#777169] uppercase" style={{ letterSpacing: "0.7px" }}>결재 라인</span>
+            <span className="text-[11px] font-medium text-[#777169] uppercase" style={{ letterSpacing: "0.7px" }}>적용 조직</span>
+            <span className="text-[11px] font-medium text-[#777169] uppercase" style={{ letterSpacing: "0.7px" }}>결제 담당자</span>
+            <span />
+          </div>
+
+          {/* 테이블 행 */}
+          {lines.map((line, rowIdx) => {
+            const finalStep = line.steps.find((s) => s.type === "final-payment");
+            const payeeName = finalStep?.assigneeId
+              ? getUserName(finalStep.assigneeId)
+              : finalStep?.paymentType === "anyone-with-permission"
+              ? "결제 권한 보유자"
+              : "미지정";
+            const isDefault = line.departments.length === 0;
+
+            return (
+              <ApprovalListRow
+                key={line.id}
+                line={line}
+                isDefault={isDefault}
+                payeeName={payeeName}
+                isLast={rowIdx === lines.length - 1}
+                onEdit={() => setEditView({ lineId: line.id })}
+                onDuplicate={() => duplicateLine(line.id)}
+                onDelete={isDefault ? undefined : () => deleteLine(line.id)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -728,18 +766,18 @@ function FlowCard({
   return (
     <button
       onClick={onClick}
-      className="w-full max-w-[480px] p-4 text-left cursor-pointer transition-all"
+      className="w-full max-w-[520px] p-5 text-left cursor-pointer transition-all"
       style={{
-        borderRadius: "12px",
+        borderRadius: "14px",
         boxShadow: active
-          ? "rgba(0,0,0,0.15) 0px 0px 0px 2px"
+          ? "rgba(0,0,0,0.15) 0px 0px 0px 2px, rgba(0,0,0,0.04) 0px 2px 4px"
           : isFinal
-            ? "rgba(34,197,94,0.15) 0px 0px 0px 1.5px"
-            : "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+            ? "rgba(34,197,94,0.15) 0px 0px 0px 1.5px, rgba(0,0,0,0.04) 0px 1px 2px"
+            : "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
         backgroundColor: isFinal ? "rgba(34,197,94,0.02)" : "#fff",
       }}
     >
-      <p className="text-[11px] text-[#999] mb-0.5">{label}</p>
+      <p className="text-[11px] text-[#999] mb-1" style={{ letterSpacing: "0.14px" }}>{label}</p>
       <p className="text-[16px] font-semibold text-[#111]">{title}</p>
       {assignee && (
         <div className="flex items-center gap-2 mt-1.5">
@@ -1208,6 +1246,133 @@ function DepartmentPicker({ selected, onChange }: { selected: string[]; onChange
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   리스트뷰 행 + 드롭다운 메뉴
+   ═══════════════════════════════════════ */
+
+function ApprovalListRow({
+  line,
+  isDefault,
+  payeeName,
+  isLast,
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: {
+  line: ApprovalLine;
+  isDefault: boolean;
+  payeeName: string;
+  isLast: boolean;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onDelete?: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div
+      className="grid items-center px-4 py-3 transition-colors hover:bg-[rgba(245,242,239,0.3)] cursor-pointer"
+      style={{
+        gridTemplateColumns: "1fr 160px 160px 60px",
+        borderBottom: isLast ? "none" : "1px solid rgba(0,0,0,0.04)",
+      }}
+      onClick={onEdit}
+    >
+      {/* 결재 라인 */}
+      <div className="flex items-center gap-2 min-w-0">
+        <GitBranch size={14} strokeWidth={1.5} color="#6366f1" />
+        <span
+          className="text-[13px] font-medium text-[#111] truncate"
+          style={{ letterSpacing: "0.14px" }}
+        >
+          {line.name}
+        </span>
+        {isDefault && (
+          <span
+            className="text-[9px] px-1.5 py-[1px] bg-[#111] text-white font-bold shrink-0"
+            style={{ borderRadius: "4px" }}
+          >
+            기본
+          </span>
+        )}
+      </div>
+
+      {/* 적용 조직 */}
+      <div className="flex items-center gap-1 flex-wrap">
+        {line.departments.length > 0
+          ? line.departments.map((d) => (
+              <span
+                key={d}
+                className="text-[11px] px-2 py-[2px] bg-[#f5f5f5] text-[#666]"
+                style={{ borderRadius: "4px" }}
+              >
+                {d}
+              </span>
+            ))
+          : <span className="text-[11px] text-[#bbb]">전체 조직</span>
+        }
+      </div>
+
+      {/* 결제 담당자 */}
+      <span className="text-[12px] text-[#4e4e4e]" style={{ letterSpacing: "0.14px" }}>
+        {payeeName}
+      </span>
+
+      {/* 액션 드롭다운 */}
+      <div className="relative flex justify-end" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          className="flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors hover:bg-[#f0f0f0]"
+          aria-label="액션"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="3" r="1.2" fill="#999" />
+            <circle cx="8" cy="8" r="1.2" fill="#999" />
+            <circle cx="8" cy="13" r="1.2" fill="#999" />
+          </svg>
+        </button>
+
+        {menuOpen && (
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+            <div
+              className="absolute right-0 top-full mt-1 z-40 w-[140px] bg-white py-1"
+              style={{
+                borderRadius: "10px",
+                boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 8px, rgba(0,0,0,0.04) 0px 8px 20px",
+              }}
+            >
+              <button
+                onClick={() => { setMenuOpen(false); onEdit(); }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-[#4e4e4e] cursor-pointer hover:bg-[#f5f5f5]"
+                style={{ letterSpacing: "0.14px" }}
+              >
+                ✏️ 편집
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); onDuplicate(); }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-[#4e4e4e] cursor-pointer hover:bg-[#f5f5f5]"
+                style={{ letterSpacing: "0.14px" }}
+              >
+                ⎘ 복제
+              </button>
+              {onDelete && (
+                <button
+                  onClick={() => { setMenuOpen(false); onDelete(); }}
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-[#ef4444] cursor-pointer hover:bg-red-50"
+                  style={{ letterSpacing: "0.14px" }}
+                >
+                  🗑 삭제
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

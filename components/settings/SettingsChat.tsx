@@ -1187,7 +1187,7 @@ export default function SettingsChat() {
   const emit = useSettingsEmit();
   const focus = useFocusEmit();
   const lastFormEvent = useLastFormEvent();
-  const { applyPatches, addShipping } = useSettingsStore();
+  const { applyPatches, addShipping, pushVersionHistory } = useSettingsStore();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -1258,13 +1258,96 @@ export default function SettingsChat() {
     prevSectionRef.current = section;
   }, [section]);
 
+  /* ── 승인한도 변경 멀티스텝 플로우 ── */
+  const [approvalFlow, setApprovalFlow] = useState<"idle" | "selecting-line" | "entering-amount">("idle");
+  const [approvalFlowLineName, setApprovalFlowLineName] = useState<string>("");
+
   const handleSend = useCallback((text: string) => {
     if (!text.trim()) return;
 
     setMessages((prev) => [...prev, { id: `user-${Date.now()}`, role: "user", content: text }]);
     setInput("");
     setIsTyping(true);
+    const t = text.toLowerCase();
 
+    /* ── 승인한도 플로우: Step 2 — 라인 선택 확인 ── */
+    if (approvalFlow === "selecting-line") {
+      const lineName = text.includes("마케팅") ? "마케팅·운영" : text.includes("전체") ? "전체 라인" : text.trim();
+      setApprovalFlowLineName(lineName);
+      setApprovalFlow("entering-amount");
+      setTimeout(() => {
+        setMessages((prev) => [...prev, {
+          id: `ai-${Date.now()}`,
+          role: "ai" as const,
+          content: `**${lineName} 결재 라인**의 현재 자동승인 한도는 **100만원**이에요.\n\n새로운 한도 금액을 얼마로 변경할까요? (예: 200만원, 300만원)`,
+          thinking: [
+            { label: "현재 금액 조건 확인", detail: `${lineName}: 2차 승인 100만원 이상` },
+          ],
+          suggestions: ["200만원", "300만원", "500만원"],
+          contextHint: "approval",
+        }]);
+        setIsTyping(false);
+      }, 800);
+      return;
+    }
+
+    /* ── 승인한도 플로우: Step 3 — 금액 입력 → 반영 ── */
+    if (approvalFlow === "entering-amount" && approvalFlowLineName) {
+      const num = parseInt(text.replace(/[^0-9]/g, ""), 10);
+      const amount = num >= 10000 ? num : num * 10000; // "200만원" → 2000000, "200" → 2000000
+      const formatted = amount >= 10000 ? `${(amount / 10000).toLocaleString()}만원` : `${amount.toLocaleString()}원`;
+      setApprovalFlow("idle");
+      setApprovalFlowLineName("");
+      setTimeout(() => {
+        setMessages((prev) => [...prev, {
+          id: `ai-${Date.now()}`,
+          role: "ai" as const,
+          content: `**${approvalFlowLineName} 결재 라인**의 자동승인 한도를 **${formatted}**으로 변경했어요.\n\n이제 ${formatted} 미만 구매요청은 자동으로 승인됩니다. 변경 내역은 변경기록에서 확인할 수 있어요.`,
+          thinking: [
+            { label: "금액 조건 업데이트", detail: `100만원 → ${formatted}` },
+            { label: "변경기록 등록", detail: `채팅에서 자동승인 한도 변경 (${approvalFlowLineName})` },
+            { label: "영향 범위 확인", detail: `${approvalFlowLineName} 소속 조직의 구매요청에 적용` },
+          ],
+          suggestions: ["승인 체계 전체 보기", "다른 라인도 수정할게", "현재 구조 보여줘"],
+          contextHint: "approval",
+        }]);
+        setIsTyping(false);
+        // 변경기록 추가
+        pushVersionHistory({
+          domain: "approval-rules",
+          action: "update",
+          userId: "user-001",
+          userName: "박은서",
+          summary: `${approvalFlowLineName} 자동승인 한도 → ${formatted}`,
+          source: "chat",
+          before: { autoApproveLimit: 1000000 },
+          after: { autoApproveLimit: amount },
+        });
+      }, 900);
+      return;
+    }
+
+    /* ── 승인한도 플로우: Step 1 — 키워드 감지 → 현황 안내 ── */
+    if ((t.includes("자동승인") || t.includes("자동 승인")) && (t.includes("한도") || t.includes("올려") || t.includes("변경"))) {
+      setApprovalFlow("selecting-line");
+      setTimeout(() => {
+        setMessages((prev) => [...prev, {
+          id: `ai-${Date.now()}`,
+          role: "ai" as const,
+          content: "자동승인 한도를 확인했어요.\n\n현재 금액 조건이 설정된 결재 라인:\n- **마케팅·운영 결재 라인** — 2차 승인: **100만원 이상**일 때만 활성화\n- 기본/영업팀/개발팀 — 금액 조건 없음\n\n어떤 라인의 한도를 변경하시겠어요?",
+          thinking: [
+            { label: "결재 라인 금액 조건 조회", detail: "마케팅·운영: 2차 승인 100만원 이상" },
+            { label: "다른 라인 확인", detail: "기본/영업팀/개발팀: 금액 조건 없음 (전액 승인 필요)" },
+          ],
+          suggestions: ["마케팅·운영 라인", "전체 라인에 적용"],
+          contextHint: "approval",
+        }]);
+        setIsTyping(false);
+      }, 800);
+      return;
+    }
+
+    /* ── 기존 시나리오 매칭 ── */
     const { messages: aiMsgs } = buildScenarioResponse(text);
     setTimeout(() => {
       setMessages((prev) => [...prev, ...aiMsgs]);
@@ -1286,7 +1369,7 @@ export default function SettingsChat() {
         });
       }
     }, 800);
-  }, [emit, section, setSection]);
+  }, [emit, section, setSection, approvalFlow, approvalFlowLineName, pushVersionHistory]);
 
   const handleApplyDiff = useCallback((msgId: string, resolved: { patches: SettingsPatch[]; items: DiffItem[] }) => {
     const msg = messages.find((m) => m.id === msgId);
