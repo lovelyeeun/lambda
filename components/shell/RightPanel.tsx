@@ -99,12 +99,22 @@ export default function RightPanel() {
                 <>
                   <button
                     onClick={meta!.onBack}
-                    className="inline-flex items-center gap-0.5 text-[12px] font-medium text-[#777169] cursor-pointer transition-colors hover:text-[#000] -ml-1 px-1 py-0.5 rounded-md hover:bg-[#f5f2ef]"
+                    className="relative inline-flex items-center gap-0.5 text-[12px] font-medium text-[#777169] cursor-pointer transition-colors hover:text-[#000] -ml-1 px-1 py-0.5 rounded-md hover:bg-[#f5f2ef]"
                     style={{ letterSpacing: "0.14px" }}
                     aria-label={`${meta?.backLabel ?? "뒤로"} 돌아가기`}
                   >
                     <ChevronLeft size={14} strokeWidth={1.75} />
                     {meta?.backLabel ?? "뒤로"}
+                    {meta?.backBadge && (
+                      <span
+                        className="absolute -top-0.5 -right-1 w-[7px] h-[7px]"
+                        style={{
+                          borderRadius: "9999px",
+                          backgroundColor: "#ef4444",
+                          boxShadow: "rgba(239,68,68,0.3) 0px 0px 0px 2px",
+                        }}
+                      />
+                    )}
                   </button>
                   <span className="text-[#d4d4d4] text-[12px]">/</span>
                   <span

@@ -289,10 +289,24 @@ const researchConditions: ResearchCondition[] = [
 /* ─── 기존 키워드 매칭 (레거시 호환) ─── */
 
 const keywordMap: Record<string, string[]> = {
-  "a4": ["prod-001"], "용지": ["prod-001"], "토너": ["prod-002"],
-  "프린터": ["prod-011", "prod-003"], "복합기": ["prod-003"],
-  "데스크": ["prod-010"], "포스트잇": ["prod-007"],
-  "태블릿": ["prod-008"], "정수기": ["prod-009"],
+  // 용지
+  "a4": ["prod-001"], "용지": ["prod-001"], "복사용지": ["prod-001"], "복사지": ["prod-001"],
+  // 잉크/토너
+  "토너": ["prod-002"], "잉크": ["prod-002"], "카트리지": ["prod-002"],
+  // 사무기기
+  "프린터": ["prod-011", "prod-003"], "복합기": ["prod-003"], "레이저": ["prod-011"],
+  // 가구
+  "의자": ["prod-004"], "사무용의자": ["prod-004"], "체어": ["prod-004"],
+  "데스크": ["prod-010"], "책상": ["prod-010"], "높이조절": ["prod-010"],
+  // 전자기기
+  "모니터": ["prod-005"], "디스플레이": ["prod-005"],
+  "태블릿": ["prod-008"], "갤럭시탭": ["prod-008"], "아이패드": ["prod-008"],
+  // 사무용품
+  "포스트잇": ["prod-007"], "파인라이너": ["prod-006"], "필기구": ["prod-006"],
+  "펜": ["prod-006"], "볼펜": ["prod-006"], "형광펜": ["prod-006"],
+  "스테들러": ["prod-006"],
+  // 생활용품
+  "정수기": ["prod-009"], "티포트": ["prod-012"],
 };
 
 function findProductIds(text: string): string[] | null {
@@ -300,6 +314,69 @@ function findProductIds(text: string): string[] | null {
   for (const [kw, ids] of Object.entries(keywordMap)) {
     if (lower.includes(kw)) return ids;
   }
+  return null;
+}
+
+/* ─── Fuzzy product search — keywordMap에 없는 키워드도 products에서 텍스트 매칭 ─── */
+
+/** 카테고리 유의어 — 사용자가 흔히 쓸 만한 키워드 → 카테고리 이름으로 매핑 */
+const categoryAlias: Record<string, string[]> = {
+  "노트북": ["전자기기"], "컴퓨터": ["전자기기"], "PC": ["전자기기"],
+  "마우스": ["전자기기"], "키보드": ["전자기기"], "모니터": ["전자기기"],
+  "스피커": ["전자기기"], "헤드셋": ["전자기기"], "충전기": ["전자기기"],
+  "사무": ["사무용품", "사무기기"], "문구": ["사무용품"],
+  "펜": ["사무용품"], "볼펜": ["사무용품"], "형광펜": ["사무용품"],
+  "의자": ["가구"], "테이블": ["가구"], "선반": ["가구"], "책상": ["가구"],
+  "음료": ["간식"], "과자": ["간식"], "커피": ["간식"], "차": ["간식", "생활용품"],
+  "생수": ["간식"], "견과": ["간식"],
+  "세제": ["생활용품"], "휴지": ["생활용품"], "물티슈": ["생활용품"],
+  "잉크": ["잉크/토너"], "카트리지": ["잉크/토너"],
+  "복사": ["용지"], "종이": ["용지"], "인쇄": ["용지", "사무기기"],
+};
+
+function searchProductsFuzzy(text: string): { ids: string[]; method: "text" | "category" } | null {
+  const lower = text.toLowerCase();
+  const tokens = lower.split(/\s+/).filter((t) => t.length >= 1);
+
+  // 1단계: 이름·브랜드·카테고리·설명에서 직접 텍스트 매칭
+  const scored = products.map((p) => {
+    const haystack = [p.name, p.category, p.brand, p.description ?? ""].join(" ").toLowerCase();
+    // 전체 쿼리 포함
+    if (haystack.includes(lower) && lower.length >= 2) return { id: p.id, score: 10 };
+    // 토큰별 매칭
+    let score = 0;
+    for (const t of tokens) {
+      if (t.length >= 2 && haystack.includes(t)) score += 3;
+    }
+    return { id: p.id, score };
+  });
+
+  const textMatches = scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
+    .map((s) => s.id);
+
+  if (textMatches.length > 0) return { ids: textMatches, method: "text" };
+
+  // 2단계: 카테고리 유의어로 확장 — "노트북" → ["전자기기"] → 해당 카테고리 상품
+  const matchedCategories = new Set<string>();
+  for (const t of tokens) {
+    const cats = categoryAlias[t];
+    if (cats) cats.forEach((c) => matchedCategories.add(c));
+  }
+  // 전체 쿼리로도 시도
+  const fullCats = categoryAlias[lower];
+  if (fullCats) fullCats.forEach((c) => matchedCategories.add(c));
+
+  if (matchedCategories.size > 0) {
+    const catIds = products
+      .filter((p) => matchedCategories.has(p.category))
+      .slice(0, 4)
+      .map((p) => p.id);
+    if (catIds.length > 0) return { ids: catIds, method: "category" };
+  }
+
   return null;
 }
 
@@ -339,12 +416,19 @@ interface WorkItemIntent {
 }
 
 const workItemIntentMap: { keywords: string[]; title: string; color: string }[] = [
-  { keywords: ["청소기", "청소"],            title: "청소기",   color: "#6366f1" },
-  { keywords: ["토너", "프린터", "복합기"],   title: "토너",     color: "#ea580c" },
-  { keywords: ["a4", "용지"],                title: "A4용지",   color: "#8b5cf6" },
-  { keywords: ["데스크", "책상", "가구"],     title: "사무가구", color: "#059669" },
-  { keywords: ["정수기"],                    title: "정수기",   color: "#3b82f6" },
-  { keywords: ["포스트잇", "사무용품"],       title: "사무용품", color: "#f59e0b" },
+  { keywords: ["청소기", "청소"],                               title: "청소기",   color: "#6366f1" },
+  { keywords: ["토너", "잉크", "카트리지"],                     title: "토너",     color: "#ea580c" },
+  { keywords: ["프린터", "복합기"],                             title: "프린터",   color: "#ea580c" },
+  { keywords: ["a4", "용지", "복사용지", "복사지"],             title: "A4용지",   color: "#8b5cf6" },
+  { keywords: ["데스크", "책상"],                               title: "사무가구", color: "#059669" },
+  { keywords: ["의자", "체어"],                                title: "사무가구", color: "#059669" },
+  { keywords: ["정수기"],                                      title: "정수기",   color: "#3b82f6" },
+  { keywords: ["포스트잇", "사무용품", "펜", "볼펜", "필기구"], title: "사무용품", color: "#f59e0b" },
+  { keywords: ["모니터", "디스플레이"],                         title: "모니터",   color: "#0ea5e9" },
+  { keywords: ["태블릿", "갤럭시탭", "아이패드"],               title: "태블릿",   color: "#0ea5e9" },
+  { keywords: ["노트북", "랩탑", "컴퓨터"],                     title: "노트북",   color: "#0ea5e9" },
+  { keywords: ["마우스", "키보드", "헤드셋"],                   title: "PC주변기기", color: "#0ea5e9" },
+  { keywords: ["티포트", "커피", "음료"],                       title: "생활용품", color: "#84cc16" },
 ];
 
 function detectPurchaseIntent(text: string): WorkItemIntent | null {
@@ -381,13 +465,6 @@ function detectSnackQuery(text: string): boolean {
   return snackKeywords.some((kw) => lower.includes(kw));
 }
 
-/* ─── Fallback responses ─── */
-
-const dummyResponses: { content: string; agent?: string }[] = [
-  { content: "확인했습니다. 어떤 상품을 찾고 계신가요? 카테고리나 구체적인 품명을 알려주시면 바로 검색해드리겠습니다.", agent: "주문" },
-  { content: "현재 등록된 배송지는 **본사 3층 (서울 강남구 테헤란로 152)**입니다.\n\n다른 주소로 변경하시겠어요?", agent: "배송" },
-  { content: "이번 달 예산 잔여액을 확인해볼게요.\n\n4월 부서 예산: 10,000,000원\n사용액: 5,089,000원\n**잔여: 4,911,000원 (49.1%)**\n\n여유가 있습니다.", agent: "주문" },
-];
 
 const AUTO_APPROVE_LIMIT = 300000;
 
@@ -448,8 +525,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const responseIdx = useRef(0);
-  const { openPanel, closePanel, open: panelOpen, contentKey, setWorkItemStrip, registerDefaultOpener } = useRightPanel();
+  const { openPanel, closePanel, open: panelOpen, contentKey, setWorkItemStrip, registerDefaultOpener, updateMeta } = useRightPanel();
   const { openSettings } = useSettings();
   const router = useRouter();
   const { budget } = useSettingsStore();
@@ -669,10 +745,23 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     viewProductRef.current(toProduct(product));
   }, [addAI, scrapingProduct, runBackgroundScrape, toProduct]);
 
+  // 장바구니 담기 토스트 (장바구니 보기 액션 포함)
+  const [cartToast, setCartToast] = useState<string | null>(null);
+  const cartToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** 장바구니 담기 공통 — 토스트 + 작업현황 빨간 점 */
+  const showCartToast = useCallback((name: string) => {
+    setCartToast(`${name} 장바구니에 담았어요`);
+    if (cartToastTimer.current) clearTimeout(cartToastTimer.current);
+    cartToastTimer.current = setTimeout(() => setCartToast(null), 3500);
+    updateMeta({ backBadge: true });
+  }, [updateMeta]);
+
   const handleSourcedAddToCart = useCallback((product: SourcedProduct) => {
     addToCart(toProduct(product));
     addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`);
-  }, [addToCart, addSys, toProduct]);
+    showCartToast(product.name);
+  }, [addToCart, addSys, toProduct, showCartToast]);
 
   /* ═══════════════════════════════════════
      기존 구매 플로우 (approval, payment, shipping)
@@ -856,13 +945,24 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   const viewProduct = useCallback((product: Product) => {
     openPanel(
-      <ProductDetailPanel product={product} onAddToCart={() => { addToCart(product); addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`); }} />,
+      <ProductDetailPanel
+        product={product}
+        onAddToCart={() => {
+          addToCart(product);
+          addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`);
+          showCartToast(product.name);
+        }}
+      />,
       "product-detail",
       { label: "상품 상세", onBack: () => openContextRef.current(), backLabel: "작업 현황" },
     );
-  }, [openPanel, addToCart, addSys]);
+  }, [openPanel, addToCart, addSys, showCartToast]);
 
-  const handleAddToCart = useCallback((product: Product) => { addToCart(product); addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`); }, [addToCart, addSys]);
+  const handleAddToCart = useCallback((product: Product) => {
+    addToCart(product);
+    addSys(`${product.name} 이(가) 장바구니에 담겼습니다.`);
+    showCartToast(product.name);
+  }, [addToCart, addSys, showCartToast]);
 
   /* ═══════════════════════════════════════
      Work Item 관리 — snapshot 저장/복원
@@ -1092,17 +1192,34 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       return;
     }
 
-    // 3) 기존 키워드 매칭 (레거시)
+    // 3) 키워드 매칭 → fuzzy 검색 → fallback (3단계)
     setIsTyping(true);
     setTimeout(() => {
+      // 3a) 정확 키워드 매칭
       const matchedIds = findProductIds(text);
       if (matchedIds) {
         const count = matchedIds.filter((id) => products.find((p) => p.id === id)).length;
         addMsg({ role: "assistant", content: `검색 결과 ${count}개 상품을 찾았습니다. 상품을 확인해보시고, 필요하시면 장바구니에 담아주세요.`, agent: "주문", productIds: matchedIds });
-      } else {
-        const resp = dummyResponses[responseIdx.current % dummyResponses.length];
-        responseIdx.current++;
-        addMsg({ role: "assistant", content: resp.content, agent: resp.agent });
+      }
+      // 3b) fuzzy 텍스트/카테고리 검색
+      else {
+        const fuzzy = searchProductsFuzzy(text);
+        if (fuzzy) {
+          const count = fuzzy.ids.length;
+          const msg = fuzzy.method === "category"
+            ? `"${text}"에 대한 정확한 상품은 없지만, 관련 카테고리에서 ${count}개 상품을 찾았습니다.`
+            : `검색 결과 ${count}개 상품을 찾았습니다.`;
+          addMsg({ role: "assistant", content: msg, agent: "주문", productIds: fuzzy.ids });
+        }
+        // 3c) 완전 미매칭 — 구매 의도가 있어 보이는 경우 명확한 안내
+        else {
+          addMsg({
+            role: "assistant",
+            agent: "주문",
+            content:
+              `"${text}"에 해당하는 상품을 찾지 못했습니다.\n\n현재 등록된 카테고리: **용지 · 잉크/토너 · 사무기기 · 가구 · 전자기기 · 사무용품 · 생활용품 · 간식**\n\n카테고리나 구체적인 상품명으로 다시 검색해보시겠어요?`,
+          });
+        }
       }
       setIsTyping(false);
     }, 800 + Math.random() * 1000);
@@ -1175,7 +1292,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
               ? () => openCartRef.current()
               : undefined
         }
-        progressNotification={hasUnviewedProgress}
+        progressNotification={false}
         onOpenBudget={() => router.push("/cost-intel")}
         onOpenShipping={() => openSettings("company-shipping")}
         onOpenPayment={() => openSettings("accounting-payment")}
@@ -1271,6 +1388,36 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
           {toastMsg}
         </div>
       )}
+
+      {/* 장바구니 담기 토스트 — "장바구니 보기" 액션 포함 */}
+      {cartToast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-white"
+          style={{
+            borderRadius: "10px",
+            backgroundColor: "#1a1a1a",
+            boxShadow: "rgba(0,0,0,0.25) 0px 8px 24px",
+            letterSpacing: "0.14px",
+            animation: "cartToastIn 0.25s ease-out",
+          }}
+        >
+          <Check size={14} strokeWidth={2} />
+          <span>{cartToast}</span>
+          <span className="text-[#666]">·</span>
+          <button
+            onClick={() => { setCartToast(null); openCartRef.current(); }}
+            className="text-[#a78bfa] hover:text-[#c4b5fd] cursor-pointer transition-colors whitespace-nowrap"
+          >
+            장바구니 보기
+          </button>
+        </div>
+      )}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes cartToastIn {
+          from { opacity: 0; transform: translate(-50%, 8px); }
+          to   { opacity: 1; transform: translate(-50%, 0); }
+        }
+      ` }} />
 
       {/* ── 메인 채팅 영역 ── */}
       <div className="flex-1 flex flex-col h-full min-w-0">

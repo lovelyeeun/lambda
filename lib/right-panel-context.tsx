@@ -9,6 +9,8 @@ export interface PanelMeta {
   onBack?: () => void;
   /** 백 버튼에 표시할 루트 라벨 (예: "작업 현황"). `onBack`과 함께 사용. 생략 시 "뒤로" */
   backLabel?: string;
+  /** 백 버튼 옆에 빨간 알림 점 표시 여부 — 자식 페이지에서 루트에 변화가 있음을 알릴 때 사용 */
+  backBadge?: boolean;
 }
 
 /** Work Item 칩 스위처 — 패널 최상단에 모드와 무관하게 항상 떠 있음 */
@@ -35,6 +37,7 @@ interface RightPanelState {
   openPanel: (content: ReactNode, key?: string, meta?: PanelMeta) => void;
   closePanel: () => void;
   togglePanel: () => void;
+  updateMeta: (patch: Partial<PanelMeta>) => void;
   setWorkItemStrip: (strip: WorkItemStrip | null) => void;
   /** 페이지별 "루트 콘텐츠 복구" 콜백 등록 — 패널이 콘텐츠 없이 열릴 때 호출됨.
    *  반환된 함수를 cleanup 시 호출하면 해제됨. */
@@ -74,6 +77,10 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
     });
   }, [content]);
 
+  const updateMeta = useCallback((patch: Partial<PanelMeta>) => {
+    setMeta((prev) => prev ? { ...prev, ...patch } : patch);
+  }, []);
+
   const registerDefaultOpener = useCallback((fn: () => void) => {
     defaultOpenerRef.current = fn;
     return () => {
@@ -86,9 +93,10 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <RightPanelContext.Provider value={{ open, content, contentKey, meta, workItemStrip, openPanel, closePanel, togglePanel, setWorkItemStrip, registerDefaultOpener }}>
+    <RightPanelContext.Provider value={{ open, content, contentKey, meta, workItemStrip, openPanel, closePanel, togglePanel, updateMeta, setWorkItemStrip, registerDefaultOpener }}>
       {children}
     </RightPanelContext.Provider>
+
   );
 }
 
