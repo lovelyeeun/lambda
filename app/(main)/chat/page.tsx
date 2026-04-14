@@ -15,7 +15,7 @@ function ChatContent() {
     return <OnboardingChat />;
   }
 
-  return <ChatContainer initialChatId={chatId} initialQuery={initialQuery} />;
+  return <ChatContainer key={chatId ?? "new"} initialChatId={chatId} initialQuery={initialQuery} />;
 }
 
 export default function ChatPage() {
