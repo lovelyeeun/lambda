@@ -52,22 +52,22 @@ export interface SourcedProduct {
 const sourceConfig: Record<SourceType, { label: string; color: string; bg: string; icon: React.ReactNode; description: string }> = {
   "airsupply-db": {
     label: "에어서플라이 DB",
-    color: "#6366f1",
-    bg: "rgba(99,102,241,0.06)",
+    color: "#000",
+    bg: "rgba(0,0,0,0.04)",
     icon: <Database size={11} strokeWidth={2} />,
     description: "최근 30일 구매 데이터 기반",
   },
   "airsupply-supplier": {
     label: "입점 공급사",
-    color: "#059669",
-    bg: "rgba(5,150,105,0.06)",
+    color: "#777169",
+    bg: "rgba(245,242,239,0.8)",
     icon: <Building2 size={11} strokeWidth={2} />,
     description: "에어서플라이 입점 공급사 직거래",
   },
   "api-external": {
     label: "외부 마켓",
-    color: "#ea580c",
-    bg: "rgba(234,88,12,0.06)",
+    color: "#8a6f3f",
+    bg: "rgba(138,111,63,0.08)",
     icon: <Globe size={11} strokeWidth={2} />,
     description: "네이버·쿠팡·구글쇼핑 API",
   },
@@ -105,10 +105,10 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
       <div className="flex items-center justify-between">
         <div
           className="flex items-center gap-2 px-3 py-2 flex-1"
-          style={{ borderRadius: "10px", backgroundColor: "rgba(99,102,241,0.04)" }}
+          style={{ borderRadius: "10px", backgroundColor: "rgba(245,242,239,0.6)" }}
         >
           <Sparkles size={12} strokeWidth={1.5} color="#6366f1" />
-          <span className="text-[11px] font-medium text-[#6366f1]" style={{ letterSpacing: "0.14px" }}>
+          <span className="text-[11px] font-medium text-[#000]" style={{ letterSpacing: "0.14px" }}>
             AI 추천 — {products.length}개 상품 비교
           </span>
         </div>
@@ -153,7 +153,7 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
             style={{
               borderRadius: "14px",
               boxShadow: product.isRecommended
-                ? "rgba(99,102,241,0.15) 0px 0px 0px 1.5px, rgba(99,102,241,0.06) 0px 4px 12px"
+                ? "rgba(0,0,0,0.1) 0px 0px 0px 1.5px, rgba(78,50,23,0.04) 0px 4px 12px"
                 : "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
             }}
           >
@@ -161,13 +161,13 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
             <div
               className="relative w-full h-[110px] flex items-center justify-center"
               style={{
-                backgroundColor: product.isRecommended ? "rgba(99,102,241,0.04)" : "#f5f2ef",
+                backgroundColor: product.isRecommended ? "rgba(245,242,239,0.6)" : "#f5f2ef",
               }}
             >
               <span className="text-[11px] font-medium text-[#777169]">{product.brand}</span>
               {product.isRecommended && (
                 <span
-                  className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-[2px] text-[9px] font-semibold text-[#6366f1]"
+                  className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-[2px] text-[9px] font-semibold text-[#000]"
                   style={{ borderRadius: "6px", backgroundColor: "rgba(255,255,255,0.85)" }}
                 >
                   <Zap size={9} strokeWidth={2} />AI 추천
@@ -175,7 +175,7 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
               )}
               {product.savingsPercent != null && product.savingsPercent > 0 && (
                 <span
-                  className="absolute top-2 right-2 inline-flex items-center gap-0.5 px-1.5 py-[2px] text-[9px] font-medium text-[#6366f1]"
+                  className="absolute top-2 right-2 inline-flex items-center gap-0.5 px-1.5 py-[2px] text-[9px] font-medium text-[#000]"
                   style={{ borderRadius: "6px", backgroundColor: "rgba(255,255,255,0.85)" }}
                 >
                   <TrendingDown size={9} strokeWidth={2} />{product.savingsPercent}%
@@ -197,7 +197,7 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
                   <span className="text-[9px] font-medium" style={{ color: platColor }}>{product.platform}</span>
                 )}
                 {!isApiProduct && (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] text-[#22c55e] font-medium">
+                  <span className="inline-flex items-center gap-0.5 text-[9px] text-[#000] font-medium">
                     <ShieldCheck size={9} strokeWidth={2} />즉시
                   </span>
                 )}
@@ -235,17 +235,38 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
                       <span>배송{product.scrapedDeliveryFee === 0 ? " 무료" : ` ${formatPrice(product.scrapedDeliveryFee)}`}</span>
                     )}
                     {product.scrapedDeliveryDays && <span>· {product.scrapedDeliveryDays}일</span>}
-                    <span className="text-[#22c55e] font-medium">✓ 수집완료</span>
+                    <span className="text-[#000] font-medium">✓ 수집완료</span>
                   </>
                 )}
               </div>
 
-              {/* 스크래핑 중 */}
+              {/* 스크래핑 중 — 카드 내 인라인 프로그레스 */}
               {isApiProduct && isScraping && (
                 <ScrapingIndicator
                   progress={product.scrapingProgress ?? 0}
                   steps={product.scrapingSteps ?? []}
                 />
+              )}
+
+              {/* 스크래핑 완료 — 수집된 스펙 표시 */}
+              {isApiProduct && scrapeDone && product.scrapedSpecs && (
+                <div
+                  className="mt-2 px-2.5 py-2"
+                  style={{ borderRadius: "8px", backgroundColor: "rgba(245,242,239,0.6)" }}
+                >
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <Check size={10} strokeWidth={2.5} color="#000" />
+                    <span className="text-[10px] font-medium text-[#000]">상세 수집 완료</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {Object.entries(product.scrapedSpecs).map(([key, val]) => (
+                      <div key={key}>
+                        <p className="text-[10px] text-[#b8b2a8]">{key}</p>
+                        <p className="text-[12px] text-[#000] font-medium">{val}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {/* AI 코멘트 — 1줄 */}
@@ -273,7 +294,7 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
                   onClick={() => onAddToCart(product)}
                   className={`flex-1 flex items-center justify-center gap-1 px-2 py-[6px] text-[10.5px] font-medium cursor-pointer transition-opacity hover:opacity-85 ${
                     isApiProduct && !scrapeDone
-                      ? "text-white bg-[#ea580c]"
+                      ? "text-white bg-[#8a6f3f]"
                       : "text-white bg-[#000]"
                   }`}
                   style={{ borderRadius: "8px", letterSpacing: "0.14px" }}
@@ -306,17 +327,17 @@ function ScrapingIndicator({
     <div className="mt-2">
       {/* 프로그레스 바 */}
       <div className="flex items-center gap-2 mb-1.5">
-        <div className="flex-1 h-1.5 bg-[#f0f0f0] overflow-hidden" style={{ borderRadius: "3px" }}>
+        <div className="flex-1 h-1.5 overflow-hidden" style={{ borderRadius: "3px", backgroundColor: "rgba(0,0,0,0.06)" }}>
           <div
             className="h-full transition-all duration-500"
             style={{
               width: `${progress}%`,
-              background: "linear-gradient(90deg, #ea580c, #f59e0b)",
+              backgroundColor: "#8a6f3f",
               borderRadius: "3px",
             }}
           />
         </div>
-        <span className="text-[10px] font-medium text-[#ea580c] shrink-0">{progress}%</span>
+        <span className="text-[10px] font-medium text-[#8a6f3f] shrink-0">{progress}%</span>
       </div>
 
       {/* 단계 표시 */}
@@ -324,16 +345,16 @@ function ScrapingIndicator({
         {steps.map((step, i) => (
           <div key={i} className="flex items-center gap-1.5">
             {step.done ? (
-              <Check size={9} strokeWidth={2.5} color="#22c55e" />
+              <Check size={9} strokeWidth={2.5} color="#000" />
             ) : (
               <Loader2
                 size={9}
                 strokeWidth={2}
-                color="#ea580c"
+                color="#8a6f3f"
                 className="animate-spin"
               />
             )}
-            <span className={`text-[10px] ${step.done ? "text-[#999]" : "text-[#ea580c] font-medium"}`}>
+            <span className={`text-[10px] ${step.done ? "text-[#777169]" : "text-[#8a6f3f] font-medium"}`}>
               {step.label}
             </span>
           </div>

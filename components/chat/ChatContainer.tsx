@@ -60,6 +60,46 @@ interface SearchScenario {
   candidates: SourcedProduct[];    // 검색에서 추가로 발견된 후보 상품
 }
 
+/** 시나리오별 검색 후 인사이트 — 상품 카드 아래에 별도 렌더 (messages가 아닌 state로 관리) */
+const searchInsightData: Record<string, string> = {
+  "청소기":
+    "3개 데이터소스에서 조건에 맞는 상품을 찾았습니다. 가격·배송·구매이력을 비교해서 추천 순으로 정렬했어요.\n\n" +
+    "**우리 회사 (로랩스)**\n" +
+    "• 평균 재구매 주기: 2.5년 (마지막 구매: 2024-06)\n" +
+    "• 사내 평균 단가: 380,000원\n" +
+    "• 가장 많이 선택: 삼성 비스포크 계열 (58%)\n" +
+    "• 참고: 7층 청소기 교체 주기 도래\n\n" +
+    "**Lambda 전체 고객 (동종업계)**\n" +
+    "• 평균 단가: 350,000원 (추천 1번이 가장 근접)\n" +
+    "• 인기 1위: 삼성 비스포크 (42%)\n" +
+    "• 평균 구매: 2~3대 (층별 배치)\n\n" +
+    "조건을 추가하시면 재검색도 가능합니다. (예: \"더 저렴한 걸로\", \"배송 빠른 걸로\")",
+  "모니터":
+    "3개 데이터소스에서 조건에 맞는 상품을 찾았습니다. 가격·배송·구매이력을 비교해서 추천 순으로 정렬했어요.\n\n" +
+    "**우리 회사 (로랩스)**\n" +
+    "• 평균 재구매 주기: 3.5년 (신규 입사자 지급)\n" +
+    "• 사내 평균 단가: 450,000원\n" +
+    "• 표준 모델: LG 27인치 4K (개발팀·디자인팀 67%)\n" +
+    "• 프리미엄 선호: 디자인팀 (Dell UltraSharp)\n\n" +
+    "**Lambda 전체 고객 (동종업계)**\n" +
+    "• 평균 단가: 430,000원\n" +
+    "• 인기 1위: LG 27UP 계열 (38%)\n" +
+    "• 평균 구매: 1~2대 (입사자별)\n\n" +
+    "조건을 추가하시면 재검색도 가능합니다. (예: \"더 저렴한 걸로\", \"프리미엄으로\")",
+  "의자":
+    "3개 데이터소스에서 조건에 맞는 상품을 찾았습니다. 가격·배송·구매이력을 비교해서 추천 순으로 정렬했어요.\n\n" +
+    "**우리 회사 (로랩스)**\n" +
+    "• 평균 재구매 주기: 3.2년 (마지막 대량 구매: 2024-01)\n" +
+    "• 사내 평균 단가: 420,000원 (추천 1번이 18% 절감)\n" +
+    "• 가장 많이 선택: 시디즈 T50 계열 (67%)\n" +
+    "• 프리미엄: 디자인팀, 경영진 (허먼밀러 에어론)\n\n" +
+    "**Lambda 전체 고객 (동종업계)**\n" +
+    "• 평균 단가: 400,000원\n" +
+    "• 인기 1위: 시디즈 T50 (34%)\n" +
+    "• 평균 구매: 5~10개 (부서 단위 교체)\n\n" +
+    "조건을 추가하시면 재검색도 가능합니다. (예: \"더 저렴한 걸로\", \"배송 빠른 걸로\")",
+};
+
 const searchScenarios: SearchScenario[] = [
   {
     keywords: ["청소기", "청소"],
@@ -230,7 +270,8 @@ const searchScenarios: SearchScenario[] = [
 interface ResearchCondition {
   keywords: string[];
   label: string;
-  modifier: (products: SourcedProduct[]) => SourcedProduct[];
+  useCandidates?: boolean;
+  modifier: (products: SourcedProduct[], candidates?: SourcedProduct[]) => SourcedProduct[];
   response: string;
 }
 
@@ -238,8 +279,10 @@ const researchConditions: ResearchCondition[] = [
   {
     keywords: ["저렴", "싼", "가격", "비용", "절감", "예산"],
     label: "가격 우선",
-    modifier: (prods) => {
-      const sorted = [...prods].sort((a, b) => a.price - b.price);
+    useCandidates: true,
+    modifier: (prods, candidates) => {
+      const all = [...prods, ...(candidates ?? [])];
+      const sorted = all.sort((a, b) => a.price - b.price).slice(0, 3);
       return sorted.map((p, i) => ({
         ...p,
         isRecommended: i === 0,
@@ -248,13 +291,15 @@ const researchConditions: ResearchCondition[] = [
           : p.aiNote,
       }));
     },
-    response: "가격 우선으로 재정렬했습니다. 최저가 기준으로 다시 추천해드릴게요.",
+    response: "가격 우선으로 전체 후보를 포함해 재정렬했습니다. 최저가 기준 상위 3개입니다.",
   },
   {
     keywords: ["빠른", "급한", "빨리", "배송", "당일", "내일"],
     label: "배송 우선",
-    modifier: (prods) => {
-      const sorted = [...prods].sort((a, b) => (a.deliveryDays ?? 99) - (b.deliveryDays ?? 99));
+    useCandidates: true,
+    modifier: (prods, candidates) => {
+      const all = [...prods, ...(candidates ?? [])];
+      const sorted = all.sort((a, b) => (a.deliveryDays ?? 99) - (b.deliveryDays ?? 99)).slice(0, 3);
       return sorted.map((p, i) => ({
         ...p,
         isRecommended: i === 0,
@@ -268,8 +313,10 @@ const researchConditions: ResearchCondition[] = [
   {
     keywords: ["인기", "많이", "추천", "좋은", "베스트", "인기있는"],
     label: "인기도 우선",
-    modifier: (prods) => {
-      const sorted = [...prods].sort((a, b) => (b.purchaseCount ?? 0) - (a.purchaseCount ?? 0));
+    useCandidates: true,
+    modifier: (prods, candidates) => {
+      const all = [...prods, ...(candidates ?? [])];
+      const sorted = all.sort((a, b) => (b.purchaseCount ?? 0) - (a.purchaseCount ?? 0)).slice(0, 3);
       return sorted.map((p, i) => ({
         ...p,
         isRecommended: i === 0,
@@ -281,10 +328,33 @@ const researchConditions: ResearchCondition[] = [
     response: "구매 인기도 기준으로 재정렬했습니다. 동종업계에서 가장 많이 선택한 순서입니다.",
   },
   {
+    keywords: ["다른 브랜드", "브랜드 바꿔", "다른 제조사", "다른 회사"],
+    label: "다른 브랜드",
+    useCandidates: true,
+    modifier: (prods, candidates) => {
+      const currentBrands = new Set(prods.map((p) => p.brand));
+      const otherBrand = (candidates ?? []).filter((c) => !currentBrands.has(c.brand));
+      if (otherBrand.length === 0) return prods;
+      // 현재 1순위 유지 + 나머지를 다른 브랜드로 교체
+      const result = [prods[0], ...otherBrand.slice(0, 2)];
+      return result.map((p, i) => ({
+        ...p,
+        isRecommended: i === 0,
+        aiNote: i > 0 ? `다른 브랜드 옵션 — ${p.brand}. ${p.aiNote ?? ""}` : p.aiNote,
+      }));
+    },
+    response: "다른 브랜드 위주로 교체했습니다. 기존 추천 1순위는 유지하고 나머지를 변경했어요.",
+  },
+  {
     keywords: ["다른", "대안", "그외", "더 보여줘", "추가"],
     label: "추가 옵션",
-    modifier: (prods) => prods, // 동일 상품 유지, 응답만 다름
-    response: "현재 조건에서 추가 검색했습니다. 더 넓은 범위의 상품을 포함합니다.",
+    useCandidates: true,
+    modifier: (prods, candidates) => {
+      const existing = new Set(prods.map((p) => p.id));
+      const added = (candidates ?? []).filter((c) => !existing.has(c.id)).slice(0, 2);
+      return [...prods, ...added];
+    },
+    response: "후보 상품을 추가로 포함했습니다. 더 넓은 범위에서 비교해보세요.",
   },
 ];
 
@@ -404,9 +474,59 @@ function findScenario(text: string): SearchScenario | null {
 
 function findResearchCondition(text: string): ResearchCondition | null {
   const lower = text.toLowerCase();
-  for (const rc of researchConditions) {
+  // 긴 키워드(다른 브랜드 등)를 먼저 체크해서 "다른"이 "추가 옵션"에 먹히지 않도록
+  const sorted = [...researchConditions].sort((a, b) => {
+    const aMax = Math.max(...a.keywords.map((k) => k.length));
+    const bMax = Math.max(...b.keywords.map((k) => k.length));
+    return bMax - aMax;
+  });
+  for (const rc of sorted) {
     if (rc.keywords.some((kw) => lower.includes(kw))) return rc;
   }
+  return null;
+}
+
+/* ─── 비교/판단 요청 감지 ─── */
+
+type ComparisonType = "compare" | "criteria" | "history";
+
+function detectComparison(text: string): ComparisonType | null {
+  const lower = text.toLowerCase();
+  if (["비교", "차이", "뭐가 달라", "어떤 게 나아", "어떤 거", "뭐가 좋아", "뭐가 나아"].some((k) => lower.includes(k))) return "compare";
+  if (["결정", "기준", "잡아줘", "어떻게 골라", "고르는 법", "선택 기준", "판단"].some((k) => lower.includes(k))) return "criteria";
+  if (["지난번", "전에", "이전", "뭘 샀", "구매 이력", "예전에", "최근 구매", "재구매"].some((k) => lower.includes(k))) return "history";
+  return null;
+}
+
+/* ─── 수량 확정 / 장바구니 이행 감지 ─── */
+
+interface CartIntent {
+  index: number;     // 0-based (0=첫 번째, -1=AI추천)
+  quantity: number;
+}
+
+function detectCartIntent(text: string, productCount: number): CartIntent | null {
+  const lower = text.toLowerCase();
+
+  // "추천대로", "그걸로", "추천 상품"
+  if (["추천대로", "그걸로", "그거", "추천 상품으로", "추천해준 거"].some((k) => lower.includes(k))) {
+    const qtyMatch = lower.match(/(\d+)\s*(?:개|대|세트|박스|팩)/);
+    return { index: -1, quantity: qtyMatch ? parseInt(qtyMatch[1], 10) : 1 };
+  }
+
+  // "첫 번째", "1번", "두 번째" 등
+  const ordinalMap: Record<string, number> = {
+    "첫 번째": 0, "첫번째": 0, "1번": 0, "1번째": 0,
+    "두 번째": 1, "두번째": 1, "2번": 1, "2번째": 1,
+    "세 번째": 2, "세번째": 2, "3번": 2, "3번째": 2,
+  };
+  for (const [key, idx] of Object.entries(ordinalMap)) {
+    if (lower.includes(key) && idx < productCount) {
+      const qtyMatch = lower.match(/(\d+)\s*(?:개|대|세트|박스|팩)/);
+      return { index: idx, quantity: qtyMatch ? parseInt(qtyMatch[1], 10) : 1 };
+    }
+  }
+
   return null;
 }
 
@@ -828,6 +948,8 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   /* ── 간식 시나리오 단계 ── */
   const [snackStep, setSnackStep] = useState<"idle" | "awaiting-confirm" | "completed">("idle");
+  /** 검색 완료 후 상품 카드 아래에 표시할 인사이트 메시지 (messages가 아닌 별도 state) */
+  const [searchInsight, setSearchInsight] = useState<string | null>(null);
 
   const totalPrice = globalCart.totalPrice;
 
@@ -914,15 +1036,18 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
           timestamp: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
           resultCount: allFound.length,
           sources: [
-            { name: "에어서플라이", count: allFound.filter((p) => p.source === "airsupply-db").length, color: "#6366f1" },
-            { name: "입점공급사", count: allFound.filter((p) => p.source === "airsupply-supplier").length, color: "#059669" },
-            { name: "외부마켓", count: allFound.filter((p) => p.source === "api-external").length, color: "#ea580c" },
+            { name: "에어서플라이", count: allFound.filter((p) => p.source === "airsupply-db").length, color: "#000" },
+            { name: "입점공급사", count: allFound.filter((p) => p.source === "airsupply-supplier").length, color: "#777169" },
+            { name: "외부마켓", count: allFound.filter((p) => p.source === "api-external").length, color: "#8a6f3f" },
           ].filter((s) => s.count > 0),
           products: allFound.map((p) => ({ name: p.name, price: p.price, source: p.source })),
         };
         setSearchRecords((prev) => [newRecord, ...prev]);
 
-        addAI("3개 데이터소스에서 조건에 맞는 상품을 찾았습니다. 가격·배송·구매이력을 비교해서 추천 순으로 정렬했어요.\n\n조건을 추가하시면 재검색도 가능합니다. (예: \"더 저렴한 걸로\", \"배송 빠른 걸로\")", "주문");
+        // 인사이트 — 상품 카드 아래에 별도 렌더 (messages가 아닌 state)
+        setTimeout(() => {
+          setSearchInsight(searchInsightData[scenario.keywords[0]] ?? searchInsightData["의자"]);
+        }, 500);
       }, 400);
     }, 3400);
   }, [addAI]);
@@ -968,7 +1093,9 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
     setTimeout(() => {
       setIsTyping(false);
-      const reordered = condition.modifier(lastScenario.products);
+      const reordered = condition.useCandidates
+        ? condition.modifier(lastScenario.products, lastScenario.candidates ?? [])
+        : condition.modifier(lastScenario.products);
       setSourcedProducts(reordered);
       setSearchPhase("results");
       addAI(condition.response + `\n\n**적용 조건:** ${condition.label}`, "주문");
@@ -1377,6 +1504,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       setSourcedProducts([]);
       setCandidateProducts([]);
       setSearchPhase("idle");
+      setSearchInsight(null);
       panelSuppressedRef.current = true;
       closePanel();
       setIsTyping(true);
@@ -1447,12 +1575,70 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       createWorkItem("구매 요청", "#6366f1");
     }
 
-    // 1) 재검색 조건 감지 (이미 검색 결과가 있는 상태에서)
-    if (searchPhase === "results" && lastScenario) {
-      const condition = findResearchCondition(text);
-      if (condition) {
-        handleResearch(condition);
+    // 1) 검색 결과 후속 대화 (재검색 / 비교 / 장바구니 확정)
+    if (searchPhase === "results" && sourcedProducts.length > 0) {
+      // 1a) 재검색 조건 (가격순, 배송순, 브랜드 교체 등)
+      if (lastScenario) {
+        const condition = findResearchCondition(text);
+        if (condition) {
+          handleResearch(condition);
+          return;
+        }
+      }
+
+      // 1b) 비교/판단 요청
+      const compType = detectComparison(text);
+      if (compType) {
+        setIsTyping(true);
+        setTimeout(() => {
+          setIsTyping(false);
+          const prods = sourcedProducts.slice(0, 3);
+          if (compType === "compare") {
+            const rows = prods.map((p, i) => `| ${i + 1}. ${p.name} | ${p.price.toLocaleString()}원 | ${p.deliveryDays ?? "-"}일 | ${p.purchaseCount ?? "-"}회 | ${p.source === "airsupply-db" ? "에어서플라이" : p.source === "airsupply-supplier" ? "입점공급사" : "외부마켓"} |`).join("\n");
+            addAI(
+              `현재 추천 ${prods.length}개 상품을 비교해드릴게요.\n\n| 상품 | 가격 | 배송 | 구매이력 | 소싱 |\n|---|---|---|---|---|\n${rows}\n\n` +
+              `**추천:** ${prods[0]?.name ?? ""} — ` +
+              (prods[0]?.purchaseCount && prods[0].purchaseCount > 10
+                ? `사내 ${prods[0].purchaseCount}회 구매로 검증된 상품입니다.`
+                : `가격 대비 성능이 우수합니다.`) +
+              `\n\n결정하셨으면 "첫 번째 걸로 N개" 또는 "추천대로 해줘"라고 말씀해주세요.`,
+              "주문",
+            );
+          } else if (compType === "criteria") {
+            addAI(
+              `상품 선택 기준을 정리해드릴게요.\n\n` +
+              `**가성비 우선이라면** → ${prods.sort((a, b) => a.price - b.price)[0]?.name ?? ""} (최저가)\n` +
+              `**빠른 배송이 필요하면** → ${prods.sort((a, b) => (a.deliveryDays ?? 99) - (b.deliveryDays ?? 99))[0]?.name ?? ""} (${prods.sort((a, b) => (a.deliveryDays ?? 99) - (b.deliveryDays ?? 99))[0]?.deliveryDays ?? "?"}일 배송)\n` +
+              `**품질/신뢰도 우선이면** → ${prods.sort((a, b) => (b.purchaseCount ?? 0) - (a.purchaseCount ?? 0))[0]?.name ?? ""} (사내 ${prods.sort((a, b) => (b.purchaseCount ?? 0) - (a.purchaseCount ?? 0))[0]?.purchaseCount ?? 0}회 구매)\n\n` +
+              `결정하셨으면 "첫 번째 걸로 N개" 또는 "추천대로 해줘"라고 말씀해주세요.`,
+              "주문",
+            );
+          } else {
+            // history
+            addAI(
+              `최근 구매 이력을 확인했습니다.\n\n` +
+              `가장 최근 구매: **${prods[0]?.name ?? "해당 카테고리"}** (${prods[0]?.purchaseCount ?? 0}회 구매)\n` +
+              `동일 상품으로 재구매하시겠어요? "그걸로 해줘"라고 말씀하시면 바로 장바구니에 담아드릴게요.`,
+              "주문",
+            );
+          }
+        }, 1000);
         return;
+      }
+
+      // 1c) 수량 확정 / 장바구니 이행
+      const cartIntent = detectCartIntent(text, sourcedProducts.length);
+      if (cartIntent) {
+        const targetProduct = cartIntent.index === -1
+          ? sourcedProducts.find((p) => p.isRecommended) ?? sourcedProducts[0]
+          : sourcedProducts[cartIntent.index];
+        if (targetProduct) {
+          const converted = toProduct(targetProduct);
+          for (let i = 0; i < cartIntent.quantity; i++) addToCart(converted);
+          addSys(`${converted.name} ${cartIntent.quantity}개가 장바구니에 담겼습니다.`);
+          showCartToast(converted.name);
+          return;
+        }
       }
     }
 
@@ -1464,6 +1650,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       setSourcedProducts([]);
       setCandidateProducts([]);
       setScrapingProduct(null);
+      setSearchInsight(null);
 
       setTimeout(() => {
         setIsTyping(false);
@@ -1542,7 +1729,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       }
       setIsTyping(false);
     }, 800 + Math.random() * 1000);
-  }, [addMsg, searchPhase, lastScenario, handleResearch, startDbSearch, activeWorkItemId, workItems, createWorkItem]);
+  }, [addMsg, searchPhase, lastScenario, handleResearch, startDbSearch, activeWorkItemId, workItems, createWorkItem, sourcedProducts, toProduct, addToCart, addSys, showCartToast, addAI]);
 
   /* ── 시작 화면에서 넘어온 초기 쿼리 자동 전송 (마운트 1회) ── */
   const initialQuerySent = useRef(false);
@@ -1674,6 +1861,14 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       openContext();
     }
   }, [openContext, contentKey]);
+
+  // cart 변경 시 장바구니 패널이 열려 있으면 갱신
+  useEffect(() => {
+    if (contentKey === "cart") {
+      openCart();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart]);
 
   return (
     <div className="flex h-full">
@@ -1871,55 +2066,21 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
             </div>
           )}
 
-          {/* ── 스크래핑 진행 카드 (API 상품 선택 후, 아직 수집 중일 때) ── */}
-          {scrapingProduct && scrapingProduct.scrapingStatus === "scraping" && searchPhase === "results" && (
-            <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.3s ease-out" }}>
-              <div
-                className="max-w-[480px] px-4 py-3"
-                style={{ borderRadius: "16px 16px 16px 4px", backgroundColor: "#fff", boxShadow: "rgba(234,88,12,0.12) 0px 0px 0px 1px" }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Loader2 size={12} strokeWidth={2} color="#ea580c" className="animate-spin" />
-                  <span className="text-[11px] font-semibold text-[#ea580c]">
-                    {scrapingProduct.platform ?? "외부"} 상품 정보 백그라운드 수집 중
-                  </span>
-                  <span className="text-[10px] text-[#bbb] ml-auto">{scrapingProduct.scrapingProgress}%</span>
-                </div>
-                <div className="h-1.5 bg-[#f0f0f0] overflow-hidden mb-1.5" style={{ borderRadius: "3px" }}>
-                  <div className="h-full transition-all duration-500" style={{ width: `${scrapingProduct.scrapingProgress}%`, background: "linear-gradient(90deg, #ea580c, #f59e0b)", borderRadius: "3px" }} />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {(scrapingProduct.scrapingSteps ?? []).map((step, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      {step.done ? <Check size={9} strokeWidth={2.5} color="#22c55e" /> : <Loader2 size={9} strokeWidth={2} color="#ea580c" className="animate-spin" />}
-                      <span className={`text-[10px] ${step.done ? "text-[#999]" : "text-[#ea580c] font-medium"}`}>{step.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* 스크래핑 진행/완료는 SourcedProductCard 내 해당 카드에서 인라인 표시 — 별도 카드 제거 */}
 
-          {/* ── 스크래핑 완료 알림 ── */}
-          {scrapingProduct && scrapingProduct.scrapingStatus === "done" && scrapingProduct.scrapedSpecs && searchPhase === "results" && (
-            <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.3s ease-out" }}>
+          {/* ── 검색 인사이트 — 상품 카드 아래에 표시 ── */}
+          {searchInsight && searchPhase === "results" && (
+            <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.4s ease-out" }}>
               <div
-                className="max-w-[480px] px-4 py-3"
-                style={{ borderRadius: "16px 16px 16px 4px", backgroundColor: "#fff", boxShadow: "rgba(34,197,94,0.12) 0px 0px 0px 1px" }}
+                className="max-w-[520px]"
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <Check size={12} strokeWidth={2} color="#22c55e" />
-                  <span className="text-[11px] font-semibold text-[#22c55e]">상세 정보 수집 완료</span>
-                  <span className="text-[10px] text-[#bbb]">— {scrapingProduct.name}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {Object.entries(scrapingProduct.scrapedSpecs).map(([key, val]) => (
-                    <div key={key}>
-                      <p className="text-[9px] text-[#bbb]">{key}</p>
-                      <p className="text-[11px] text-[#333] font-medium">{val}</p>
-                    </div>
-                  ))}
-                </div>
+                <ChatBubble message={{
+                  id: "insight",
+                  role: "assistant",
+                  content: searchInsight,
+                  timestamp: new Date().toISOString(),
+                  agent: "주문",
+                }} />
               </div>
             </div>
           )}
@@ -1945,7 +2106,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
             disabled={isTyping || searchPhase === "analyzing" || searchPhase === "searching"}
             placeholder={
               searchPhase === "results"
-                ? "조건 추가 (예: 더 저렴한 걸로, 배송 빠른 걸로) 또는 새 검색..."
+                ? "조건 변경 · 비교 요청 · 수량 확정 (예: 더 저렴한 걸로 / 비교해줘 / 첫 번째 3개)"
                 : undefined
             }
           />
