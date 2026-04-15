@@ -2050,6 +2050,21 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
             </div>
           )}
 
+          {/* ── 검색 인사이트 — 상품 카드 위에 (에이전트가 먼저 말하고, 그 다음 상품을 보여주는 구조) ── */}
+          {searchInsight && searchPhase === "results" && (
+            <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.4s ease-out" }}>
+              <div className="max-w-[520px]">
+                <ChatBubble message={{
+                  id: "insight",
+                  role: "assistant",
+                  content: searchInsight,
+                  timestamp: new Date().toISOString(),
+                  agent: "주문",
+                }} />
+              </div>
+            </div>
+          )}
+
           {/* ── 추천 결과 카드 ── */}
           {searchPhase === "results" && sourcedProducts.length > 0 && (
             <div className="mb-1 max-w-full" style={{ animation: "fade-in 0.4s ease-out" }}>
@@ -2066,21 +2081,101 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
             </div>
           )}
 
-          {/* 스크래핑 진행/완료는 SourcedProductCard 내 해당 카드에서 인라인 표시 — 별도 카드 제거 */}
+          {/* 인사이트는 상품 카드 위(line 2053)에서 렌더 */}
 
-          {/* ── 검색 인사이트 — 상품 카드 아래에 표시 ── */}
-          {searchInsight && searchPhase === "results" && (
-            <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.4s ease-out" }}>
+          {/* ── 스크래핑 진행 — 우측 정렬 + 외부 마켓 컬러칩 ── */}
+          {scrapingProduct && scrapingProduct.scrapingStatus === "scraping" && searchPhase === "results" && (
+            <div className="flex justify-end mb-1" style={{ animation: "fade-in 0.3s ease-out" }}>
               <div
-                className="max-w-[520px]"
+                className="w-[240px]"
+                style={{
+                  borderRadius: "12px",
+                  backgroundColor: "#fff",
+                  boxShadow: "rgba(234,88,12,0.12) 0px 0px 0px 1px, rgba(78,50,23,0.04) 0px 4px 12px",
+                }}
               >
-                <ChatBubble message={{
-                  id: "insight",
-                  role: "assistant",
-                  content: searchInsight,
-                  timestamp: new Date().toISOString(),
-                  agent: "주문",
-                }} />
+                <div className="px-3.5 py-3">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-[1px] text-[10px] font-medium rounded-full"
+                      style={{ backgroundColor: "rgba(234,88,12,0.08)", color: "#ea580c" }}
+                    >
+                      <Globe size={9} strokeWidth={2} />
+                      외부 마켓
+                    </span>
+                    <span
+                      className="text-[12px] font-medium text-[#ea580c]"
+                      style={{ letterSpacing: "0.14px" }}
+                    >
+                      {scrapingProduct.platform ?? "수집 중"}
+                    </span>
+                    <span className="text-[11px] text-[#b8b2a8] ml-auto">{scrapingProduct.scrapingProgress}%</span>
+                  </div>
+                  <div
+                    className="h-[4px] overflow-hidden mb-3"
+                    style={{ borderRadius: "2px", backgroundColor: "rgba(0,0,0,0.06)" }}
+                  >
+                    <div
+                      className="h-full transition-all duration-500"
+                      style={{ width: `${scrapingProduct.scrapingProgress}%`, background: "linear-gradient(90deg, #ea580c, #f59e0b)", borderRadius: "2px" }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {(scrapingProduct.scrapingSteps ?? []).map((step, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        {step.done ? (
+                          <Check size={11} strokeWidth={2.5} color="#000" />
+                        ) : (
+                          <Loader2 size={11} strokeWidth={2} color="#ea580c" className="animate-spin" />
+                        )}
+                        <span
+                          className="text-[11px]"
+                          style={{
+                            color: step.done ? "#777169" : "#ea580c",
+                            fontWeight: step.done ? 400 : 500,
+                            letterSpacing: "0.14px",
+                          }}
+                        >
+                          {step.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── 스크래핑 완료 — 수집된 스펙 요약 ── */}
+          {scrapingProduct && scrapingProduct.scrapingStatus === "done" && scrapingProduct.scrapedSpecs && searchPhase === "results" && (
+            <div className="flex justify-end mb-1" style={{ animation: "fade-in 0.3s ease-out" }}>
+              <div
+                className="w-[240px]"
+                style={{
+                  borderRadius: "12px",
+                  backgroundColor: "#fff",
+                  boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(78,50,23,0.04) 0px 4px 12px",
+                }}
+              >
+                <div className="px-3.5 py-3">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <Check size={13} strokeWidth={2.5} color="#000" />
+                    <span className="text-[12px] font-medium text-[#000]" style={{ letterSpacing: "0.14px" }}>
+                      상세 정보 수집 완료
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#777169] mb-2" style={{ letterSpacing: "0.14px" }}>
+                    {scrapingProduct.name}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.entries(scrapingProduct.scrapedSpecs).map(([key, val]) => (
+                      <div key={key}>
+                        <p className="text-[10px] text-[#b8b2a8]">{key}</p>
+                        <p className="text-[13px] text-[#000] font-medium">{val}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}

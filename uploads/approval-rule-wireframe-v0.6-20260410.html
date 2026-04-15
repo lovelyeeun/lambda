@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>승인규칙 와이어프레임 v0.6</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Apple SD Gothic Neo', sans-serif; font-size: 14px; color: #1a1a1a; background: #f5f5f5; display: flex; height: 100vh; overflow: hidden; }
+
+/* ── 사이드바 ── */
+.sidebar { width: 220px; background: #fff; border-right: 1px solid #e5e5e5; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.sidebar-logo { padding: 20px 20px 16px; font-weight: 700; font-size: 15px; border-bottom: 1px solid #f0f0f0; }
+.sidebar-section { padding: 16px 12px 4px; font-size: 11px; font-weight: 600; color: #999; letter-spacing: 0.5px; }
+.sidebar-item { display: flex; align-items: center; padding: 8px 16px; font-size: 13px; color: #444; cursor: pointer; border-radius: 6px; margin: 1px 8px; gap: 8px; }
+.sidebar-item:hover { background: #f5f5f5; }
+.sidebar-item.active { background: #f0f0f0; font-weight: 600; color: #1a1a1a; }
+.new-badge { font-size: 9px; font-weight: 700; background: #4f46e5; color: #fff; padding: 1px 5px; border-radius: 4px; margin-left: auto; }
+
+/* ── 공통 ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.topbar { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0 28px; height: 52px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #888; flex-shrink: 0; }
+.topbar .cur { color: #1a1a1a; font-weight: 500; }
+.screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.screen.active { display: flex; }
+.btn-primary { background: #1a1a1a; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.btn-primary:hover { background: #333; }
+.btn-ghost { background: #fff; color: #444; border: 1px solid #e0e0e0; padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.btn-ghost:hover { background: #f5f5f5; }
+.field-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; }
+.field-input { border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 12px; font-size: 13px; width: 100%; outline: none; }
+.field-input:focus { border-color: #1a1a1a; }
+.avatar { width: 22px; height: 22px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #666; flex-shrink: 0; }
+.member-avatar { width: 28px; height: 28px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #666; flex-shrink: 0; }
+
+/* ── 안내 배너 ── */
+.guide-banner { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; display: flex; gap: 20px; align-items: flex-start; flex-shrink: 0; }
+.guide-banner-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+.guide-banner-body { flex: 1; }
+.guide-banner-title { font-size: 14px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+.guide-banner-desc { font-size: 13px; color: #555; line-height: 1.7; }
+.guide-banner-steps { display: flex; align-items: center; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.guide-step-pill { font-size: 12px; background: #f5f5f5; color: #444; padding: 4px 12px; border-radius: 20px; }
+.guide-step-arrow { color: #ccc; font-size: 12px; }
+.guide-banner-sub { font-size: 12px; color: #999; margin-top: 10px; line-height: 1.6; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+.guide-banner-sub strong { color: #555; font-weight: 600; }
+
+/* ── 목록 화면 ── */
+.list-screen-wrap { flex: 1; display: flex; overflow: hidden; }
+.list-screen-content { flex: 1; overflow-y: auto; padding: 24px 28px; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+.page-title { font-size: 20px; font-weight: 700; }
+.page-desc { font-size: 13px; color: #666; margin-top: 4px; }
+.page-header-right { display: flex; align-items: center; gap: 12px; }
+.view-toggle { display: flex; background: #f0f0f0; border-radius: 8px; padding: 3px; gap: 2px; }
+.view-btn { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; color: #888; cursor: pointer; border: none; background: transparent; transition: all 0.15s; }
+.view-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* 리스트 뷰 */
+.list-view { display: none; }
+.list-view.active { display: block; }
+.rule-table { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; overflow: visible; }
+.rule-table-header { display: grid; grid-template-columns: 2.5fr 1.2fr 1.6fr 44px; padding: 10px 20px; background: #fafafa; border-bottom: 1px solid #e5e5e5; font-size: 12px; font-weight: 600; color: #888; border-radius: 12px 12px 0 0; }
+.rule-row { display: grid; grid-template-columns: 2.5fr 1.2fr 1.6fr 44px; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; align-items: center; cursor: pointer; transition: background 0.12s; position: relative; }
+.rule-row:last-child { border-bottom: none; }
+.rule-row:hover { background: #fafafa; }
+.rule-name-text { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.rule-name-sub { font-size: 11px; color: #999; margin-top: 3px; }
+.rule-name-hint { font-size: 11px; color: #aaa; margin-top: 3px; }
+.org-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.org-tag { font-size: 11px; background: #f0f0f0; color: #555; padding: 2px 8px; border-radius: 12px; }
+.person-chip { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; }
+.payee-mgr-badge { display: inline-flex; align-items: center; font-size: 11px; background: #f0f0f0; color: #555; padding: 3px 9px; border-radius: 6px; }
+.more-btn { width: 32px; height: 32px; border: 1px solid #e8e8e8; background: #fff; border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #888; font-size: 15px; font-weight: 700; position: relative; }
+.more-btn:hover { background: #f5f5f5; }
+.dropdown { position: absolute; right: 0; top: 36px; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.10); z-index: 50; min-width: 130px; overflow: hidden; display: none; }
+.dropdown.open { display: block; }
+.dropdown-item { padding: 10px 16px; font-size: 13px; color: #333; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.dropdown-item:hover { background: #f5f5f5; }
+.dropdown-item.danger { color: #e53935; }
+.dropdown-item.danger:hover { background: #fff5f5; }
+
+/* 시각화 뷰 */
+.viz-view { display: none; }
+.viz-view.active { display: block; overflow: auto; padding-bottom: 40px; }
+.viz-request-node { display: flex; justify-content: center; margin-bottom: 0; }
+.request-box { background: #1a1a1a; color: #fff; font-size: 13px; font-weight: 600; padding: 10px 28px; border-radius: 10px; }
+.viz-org-wrapper { position: relative; overflow-x: auto; }
+.viz-org-row { display: inline-flex; align-items: flex-start; min-width: max-content; position: relative; }
+.org-col { display: flex; flex-direction: column; align-items: center; width: 200px; flex-shrink: 0; padding: 0 12px; }
+.col-top-vline { width: 2px; height: 24px; background: #d0d0d0; }
+.org-card { background: #fff; border: 1.5px solid #e0e0e0; border-radius: 12px; width: 100%; padding: 12px 14px; cursor: pointer; transition: all 0.15s; }
+.org-card:hover { border-color: #aaa; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.org-card.default-org { border-color: #333; }
+.org-card-name { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.badge-default { font-size: 10px; background: #1a1a1a; color: #fff; padding: 1px 6px; border-radius: 4px; }
+.org-member-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px; }
+.member-chip { font-size: 11px; background: #f3f3f3; color: #666; padding: 2px 8px; border-radius: 10px; }
+.step-vline { width: 2px; height: 16px; background: #ddd; }
+.step-add-area { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.step-add-btn { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1.5px dashed #ccc; border-radius: 7px; background: #fff; cursor: pointer; font-size: 11px; color: #aaa; width: 100%; justify-content: center; transition: all 0.15s; }
+.step-add-btn:hover { border-color: #888; color: #555; background: #f8f8f8; }
+.step-card { background: #fff; border: 1.5px solid #e0e0e0; border-radius: 10px; width: 100%; padding: 10px 12px; cursor: pointer; transition: all 0.15s; }
+.step-card:hover { border-color: #aaa; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.step-card.active-card { border-color: #1a1a1a; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.step-label { font-size: 10px; font-weight: 600; color: #aaa; letter-spacing: 0.4px; margin-bottom: 5px; text-transform: uppercase; }
+.step-person-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.anyone-badge { font-size: 11px; background: #f3f3f3; color: #666; padding: 3px 8px; border-radius: 6px; }
+.pay-method-row { font-size: 10px; color: #aaa; margin-top: 4px; }
+.payer-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.shared-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; margin-top: 5px; }
+.add-org-col { display: flex; flex-direction: column; align-items: center; width: 80px; flex-shrink: 0; padding-top: 24px; }
+.add-org-btn { width: 44px; height: 44px; border-radius: 50%; border: 2px dashed #ccc; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #bbb; font-size: 22px; transition: all 0.15s; }
+.add-org-btn:hover { border-color: #888; color: #555; background: #f8f8f8; }
+.amount-cond-tag { font-size: 10px; color: #4f46e5; background: #ede9fe; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; }
+
+/* 시각화 뷰 우측 패널 */
+.viz-panel { width: 0; min-width: 0; overflow: hidden; background: #fff; border-left: 1px solid #e5e5e5; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.2s ease; }
+.viz-panel.open { width: 320px; min-width: 320px; overflow: visible; }
+
+/* ── 편집 화면 ── */
+.edit-header { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.edit-header-title { font-weight: 600; font-size: 14px; flex: 1; }
+.edit-layout { display: flex; flex: 1; overflow: hidden; }
+.edit-canvas { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.edit-meta-section { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 20px 28px; flex-shrink: 0; }
+.edit-flow-section { flex: 1; overflow-y: auto; background: #f3f3f3; padding: 32px 28px; display: flex; flex-direction: column; align-items: center; }
+.flow-center-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.canvas-section-label { font-size: 12px; font-weight: 600; color: #888; margin-bottom: 16px; text-align: center; width: 100%; }
+
+/* 조직 드롭다운 */
+.org-select-wrapper { position: relative; }
+.org-select-trigger { border: 1px dashed #d0d0d0; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #999; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; }
+.org-select-trigger:hover { border-color: #aaa; }
+.org-dropdown-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.10); z-index: 100; overflow: hidden; display: none; }
+.org-dropdown-menu.open { display: block; }
+.org-dropdown-item { padding: 10px 16px; font-size: 13px; color: #333; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+.org-dropdown-item:hover { background: #f5f5f5; }
+.org-dropdown-item.checked::after { content: '✓'; color: #1a1a1a; font-weight: 700; }
+.selected-orgs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.selected-org-tag { background: #f0f0f0; color: #444; font-size: 12px; padding: 3px 10px; border-radius: 12px; display: flex; align-items: center; gap: 5px; }
+.selected-org-tag button { background: none; border: none; cursor: pointer; color: #aaa; font-size: 13px; padding: 0; }
+.selected-org-tag button:hover { color: #666; }
+.default-edit-banner { background: #f5f5ff; border: 1px solid #ddd8ff; border-radius: 10px; padding: 12px 16px; font-size: 12px; color: #4338ca; line-height: 1.6; margin-bottom: 20px; }
+
+/* 플로우 카드 */
+.flow-vertical { display: flex; flex-direction: column; align-items: center; }
+.flow-card { background: #fff; border: 2px solid #e0e0e0; border-radius: 12px; padding: 14px 18px; width: 280px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+.flow-card:hover { border-color: #aaa; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.flow-card.fc-active { border-color: #1a1a1a; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
+.flow-card.fc-start { border-color: #d5d5d5; background: #fafafa; cursor: default; }
+.flow-card.fc-end { border-color: #c0c0c0; }
+.card-type { font-size: 10px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+.card-name { font-weight: 600; font-size: 14px; }
+.card-person { font-size: 12px; color: #888; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+.card-anyone-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; background: #f0f0f0; color: #555; padding: 2px 8px; border-radius: 10px; margin-top: 6px; }
+.card-condition { font-size: 10px; color: #4f46e5; background: #ede9fe; padding: 2px 7px; border-radius: 4px; margin-top: 6px; display: inline-block; }
+.flow-connector-v { display: flex; flex-direction: column; align-items: center; width: 280px; padding: 4px 0; gap: 4px; }
+.v-line { width: 2px; height: 14px; background: #d5d5d5; }
+.add-step-btn { display: flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1.5px dashed #ccc; border-radius: 8px; background: #fff; cursor: pointer; font-size: 12px; color: #888; width: 100%; justify-content: center; }
+.add-step-btn:hover { border-color: #888; color: #444; background: #f8f8f8; }
+
+/* 패널 공통 */
+.panel-scroll { flex: 1; overflow-y: auto; }
+.panel-header { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.panel-back-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #666; padding: 0; line-height: 1; }
+.panel-back-btn:hover { color: #1a1a1a; }
+.icon-btn-sm { width: 26px; height: 26px; border: 1px solid #e0e0e0; background: #fff; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #888; font-size: 12px; margin-left: auto; }
+.icon-btn-sm:hover { background: #f5f5f5; }
+.panel-body { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+.panel-section-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+.panel-hint { font-size: 11px; color: #aaa; line-height: 1.6; margin-top: 6px; }
+.panel-footer { padding: 14px 16px; border-top: 1px solid #f0f0f0; flex-shrink: 0; }
+.btn-danger { background: #fff; color: #e53935; border: 1.5px solid #fca5a5; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%; }
+.btn-danger:hover { background: #fff5f5; border-color: #e53935; }
+
+/* 패널 담당자 선택 */
+.payee-option-group { display: flex; flex-direction: column; gap: 8px; }
+.payee-option { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; cursor: pointer; transition: all 0.15s; }
+.payee-option:hover { border-color: #aaa; background: #fafafa; }
+.payee-option.selected { border-color: #1a1a1a; background: #f5f5f5; }
+.payee-option input[type=radio] { margin-top: 2px; accent-color: #1a1a1a; flex-shrink: 0; }
+.payee-option-text { flex: 1; }
+.payee-option-title { font-size: 13px; font-weight: 500; }
+.payee-option-desc { font-size: 11px; color: #999; margin-top: 2px; line-height: 1.5; }
+.person-select-trigger { border: 1px dashed #d0d0d0; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #999; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.person-select-trigger:hover { border-color: #888; color: #666; background: #fafafa; }
+.selected-person-row { display: flex; align-items: center; gap: 8px; background: #f5f5f5; border-radius: 8px; padding: 9px 12px; cursor: pointer; }
+.selected-person-row:hover { background: #eee; }
+.selected-person-name { font-size: 13px; font-weight: 500; flex: 1; }
+.change-hint { font-size: 11px; color: #aaa; }
+.member-card-list { display: flex; flex-direction: column; gap: 6px; }
+.member-card { border: 1.5px solid #e8e8e8; border-radius: 10px; padding: 10px 14px; cursor: pointer; transition: all 0.15s; }
+.member-card:hover { border-color: #bbb; background: #fafafa; }
+.member-card.selected { border-color: #1a1a1a; background: #f5f5f5; }
+.member-card-top { display: flex; align-items: center; gap: 8px; }
+.member-info { flex: 1; }
+.member-name { font-size: 13px; font-weight: 500; }
+.member-dept { font-size: 11px; color: #999; }
+.member-methods { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.method-tag { font-size: 10px; background: #f0f0f0; color: #555; padding: 2px 8px; border-radius: 10px; }
+.method-tag-none { font-size: 10px; color: #f59e0b; background: #fffbeb; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 10px; }
+.inline-payment-setup { margin-top: 10px; border: 1.5px solid #f59e0b; border-radius: 10px; padding: 12px 14px; background: #fffdf5; }
+.inline-payment-title { font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 8px; }
+.method-checkbox-list { display: flex; flex-direction: column; gap: 6px; }
+.method-checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #444; cursor: pointer; padding: 4px 0; }
+.method-checkbox-item input[type=checkbox] { accent-color: #1a1a1a; }
+.permission-notice { margin-top: 10px; background: #fff8f0; border: 1px solid #fde0b0; border-radius: 8px; padding: 9px 12px; font-size: 11px; color: #92400e; line-height: 1.6; }
+.permission-notice strong { font-weight: 600; }
+.anyone-desc-box { background: #f5f5f5; border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #666; line-height: 1.7; margin-top: 12px; }
+.anyone-desc-box strong { font-weight: 600; color: #1a1a1a; }
+.condition-toggle { display: flex; align-items: center; justify-content: space-between; }
+.toggle { width: 36px; height: 20px; background: #e0e0e0; border-radius: 10px; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
+.toggle.on { background: #1a1a1a; }
+.toggle-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.toggle.on .toggle-thumb { transform: translateX(16px); }
+.amount-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.amount-input { border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px 10px; font-size: 13px; width: 100%; }
+.amount-unit { font-size: 12px; color: #666; white-space: nowrap; }
+
+/* 같은 최종결제자 그룹 색상 */
+.payer-colors-bg { --c0-bg:#e8f5e9; --c1-bg:#e3f2fd; --c2-bg:#fff3e0; }
+
+/* 토스트 */
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200; white-space: nowrap; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- 사이드바 -->
+<nav class="sidebar">
+  <div class="sidebar-logo">✦ airsupply</div>
+  <div class="sidebar-section">회사 관리</div>
+  <div class="sidebar-item">대시보드</div>
+  <div class="sidebar-section" style="margin-top:8px">정보관리</div>
+  <div class="sidebar-item">사업자 정보 관리</div>
+  <div class="sidebar-item">구성원 관리</div>
+  <div class="sidebar-item">조직 관리</div>
+  <div class="sidebar-item">권한 관리</div>
+  <div class="sidebar-item active">승인규칙 <span class="new-badge">NEW</span></div>
+  <div class="sidebar-item">결제수단 관리</div>
+  <div class="sidebar-item">배송지 관리</div>
+  <div class="sidebar-section" style="margin-top:8px">구매관리</div>
+  <div class="sidebar-item">구매요청 관리</div>
+  <div class="sidebar-item">주문내역 관리</div>
+</nav>
+
+<div class="main">
+
+  <!-- ── 목록 화면 ── -->
+  <div id="screen-list" class="screen active">
+    <div class="topbar">정보관리 / <span class="cur">승인규칙</span></div>
+    <div class="list-screen-wrap">
+      <div class="list-screen-content">
+
+        <!-- 페이지 헤더 -->
+        <div class="page-header">
+          <div>
+            <div class="page-title">승인규칙</div>
+            <div class="page-desc">구매요청이 처리되는 결재 절차를 설정합니다.</div>
+          </div>
+          <div class="page-header-right">
+            <div class="view-toggle">
+              <button class="view-btn" id="btnList" onclick="switchListView('list')">리스트</button>
+              <button class="view-btn active" id="btnViz" onclick="switchListView('viz')">시각화</button>
+            </div>
+            <button class="btn-primary" onclick="goEdit('new')">+ 결재 라인 추가</button>
+          </div>
+        </div>
+
+        <!-- 안내 배너 -->
+        <div class="guide-banner">
+          <div class="guide-banner-icon">💡</div>
+          <div class="guide-banner-body">
+            <div class="guide-banner-title">구성원이 구매요청을 올리면 어떻게 되나요?</div>
+            <div class="guide-banner-desc">구매요청이 제출되면 아래에 설정된 결재 라인에 따라 순서대로 처리됩니다. 지금은 <strong>기본 결재 라인</strong>이 적용되어, 구매요청이 바로 결제 관리자에게 전달됩니다.</div>
+            <div class="guide-banner-steps">
+              <span class="guide-step-pill">구매요청 제출</span>
+              <span class="guide-step-arrow">→</span>
+              <span class="guide-step-pill">결제 관리자 확인 및 결제</span>
+              <span class="guide-step-arrow">→</span>
+              <span class="guide-step-pill">구매 완료</span>
+            </div>
+            <div class="guide-banner-sub">
+              <strong>조직마다 다른 결재 흐름이 필요하다면?</strong> 결재 라인을 추가해 조직별로 승인 단계와 담당자를 다르게 설정할 수 있습니다. 결재 라인이 없는 조직은 기본 결재 라인으로 자동 처리됩니다.
+            </div>
+          </div>
+        </div>
+
+        <!-- 리스트 뷰 -->
+        <div class="list-view" id="listView">
+          <div class="rule-table" id="listTable"></div>
+        </div>
+
+        <!-- 시각화 뷰 -->
+        <div class="viz-view active" id="vizView" onclick="handleVizCanvasClick(event)">
+          <div class="viz-request-node">
+            <div class="request-box">구매요청</div>
+          </div>
+          <div id="vizBranch"></div>
+        </div>
+
+      </div>
+
+      <!-- 시각화 뷰 우측 패널 -->
+      <div class="viz-panel" id="vizPanel">
+        <div class="panel-scroll" id="vizPanelScroll">
+          <div id="vizPanelContent"></div>
+        </div>
+        <div class="panel-footer" id="vizPanelFooter" style="display:none">
+          <button class="btn-primary" style="width:100%;display:none" id="vizFooterConfirm" onclick="vizConfirmMemberSelect()">완료</button>
+          <button class="btn-danger" style="display:none" id="vizFooterDelete">이 단계 삭제</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 편집 화면 ── -->
+  <div id="screen-edit" class="screen">
+    <div class="edit-header">
+      <button class="btn-ghost" onclick="goList()">← 목록으로</button>
+      <span class="edit-header-title" id="edit-title">편집</span>
+      <button class="btn-primary" onclick="goList();showToast('저장되었습니다')">저장</button>
+    </div>
+    <div class="edit-layout">
+      <div class="edit-canvas">
+        <div class="edit-meta-section">
+          <div id="default-banner" style="display:none" class="default-edit-banner">
+            📌 <strong>기본 결재 라인</strong>은 서비스 시작 시 자동 세팅됩니다. 조직을 지정할 필요 없이 플로우와 담당자만 수정하세요. 삭제는 불가합니다.
+          </div>
+          <div id="meta-fields" style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div class="field-label">결재 라인 이름</div>
+              <input class="field-input" id="line-name-input" type="text" placeholder="예: 영업팀 결재 라인" />
+            </div>
+            <div>
+              <div class="field-label">적용 조직 <span style="font-size:11px;color:#aaa;font-weight:400">· 이 라인을 따를 조직 선택</span></div>
+              <div class="org-select-wrapper">
+                <div class="org-select-trigger" id="org-trigger" onclick="toggleOrgDropdown(event)">
+                  <span>+ 조직 선택</span>
+                  <span style="margin-left:auto;color:#ccc;font-size:12px">▾</span>
+                </div>
+                <div class="org-dropdown-menu" id="org-dropdown">
+                  <div class="org-dropdown-item" id="org-item-영업1팀" onclick="toggleOrg(event,'영업1팀')">영업1팀</div>
+                  <div class="org-dropdown-item" id="org-item-영업2팀" onclick="toggleOrg(event,'영업2팀')">영업2팀</div>
+                  <div class="org-dropdown-item" id="org-item-마케팅팀" onclick="toggleOrg(event,'마케팅팀')">마케팅팀</div>
+                  <div class="org-dropdown-item" id="org-item-운영팀" onclick="toggleOrg(event,'운영팀')">운영팀</div>
+                  <div class="org-dropdown-item" id="org-item-개발팀" onclick="toggleOrg(event,'개발팀')">개발팀</div>
+                  <div class="org-dropdown-item" id="org-item-인사팀" onclick="toggleOrg(event,'인사팀')">인사팀</div>
+                  <div class="org-dropdown-item" id="org-item-재무팀" onclick="toggleOrg(event,'재무팀')">재무팀</div>
+                </div>
+              </div>
+              <div class="selected-orgs" id="selected-orgs-area"></div>
+            </div>
+          </div>
+        </div>
+        <div class="edit-flow-section" onclick="handleCanvasClick(event)">
+          <div class="flow-center-wrapper">
+            <div class="canvas-section-label">결재 흐름</div>
+            <div class="flow-vertical" id="flow-canvas"></div>
+          </div>
+        </div>
+      </div>
+      <div class="edit-panel" id="edit-panel" style="width:0;min-width:0;overflow:hidden;background:#fff;border-left:1px solid #e5e5e5;flex-shrink:0;transition:width 0.2s;display:flex;flex-direction:column;">
+        <div class="panel-scroll" id="panel-scroll">
+          <div id="panel-content"></div>
+        </div>
+        <div class="panel-footer" id="panel-footer" style="display:none">
+          <button class="btn-primary" style="width:100%;display:none" id="panel-footer-confirm" onclick="confirmMemberSelect()">완료</button>
+          <button class="btn-danger" style="display:none" id="panel-footer-delete" onclick="deleteStepConfirm()">이 단계 삭제</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── 공통 데이터 ── */
+var members = [
+  { id:'m1', name:'김지수', dept:'재무팀', hasPayment:true, methods:['법인카드 A','법인카드 B'] },
+  { id:'m2', name:'홍길동', dept:'구매팀', hasPayment:true, methods:['법인카드 A'] },
+  { id:'m3', name:'이수진', dept:'마케팅팀', hasPayment:true, methods:['후불카드'] },
+  { id:'m4', name:'박민준', dept:'개발팀', hasPayment:false, methods:[] },
+  { id:'m5', name:'최영희', dept:'인사팀', hasPayment:false, methods:[] }
+];
+var allMethods = ['법인카드 A', '법인카드 B', '후불카드', '법인계좌'];
+
+var linesData = {
+  'default': { name:'기본 결재 라인', isDefault:true, orgs:[],
+    steps:[
+      { type:'start', name:'구매요청' },
+      { type:'end', name:'최종결제', payeeType:'anyone', personId:'', personMethods:[] }
+    ]
+  },
+  'new': { name:'', isDefault:false, orgs:[],
+    steps:[
+      { type:'start', name:'구매요청' },
+      { type:'end', name:'최종결제', payeeType:'anyone', personId:'', personMethods:[] }
+    ]
+  },
+  'line1': { name:'영업팀 결재 라인', isDefault:false, orgs:['영업1팀','영업2팀'],
+    steps:[
+      { type:'start', name:'구매요청' },
+      { type:'mid', name:'1차 승인', person:'m2', condition:false, amount:'' },
+      { type:'end', name:'최종결제', payeeType:'specific', personId:'m1', personMethods:[] }
+    ]
+  },
+  'line2': { name:'마케팅·운영 결재 라인', isDefault:false, orgs:['마케팅팀','운영팀'],
+    steps:[
+      { type:'start', name:'구매요청' },
+      { type:'mid', name:'1차 승인', person:'m4', condition:false, amount:'' },
+      { type:'mid', name:'2차 승인', person:'m5', condition:true, amount:'1000000' },
+      { type:'end', name:'최종결제', payeeType:'specific', personId:'m1', personMethods:[] }
+    ]
+  },
+  'line3': { name:'개발팀 결재 라인', isDefault:false, orgs:['개발팀'],
+    steps:[
+      { type:'start', name:'구매요청' },
+      { type:'end', name:'최종결제', payeeType:'anyone', personId:'', personMethods:[] }
+    ]
+  }
+};
+
+/* 시각화용 조직 데이터 */
+var vizOrgs = [
+  { lineId:'default', orgName:'기본 조직', members:['(전체)'], isDefault:true },
+  { lineId:'line1', orgName:'영업1팀·영업2팀', members:['홍길동','이수진','박민준'], isDefault:false },
+  { lineId:'line2', orgName:'마케팅팀·운영팀', members:['김지수','홍길동','최영희'], isDefault:false },
+  { lineId:'line3', orgName:'개발팀', members:['박민준','최영희','홍길동'], isDefault:false }
+];
+
+var PAYER_COLORS = [
+  { bg:'#e8f5e9', border:'#43a047' },
+  { bg:'#e3f2fd', border:'#1e88e5' },
+  { bg:'#fff3e0', border:'#fb8c00' }
+];
+
+function getMember(id) {
+  for (var i=0;i<members.length;i++) if(members[i].id===id) return members[i];
+  return null;
+}
+
+/* ── 화면 전환 ── */
+function goList() {
+  document.getElementById('screen-list').className = 'screen active';
+  document.getElementById('screen-edit').className = 'screen';
+  activeCardIdx = null; memberSelectCtx = null; closeDropdowns();
+  closeVizPanel();
+  renderViz(); renderListTable();
+}
+
+function goEdit(id) {
+  currentLineId = id; activeCardIdx = null; memberSelectCtx = null; inlineSelectedMethods = [];
+  document.getElementById('screen-list').className = 'screen';
+  document.getElementById('screen-edit').className = 'screen active';
+  var d = linesData[id];
+  document.getElementById('edit-title').textContent = d.isDefault ? '기본 결재 라인 편집' : (id==='new' ? '결재 라인 추가' : d.name+' 편집');
+  document.getElementById('line-name-input').value = d.name;
+  document.getElementById('default-banner').style.display = d.isDefault ? 'block' : 'none';
+  document.getElementById('meta-fields').style.display = d.isDefault ? 'none' : 'flex';
+  selectedOrgs = d.orgs ? d.orgs.slice() : [];
+  renderOrgTags(); syncOrgDropdownChecks();
+  hideEditPanel(); renderFlow();
+}
+
+/* ── 리스트/시각화 뷰 전환 ── */
+function switchListView(view) {
+  var lv = document.getElementById('listView');
+  var vv = document.getElementById('vizView');
+  var bl = document.getElementById('btnList');
+  var bv = document.getElementById('btnViz');
+  if (view==='list') {
+    lv.classList.add('active'); vv.classList.remove('active');
+    bl.classList.add('active'); bv.classList.remove('active');
+    closeVizPanel();
+  } else {
+    lv.classList.remove('active'); vv.classList.add('active');
+    bl.classList.remove('active'); bv.classList.add('active');
+  }
+}
+
+/* ── 리스트 테이블 렌더 ── */
+function renderListTable() {
+  var tbl = document.getElementById('listTable');
+  var html = '<div class="rule-table-header"><div>결재 라인</div><div>지정 조직</div><div>최종결제 담당자</div><div></div></div>';
+  var lineIds = ['default','line1','line2','line3'];
+  lineIds.forEach(function(id) {
+    var d = linesData[id];
+    var fin = d.steps.find(function(s){return s.type==='end';});
+    html += '<div class="rule-row" onclick="goEdit(\''+id+'\')">';
+    html += '<div><div class="rule-name-text">'+(d.isDefault?'🔒 ':'')+d.name+'</div>';
+    html += '<div class="rule-name-hint">'+(d.isDefault?'지정 조직이 없는 모든 구매요청에 자동 적용':buildFlowSummary(d.steps))+'</div></div>';
+    html += '<div>';
+    if(d.isDefault) html += '<span style="color:#ccc">—</span>';
+    else { html += '<div class="org-tags">'; d.orgs.forEach(function(o){html+='<span class="org-tag">'+o+'</span>';}); html += '</div>'; }
+    html += '</div>';
+    html += '<div>';
+    if(fin.payeeType==='anyone') html += '<span class="payee-mgr-badge">결제 관리자</span>';
+    else { var m=getMember(fin.personId); html += m ? '<div class="person-chip"><div class="avatar">'+m.name.charAt(0)+'</div>'+m.name+'</div>' : '<span style="color:#f59e0b;font-size:12px">미지정</span>'; }
+    html += '</div>';
+    html += '<div style="position:relative"><button class="more-btn" onclick="toggleDropdown(event,\'dd_'+id+'\')">···</button>';
+    html += '<div class="dropdown" id="dd_'+id+'">';
+    html += '<div class="dropdown-item" onclick="closeDropdowns();goEdit(\''+id+'\')">✏️ &nbsp;편집</div>';
+    if(!d.isDefault) { html += '<div class="dropdown-item" onclick="closeDropdowns();showToast(\'복제되었습니다\')">⎘ &nbsp;복제</div>'; html += '<div class="dropdown-item danger" onclick="closeDropdowns();showToast(\'삭제하시겠습니까?\')">✕ &nbsp;삭제</div>'; }
+    html += '</div></div>';
+    html += '</div>';
+  });
+  tbl.innerHTML = html;
+}
+
+function buildFlowSummary(steps) {
+  return steps.map(function(s){
+    if(s.type==='start') return '구매요청';
+    if(s.type==='mid') { var m=getMember(s.person); return (m?m.name:'?')+' 승인'; }
+    return '최종결제';
+  }).join(' → ');
+}
+
+/* ── 시각화 뷰 렌더 ── */
+var vizActiveOrg = null;
+var vizActiveStepIdx = null;
+
+function getPayerGroups() {
+  var groups = {};
+  vizOrgs.forEach(function(org) {
+    var d = linesData[org.lineId];
+    var fin = d.steps.find(function(s){return s.type==='end';});
+    if(fin && fin.payeeType==='specific' && fin.personId) {
+      if(!groups[fin.personId]) groups[fin.personId] = [];
+      groups[fin.personId].push(org.lineId);
+    }
+  });
+  var res = {};
+  Object.keys(groups).forEach(function(k){ if(groups[k].length>1) res[k]=groups[k]; });
+  return res;
+}
+
+function renderViz() {
+  var payerGroups = getPayerGroups();
+  var colorMap = {};
+  var ci = 0;
+  Object.keys(payerGroups).forEach(function(pid){ colorMap[pid]=ci++; });
+
+  var branch = document.getElementById('vizBranch');
+  var html = '<div style="display:flex;flex-direction:column;align-items:center;"><div style="width:2px;height:20px;background:#d0d0d0;"></div></div>';
+  html += '<div class="viz-org-wrapper"><div class="viz-org-row" id="vizOrgRow">';
+
+  vizOrgs.forEach(function(org) {
+    var d = linesData[org.lineId];
+    var fin = d.steps.find(function(s){return s.type==='end';});
+    var hasSame = fin && fin.payeeType==='specific' && fin.personId && colorMap[fin.personId]!==undefined;
+    var cIdx = hasSame ? colorMap[fin.personId] : -1;
+
+    html += '<div class="org-col">';
+    html += '<div class="col-top-vline"></div>';
+
+    /* 조직 카드 */
+    html += '<div class="org-card'+(org.isDefault?' default-org':'')+'" onclick="goEdit(\''+org.lineId+'\')" title="편집 화면으로">';
+    html += '<div class="org-card-name">';
+    if(org.isDefault) html += '<span class="badge-default">기본</span>';
+    html += org.orgName+'</div>';
+    html += '<div class="org-member-row">';
+    org.members.slice(0,3).forEach(function(m){ html+='<span class="member-chip">'+m+'</span>'; });
+    if(org.members.length>3) html += '<span class="member-chip">+' + (org.members.length-3) + '</span>';
+    html += '</div></div>';
+
+    /* 결재 단계 (start 제외) */
+    var nonStartSteps = d.steps.filter(function(s,si){ return s.type!=='start'; });
+    var realIdxMap = [];
+    d.steps.forEach(function(s,si){ if(s.type!=='start') realIdxMap.push(si); });
+
+    nonStartSteps.forEach(function(step, nsi) {
+      var realIdx = realIdxMap[nsi];
+      var isActive = vizActiveOrg===org.lineId && vizActiveStepIdx===realIdx;
+
+      /* 연결선 + 단계 추가 버튼 */
+      html += '<div class="step-add-area">';
+      html += '<div class="step-vline" style="margin:0 auto;"></div>';
+      html += '<div class="step-add-btn" onclick="vizAddStep(event,\''+org.lineId+'\','+realIdx+')">+ 단계 추가</div>';
+      html += '<div class="step-vline" style="margin:0 auto;"></div>';
+      html += '</div>';
+
+      /* 단계 카드 */
+      var isFinalShared = step.type==='end' && hasSame;
+      var borderStyle = isFinalShared ? 'border-color:'+PAYER_COLORS[cIdx].border+';' : '';
+      var bgStyle = isFinalShared ? 'background:'+PAYER_COLORS[cIdx].bg+';' : '';
+
+      html += '<div class="step-card'+(isActive?' active-card':'')+'" style="'+borderStyle+bgStyle+'" onclick="vizSelectCard(event,\''+org.lineId+'\','+realIdx+')">';
+      html += '<div class="step-label">'+(step.type==='end'?'최종결제':'승인 단계')+'</div>';
+      html += '<div style="font-size:12px;font-weight:600;margin-bottom:4px">'+step.name+'</div>';
+
+      if(step.type==='end') {
+        if(step.payeeType==='anyone') {
+          html += '<div class="step-person-row"><span class="anyone-badge">👥 결제 관리자</span></div>';
+        } else if(step.personId) {
+          var m = getMember(step.personId);
+          if(m) {
+            html += '<div class="step-person-row">';
+            if(isFinalShared) html += '<div class="payer-dot" style="background:'+PAYER_COLORS[cIdx].border+'"></div>';
+            html += '<div class="avatar">'+m.name.charAt(0)+'</div><span>'+m.name+'</span></div>';
+            if(m.methods.length>0) html += '<div class="pay-method-row">💳 '+m.methods[0]+'</div>';
+          }
+        }
+        if(isFinalShared) {
+          var sharedWith = payerGroups[fin.personId].filter(function(id){return id!==org.lineId;}).map(function(id){ return linesData[id].name; });
+          html += '<div class="shared-badge" style="background:'+PAYER_COLORS[cIdx].bg+';color:'+PAYER_COLORS[cIdx].border+';border:1px solid '+PAYER_COLORS[cIdx].border+'">● '+sharedWith.join(' · ')+'와 동일</div>';
+        }
+      } else {
+        var mp = getMember(step.person);
+        if(mp) html += '<div class="step-person-row"><div class="avatar">'+mp.name.charAt(0)+'</div><span>'+mp.name+'</span></div>';
+        else html += '<div style="font-size:11px;color:#f59e0b">담당자 미지정</div>';
+        if(step.condition && step.amount) html += '<div class="amount-cond-tag">'+parseInt(step.amount).toLocaleString('ko-KR')+'원 이상</div>';
+      }
+      html += '</div>';
+    });
+
+    html += '</div>'; // org-col
+  });
+
+  html += '</div></div>';
+  branch.innerHTML = html;
+  setTimeout(drawVizHorizLine, 50);
+}
+
+function drawVizHorizLine() {
+  var row = document.getElementById('vizOrgRow');
+  if(!row) return;
+  var cols = row.querySelectorAll('.org-col');
+  if(cols.length<2) return;
+  var rowRect = row.getBoundingClientRect();
+  var x1 = cols[0].getBoundingClientRect().left + cols[0].getBoundingClientRect().width/2 - rowRect.left;
+  var x2 = cols[cols.length-1].getBoundingClientRect().left + cols[cols.length-1].getBoundingClientRect().width/2 - rowRect.left;
+  var existing = document.getElementById('vizHorizSvg');
+  if(existing) existing.remove();
+  var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.id = 'vizHorizSvg';
+  svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;overflow:visible;';
+  svg.setAttribute('width',row.scrollWidth); svg.setAttribute('height',24);
+  var line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',x1); line.setAttribute('y1',2);
+  line.setAttribute('x2',x2); line.setAttribute('y2',2);
+  line.setAttribute('stroke','#d0d0d0'); line.setAttribute('stroke-width','2');
+  svg.appendChild(line);
+  row.style.position = 'relative';
+  row.insertBefore(svg, row.firstChild);
+}
+
+/* ── 시각화 뷰 패널 ── */
+var vizMemberSelectCtx = null;
+var vizInlineSelectedMethods = [];
+
+function vizSelectCard(e, lineId, stepIdx) {
+  e.stopPropagation();
+  vizActiveOrg = lineId; vizActiveStepIdx = stepIdx;
+  vizMemberSelectCtx = null; vizInlineSelectedMethods = [];
+  renderViz();
+  openVizPanel();
+  var d = linesData[lineId];
+  var step = d.steps[stepIdx];
+  vizShowFooter(step.type==='mid' ? 'delete' : 'none');
+  renderVizPanel(lineId, stepIdx);
+}
+
+function vizAddStep(e, lineId, beforeIdx) {
+  e.stopPropagation();
+  linesData[lineId].steps.splice(beforeIdx, 0, {type:'mid', name:'새 승인 단계', person:'', condition:false, amount:''});
+  vizActiveOrg = lineId; vizActiveStepIdx = beforeIdx;
+  renderViz();
+  openVizPanel();
+  vizShowFooter('delete');
+  renderVizPanel(lineId, beforeIdx);
+  showToast('단계가 추가되었습니다');
+}
+
+function openVizPanel() { document.getElementById('vizPanel').classList.add('open'); }
+function closeVizPanel() {
+  document.getElementById('vizPanel').classList.remove('open');
+  vizActiveOrg = null; vizActiveStepIdx = null;
+  renderViz();
+}
+
+function handleVizCanvasClick(e) {
+  if (!e.target.closest('.step-card') && !e.target.closest('.step-add-btn') && !e.target.closest('.org-card') && !e.target.closest('.viz-panel')) {
+    closeVizPanel();
+  }
+}
+
+function vizShowFooter(mode) {
+  var footer = document.getElementById('vizPanelFooter');
+  var confirmBtn = document.getElementById('vizFooterConfirm');
+  var deleteBtn = document.getElementById('vizFooterDelete');
+  if(mode==='none') { footer.style.display='none'; confirmBtn.style.display='none'; deleteBtn.style.display='none'; }
+  else if(mode==='confirm') { footer.style.display='block'; confirmBtn.style.display='block'; deleteBtn.style.display='none'; }
+  else if(mode==='delete') { footer.style.display='block'; confirmBtn.style.display='none'; deleteBtn.style.display='block'; }
+  if(mode==='delete') {
+    deleteBtn.onclick = function() { vizDeleteStep(vizActiveOrg, vizActiveStepIdx); };
+  }
+}
+
+function vizDeleteStep(lineId, stepIdx) {
+  linesData[lineId].steps.splice(stepIdx,1);
+  closeVizPanel();
+  renderViz();
+  showToast('단계가 삭제되었습니다');
+}
+
+function renderVizPanel(lineId, stepIdx) {
+  var panel = document.getElementById('vizPanelContent');
+  var d = linesData[lineId];
+  var step = d.steps[stepIdx];
+  var html = '';
+
+  if(step.type==='mid') {
+    html += '<div class="panel-header"><span>단계 설정</span><button class="icon-btn-sm" onclick="closeVizPanel()">✕</button></div>';
+    html += '<div class="panel-body">';
+    html += '<div><div class="panel-section-label">단계 이름</div><input class="field-input" value="'+step.name+'" oninput="vizUpdateName(\''+lineId+'\','+stepIdx+',this.value)" placeholder="예: 1차 승인" /></div>';
+    html += '<div><div class="panel-section-label">승인 담당자</div>';
+    if(step.person) {
+      var m=getMember(step.person);
+      if(m) {
+        html += '<div class="selected-person-row" onclick="vizOpenMemberSelect(\''+lineId+'\','+stepIdx+',\'mid\')">';
+        html += '<div class="member-avatar">'+m.name.charAt(0)+'</div><span class="selected-person-name">'+m.name+'</span><span class="change-hint">변경</span></div>';
+      }
+    } else {
+      html += '<div class="person-select-trigger" onclick="vizOpenMemberSelect(\''+lineId+'\','+stepIdx+',\'mid\')">+ 구성원 선택</div>';
+    }
+    html += '<div class="panel-hint">지정 시 구매요청서 열람 권한이 자동 부여됩니다.</div></div>';
+    html += '<div><div class="condition-toggle"><span style="font-size:13px;font-weight:500">금액 조건</span><div class="toggle'+(step.condition?' on':'')+'" onclick="vizToggleCond(\''+lineId+'\','+stepIdx+')"><div class="toggle-thumb"></div></div></div>';
+    if(step.condition) {
+      html += '<div class="amount-row"><input class="amount-input" type="number" placeholder="0" value="'+(step.amount||'')+'" oninput="vizUpdateAmount(\''+lineId+'\','+stepIdx+',this.value)"/><span class="amount-unit">원 이상일 때만 적용</span></div>';
+      html += '<div class="panel-hint">조건 미충족 시 이 단계는 건너뜁니다.</div>';
+    }
+    html += '</div></div>';
+  }
+
+  if(step.type==='end') {
+    html += '<div class="panel-header"><span>최종결제 설정</span><button class="icon-btn-sm" onclick="closeVizPanel()">✕</button></div>';
+    html += '<div class="panel-body"><div><div class="panel-section-label">결제 담당자</div>';
+    html += renderPayeeSection_viz(lineId, stepIdx, step);
+    html += '</div></div>';
+  }
+
+  panel.innerHTML = html;
+}
+
+function renderPayeeSection_viz(lineId, stepIdx, step) {
+  var html = '<div class="payee-option-group">';
+  var anyoneSelected = step.payeeType==='anyone';
+  var specificSelected = step.payeeType==='specific';
+  html += '<div class="payee-option'+(anyoneSelected?' selected':'')+'" onclick="vizSetPayeeType(\''+lineId+'\','+stepIdx+',\'anyone\')">';
+  html += '<input type="radio" '+(anyoneSelected?'checked':'')+' readonly />';
+  html += '<div class="payee-option-text"><div class="payee-option-title">결제권한 있는 사람 누구나</div><div class="payee-option-desc">결제권한이 있는 구성원 중 누구든 먼저 처리하면 완료됩니다.</div></div></div>';
+  html += '<div class="payee-option'+(specificSelected?' selected':'')+'" onclick="vizSetPayeeType(\''+lineId+'\','+stepIdx+',\'specific\')">';
+  html += '<input type="radio" '+(specificSelected?'checked':'')+' readonly />';
+  html += '<div class="payee-option-text"><div class="payee-option-title">특정인 지정</div><div class="payee-option-desc">지정된 담당자만 결제를 처리할 수 있습니다.</div></div></div>';
+  html += '</div>';
+
+  if(anyoneSelected) {
+    html += '<div class="anyone-desc-box">각 구성원에게 설정된 결제수단으로 결제합니다.<br><strong>결제권한 관리</strong>는 권한 관리 페이지에서 확인하세요.</div>';
+  }
+  if(specificSelected) {
+    if(step.personId) {
+      var m=getMember(step.personId);
+      if(m) {
+        html += '<div style="margin-top:12px"><div class="selected-person-row" onclick="vizOpenMemberSelect(\''+lineId+'\','+stepIdx+',\'end\')">';
+        html += '<div class="member-avatar">'+m.name.charAt(0)+'</div>';
+        html += '<div style="flex:1"><div style="font-size:13px;font-weight:500">'+m.name+'</div>';
+        if(m.hasPayment) html += '<div style="font-size:11px;color:#888;margin-top:1px">💳 '+m.methods.join(' · ')+'</div>';
+        else html += '<div style="font-size:11px;color:#f59e0b;margin-top:1px">⚠️ 결제수단 미설정</div>';
+        html += '</div><span class="change-hint">변경</span></div>';
+        if(!m.hasPayment) {
+          html += '<div class="inline-payment-setup">';
+          html += '<div class="inline-payment-title">⚠️ 결제수단을 설정해주세요</div>';
+          html += '<div style="font-size:11px;color:#92400e;margin-bottom:10px">'+m.name+' 님은 결제수단이 없습니다. 사용할 결제수단을 선택해주세요.</div>';
+          html += '<div class="method-checkbox-list">';
+          allMethods.forEach(function(method) {
+            var chk = vizInlineSelectedMethods.indexOf(method)!==-1 ? 'checked' : '';
+            html += '<label class="method-checkbox-item"><input type="checkbox" '+chk+' onchange="vizToggleInlineMethod(\''+method+'\',\''+lineId+'\','+stepIdx+')" />'+method+'</label>';
+          });
+          html += '</div>';
+          html += '<div class="permission-notice">💡 저장 시 <strong>'+m.name+'</strong> 님에게 <strong>결제권한</strong>이 자동으로 부여됩니다.</div>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+    } else {
+      html += '<div style="margin-top:12px"><div class="person-select-trigger" onclick="vizOpenMemberSelect(\''+lineId+'\','+stepIdx+',\'end\')">+ 구성원 선택</div></div>';
+    }
+  }
+  return html;
+}
+
+function vizOpenMemberSelect(lineId, stepIdx, fieldType) {
+  vizMemberSelectCtx = { lineId:lineId, stepIdx:stepIdx, fieldType:fieldType, tempPersonId:'' };
+  vizShowFooter('confirm');
+  renderVizMemberPanel();
+}
+
+function renderVizMemberPanel() {
+  var panel = document.getElementById('vizPanelContent');
+  var html = '<div class="panel-header"><button class="panel-back-btn" onclick="vizBackFromMember()">←</button><span>구성원 선택</span></div>';
+  html += '<div class="panel-body"><div class="member-card-list">';
+  members.forEach(function(m) {
+    var isSel = vizMemberSelectCtx && vizMemberSelectCtx.tempPersonId===m.id;
+    html += '<div class="member-card'+(isSel?' selected':'')+'" onclick="vizSelectMemberTemp(\''+m.id+'\')">';
+    html += '<div class="member-card-top"><div class="member-avatar">'+m.name.charAt(0)+'</div>';
+    html += '<div class="member-info"><div class="member-name">'+m.name+'</div><div class="member-dept">'+m.dept+'</div></div>';
+    if(isSel) html += '<span style="color:#1a1a1a;font-size:14px;font-weight:700">✓</span>';
+    html += '</div>';
+    html += '<div class="member-methods">';
+    if(m.hasPayment && m.methods.length>0) m.methods.forEach(function(mt){ html+='<span class="method-tag">💳 '+mt+'</span>'; });
+    else html += '<span class="method-tag-none">⚠️ 결제수단 없음</span>';
+    html += '</div></div>';
+  });
+  html += '</div></div>';
+  panel.innerHTML = html;
+}
+
+function vizSelectMemberTemp(id) {
+  if(vizMemberSelectCtx) { vizMemberSelectCtx.tempPersonId=id; renderVizMemberPanel(); }
+}
+
+function vizBackFromMember() {
+  if(!vizMemberSelectCtx) return;
+  var lineId = vizMemberSelectCtx.lineId; var stepIdx = vizMemberSelectCtx.stepIdx;
+  vizMemberSelectCtx = null;
+  var step = linesData[lineId].steps[stepIdx];
+  vizShowFooter(step.type==='mid'?'delete':'none');
+  renderVizPanel(lineId, stepIdx);
+}
+
+function vizConfirmMemberSelect() {
+  if(!vizMemberSelectCtx || !vizMemberSelectCtx.tempPersonId) { showToast('구성원을 선택해주세요'); return; }
+  var ctx = vizMemberSelectCtx;
+  var m = getMember(ctx.tempPersonId);
+  if(!m) return;
+  vizMemberSelectCtx = null;
+  if(ctx.fieldType==='mid') {
+    linesData[ctx.lineId].steps[ctx.stepIdx].person = ctx.tempPersonId;
+    vizShowFooter('delete'); renderViz();
+    renderVizPanel(ctx.lineId, ctx.stepIdx);
+    showToast(m.name+' 님이 승인 담당자로 지정되었습니다');
+  } else {
+    linesData[ctx.lineId].steps[ctx.stepIdx].personId = ctx.tempPersonId;
+    vizInlineSelectedMethods = [];
+    vizShowFooter('none'); renderViz();
+    renderVizPanel(ctx.lineId, ctx.stepIdx);
+    if(m.hasPayment) showToast(m.name+' 님이 최종결제 담당자로 지정되었습니다');
+  }
+}
+
+function vizSetPayeeType(lineId, stepIdx, type) {
+  linesData[lineId].steps[stepIdx].payeeType = type;
+  if(type==='anyone') { linesData[lineId].steps[stepIdx].personId=''; vizInlineSelectedMethods=[]; }
+  renderViz(); vizActiveOrg=lineId; vizActiveStepIdx=stepIdx; renderVizPanel(lineId,stepIdx);
+}
+function vizUpdateName(lineId, stepIdx, v) { linesData[lineId].steps[stepIdx].name=v; renderViz(); vizActiveOrg=lineId; vizActiveStepIdx=stepIdx; }
+function vizUpdateAmount(lineId, stepIdx, v) { linesData[lineId].steps[stepIdx].amount=v; renderViz(); vizActiveOrg=lineId; vizActiveStepIdx=stepIdx; }
+function vizToggleCond(lineId, stepIdx) { var s=linesData[lineId].steps[stepIdx]; s.condition=!s.condition; renderVizPanel(lineId,stepIdx); renderViz(); vizActiveOrg=lineId; vizActiveStepIdx=stepIdx; }
+function vizToggleInlineMethod(method, lineId, stepIdx) {
+  var pos = vizInlineSelectedMethods.indexOf(method);
+  if(pos===-1) vizInlineSelectedMethods.push(method); else vizInlineSelectedMethods.splice(pos,1);
+  vizActiveOrg=lineId; vizActiveStepIdx=stepIdx; renderVizPanel(lineId,stepIdx);
+}
+
+/* ── 편집 화면 패널 ── */
+var currentLineId = null;
+var activeCardIdx = null;
+var memberSelectCtx = null;
+var inlineSelectedMethods = [];
+var selectedOrgs = [];
+
+function showEditPanel() { var p=document.getElementById('edit-panel'); p.style.width='320px'; p.style.minWidth='320px'; p.style.overflow='visible'; }
+function hideEditPanel() { var p=document.getElementById('edit-panel'); p.style.width='0'; p.style.minWidth='0'; p.style.overflow='hidden'; document.getElementById('panel-footer').style.display='none'; activeCardIdx=null; memberSelectCtx=null; }
+function handleCanvasClick(e) {
+  if(e.target===e.currentTarget||e.target.classList.contains('flow-center-wrapper')||e.target.classList.contains('canvas-section-label')||e.target.classList.contains('flow-vertical')||e.target.classList.contains('edit-flow-section')) { hideEditPanel(); renderFlow(); }
+}
+function toggleOrgDropdown(e) { e.stopPropagation(); document.getElementById('org-dropdown').classList.toggle('open'); }
+function toggleOrg(e, orgName) { e.stopPropagation(); var idx=selectedOrgs.indexOf(orgName); if(idx===-1) selectedOrgs.push(orgName); else selectedOrgs.splice(idx,1); syncOrgDropdownChecks(); renderOrgTags(); }
+function syncOrgDropdownChecks() { document.querySelectorAll('.org-dropdown-item').forEach(function(item){ var n=item.id.replace('org-item-',''); item.classList.toggle('checked',selectedOrgs.indexOf(n)!==-1); }); }
+function removeOrg(orgName) { var idx=selectedOrgs.indexOf(orgName); if(idx!==-1) selectedOrgs.splice(idx,1); syncOrgDropdownChecks(); renderOrgTags(); }
+function renderOrgTags() { var area=document.getElementById('selected-orgs-area'); if(!area) return; area.innerHTML=selectedOrgs.map(function(o){ return '<div class="selected-org-tag">'+o+'<button onclick="removeOrg(\''+o+'\')">✕</button></div>'; }).join(''); }
+
+function renderFlow() {
+  var d=linesData[currentLineId]; var canvas=document.getElementById('flow-canvas'); canvas.innerHTML='';
+  d.steps.forEach(function(step,idx) {
+    if(idx>0) { var conn=document.createElement('div'); conn.className='flow-connector-v'; conn.innerHTML='<div class="v-line"></div><button class="add-step-btn" onclick="addStep('+idx+')">+ 단계 추가</button><div class="v-line"></div>'; canvas.appendChild(conn); }
+    var card=document.createElement('div');
+    var cls='flow-card'; if(step.type==='start') cls+=' fc-start'; if(step.type==='end') cls+=' fc-end'; if(activeCardIdx===idx) cls+=' fc-active';
+    card.className=cls;
+    var typeLabel=step.type==='start'?'시작':step.type==='end'?'최종결제':'승인 단계';
+    var html='<div class="card-type">'+typeLabel+'</div><div class="card-name">'+step.name+'</div>';
+    if(step.type==='end') {
+      if(step.payeeType==='anyone') html+='<div class="card-anyone-chip">결제권한 있는 구성원</div>';
+      else if(step.personId) { var m=getMember(step.personId); if(m) html+='<div class="card-person">👤 '+m.name+'</div>'; }
+      else html+='<div class="card-person" style="color:#f59e0b">담당자 미지정</div>';
+    } else if(step.type==='mid') {
+      var mp=getMember(step.person); if(mp) html+='<div class="card-person">👤 '+mp.name+'</div>';
+      if(step.condition&&step.amount) html+='<div class="card-condition">'+parseInt(step.amount).toLocaleString('ko-KR')+'원 이상</div>';
+    }
+    card.innerHTML=html;
+    if(step.type!=='start') card.onclick=(function(i){ return function(e){ e.stopPropagation(); editSelectCard(i); }; })(idx);
+    canvas.appendChild(card);
+  });
+}
+
+function addStep(insertIdx) { linesData[currentLineId].steps.splice(insertIdx,0,{type:'mid',name:'새 승인 단계',person:'',condition:false,amount:''}); activeCardIdx=insertIdx; memberSelectCtx=null; renderFlow(); showEditPanel(); renderEditPanel(insertIdx); showToast('단계가 추가되었습니다'); }
+function editSelectCard(idx) { activeCardIdx=idx; inlineSelectedMethods=[]; memberSelectCtx=null; renderFlow(); showEditPanel(); var d=linesData[currentLineId]; showFooter(d.steps[idx].type==='mid'?'delete':'none'); renderEditPanel(idx); }
+
+function showFooter(mode) {
+  var footer=document.getElementById('panel-footer'); var confirmBtn=document.getElementById('panel-footer-confirm'); var deleteBtn=document.getElementById('panel-footer-delete');
+  if(mode==='none') { footer.style.display='none'; confirmBtn.style.display='none'; deleteBtn.style.display='none'; }
+  else if(mode==='confirm') { footer.style.display='block'; confirmBtn.style.display='block'; deleteBtn.style.display='none'; }
+  else if(mode==='delete') { footer.style.display='block'; confirmBtn.style.display='none'; deleteBtn.style.display='block'; }
+}
+function deleteStepConfirm() { if(activeCardIdx!==null) { linesData[currentLineId].steps.splice(activeCardIdx,1); hideEditPanel(); renderFlow(); showToast('단계가 삭제되었습니다'); } }
+
+function renderEditPanel(idx) {
+  var panel=document.getElementById('panel-content'); var d=linesData[currentLineId]; var step=d.steps[idx]; var html='';
+  if(step.type==='mid') {
+    html+='<div class="panel-header"><span>단계 설정</span><button class="icon-btn-sm" onclick="hideEditPanel();renderFlow()">✕</button></div>';
+    html+='<div class="panel-body"><div><div class="panel-section-label">단계 이름</div><input class="field-input" value="'+step.name+'" oninput="updateName('+idx+',this.value)" placeholder="예: 1차 승인" /></div>';
+    html+='<div><div class="panel-section-label">승인 담당자</div>';
+    if(step.person) { var m=getMember(step.person); if(m) { html+='<div class="selected-person-row" onclick="openMemberSelect('+idx+',\'mid\')"><div class="member-avatar">'+m.name.charAt(0)+'</div><span class="selected-person-name">'+m.name+'</span><span class="change-hint">변경</span></div>'; } }
+    else html+='<div class="person-select-trigger" onclick="openMemberSelect('+idx+',\'mid\')">+ 구성원 선택</div>';
+    html+='<div class="panel-hint">지정 시 구매요청서 열람 권한이 자동 부여됩니다.</div></div>';
+    html+='<div><div class="condition-toggle"><span style="font-size:13px;font-weight:500">금액 조건</span><div class="toggle'+(step.condition?' on':'')+'" onclick="toggleCond('+idx+')"><div class="toggle-thumb"></div></div></div>';
+    if(step.condition) html+='<div class="amount-row"><input class="amount-input" type="number" placeholder="0" value="'+(step.amount||'')+'" oninput="updateAmount('+idx+',this.value)"/><span class="amount-unit">원 이상일 때만 적용</span></div><div class="panel-hint">조건 미충족 시 이 단계는 건너뜁니다.</div>';
+    html+='</div></div>';
+  }
+  if(step.type==='end') {
+    html+='<div class="panel-header"><span>최종결제 설정</span><button class="icon-btn-sm" onclick="hideEditPanel();renderFlow()">✕</button></div><div class="panel-body"><div><div class="panel-section-label">결제 담당자</div>'+renderPayeeSection(idx,step)+'</div></div>';
+  }
+  panel.innerHTML=html;
+}
+
+function renderPayeeSection(idx, step) {
+  var html='<div class="payee-option-group">';
+  var anyoneSelected=step.payeeType==='anyone'; var specificSelected=step.payeeType==='specific';
+  html+='<div class="payee-option'+(anyoneSelected?' selected':'')+'" onclick="setPayeeType('+idx+',\'anyone\')"><input type="radio" '+(anyoneSelected?'checked':'')+' readonly /><div class="payee-option-text"><div class="payee-option-title">결제권한 있는 사람 누구나</div><div class="payee-option-desc">결제권한이 있는 구성원 중 누구든 먼저 처리하면 완료됩니다.</div></div></div>';
+  html+='<div class="payee-option'+(specificSelected?' selected':'')+'" onclick="setPayeeType('+idx+',\'specific\')"><input type="radio" '+(specificSelected?'checked':'')+' readonly /><div class="payee-option-text"><div class="payee-option-title">특정인 지정</div><div class="payee-option-desc">지정된 담당자만 결제를 처리할 수 있습니다.</div></div></div></div>';
+  if(anyoneSelected) html+='<div class="anyone-desc-box">각 구성원에게 설정된 결제수단으로 결제합니다.<br><strong>결제권한 관리</strong>는 권한 관리 페이지에서 확인하세요.</div>';
+  if(specificSelected) {
+    if(step.personId) {
+      var m=getMember(step.personId);
+      if(m) {
+        html+='<div style="margin-top:12px"><div class="selected-person-row" onclick="openMemberSelect('+idx+',\'end\')"><div class="member-avatar">'+m.name.charAt(0)+'</div><div style="flex:1"><div style="font-size:13px;font-weight:500">'+m.name+'</div>';
+        if(m.hasPayment) html+='<div style="font-size:11px;color:#888;margin-top:1px">💳 '+m.methods.join(' · ')+'</div>';
+        else html+='<div style="font-size:11px;color:#f59e0b;margin-top:1px">⚠️ 결제수단 미설정</div>';
+        html+='</div><span class="change-hint">변경</span></div>';
+        if(!m.hasPayment) {
+          html+='<div class="inline-payment-setup"><div class="inline-payment-title">⚠️ 결제수단을 설정해주세요</div><div style="font-size:11px;color:#92400e;margin-bottom:10px">'+m.name+' 님은 결제수단이 없습니다. 사용할 결제수단을 선택해주세요.</div><div class="method-checkbox-list">';
+          allMethods.forEach(function(method){ var chk=inlineSelectedMethods.indexOf(method)!==-1?'checked':''; html+='<label class="method-checkbox-item"><input type="checkbox" '+chk+' onchange="toggleInlineMethod(\''+method+'\','+idx+')" />'+method+'</label>'; });
+          html+='</div><div class="permission-notice">💡 저장 시 <strong>'+m.name+'</strong> 님에게 <strong>결제권한</strong>이 자동으로 부여됩니다.</div></div>';
+        }
+        html+='</div>';
+      }
+    } else html+='<div style="margin-top:12px"><div class="person-select-trigger" onclick="openMemberSelect('+idx+',\'end\')">+ 구성원 선택</div></div>';
+  }
+  return html;
+}
+
+function openMemberSelect(cardIdx, fieldType) { memberSelectCtx={cardIdx:cardIdx,fieldType:fieldType,tempPersonId:''}; showEditPanel(); showFooter('confirm'); renderMemberSelectPanel(); }
+function renderMemberSelectPanel() {
+  var panel=document.getElementById('panel-content');
+  var html='<div class="panel-header"><button class="panel-back-btn" onclick="backFromMemberSelect()">←</button><span>구성원 선택</span></div><div class="panel-body"><div class="member-card-list">';
+  members.forEach(function(m){ var isSel=memberSelectCtx&&memberSelectCtx.tempPersonId===m.id; html+='<div class="member-card'+(isSel?' selected':'')+'" onclick="selectMemberTemp(\''+m.id+'\')"><div class="member-card-top"><div class="member-avatar">'+m.name.charAt(0)+'</div><div class="member-info"><div class="member-name">'+m.name+'</div><div class="member-dept">'+m.dept+'</div></div>'+(isSel?'<span style="color:#1a1a1a;font-size:14px;font-weight:700">✓</span>':'')+'</div><div class="member-methods">'+(m.hasPayment&&m.methods.length>0?m.methods.map(function(mt){return'<span class="method-tag">💳 '+mt+'</span>';}).join(''):'<span class="method-tag-none">⚠️ 결제수단 없음</span>')+'</div></div>'; });
+  html+='</div></div>'; panel.innerHTML=html;
+}
+function selectMemberTemp(id) { if(memberSelectCtx){ memberSelectCtx.tempPersonId=id; renderMemberSelectPanel(); } }
+function backFromMemberSelect() { memberSelectCtx=null; var d=linesData[currentLineId]; var step=d.steps[activeCardIdx]; showFooter(step.type==='mid'?'delete':'none'); renderEditPanel(activeCardIdx); }
+function confirmMemberSelect() {
+  if(!memberSelectCtx||!memberSelectCtx.tempPersonId){ showToast('구성원을 선택해주세요'); return; }
+  var idx=memberSelectCtx.cardIdx; var fieldType=memberSelectCtx.fieldType; var m=getMember(memberSelectCtx.tempPersonId);
+  memberSelectCtx=null;
+  if(fieldType==='mid') { linesData[currentLineId].steps[idx].person=m.id; showFooter('delete'); renderFlow(); activeCardIdx=idx; renderEditPanel(idx); showToast(m.name+' 님이 승인 담당자로 지정되었습니다'); }
+  else { linesData[currentLineId].steps[idx].personId=m.id; inlineSelectedMethods=[]; showFooter('none'); renderFlow(); activeCardIdx=idx; renderEditPanel(idx); if(m.hasPayment) showToast(m.name+' 님이 최종결제 담당자로 지정되었습니다'); }
+}
+function toggleInlineMethod(method,idx) { var pos=inlineSelectedMethods.indexOf(method); if(pos===-1) inlineSelectedMethods.push(method); else inlineSelectedMethods.splice(pos,1); activeCardIdx=idx; renderEditPanel(idx); }
+function setPayeeType(idx,type) { linesData[currentLineId].steps[idx].payeeType=type; if(type==='anyone'){linesData[currentLineId].steps[idx].personId='';inlineSelectedMethods=[];} renderFlow(); activeCardIdx=idx; renderEditPanel(idx); }
+function updateName(idx,v){ linesData[currentLineId].steps[idx].name=v; renderFlow(); activeCardIdx=idx; }
+function updateAmount(idx,v){ linesData[currentLineId].steps[idx].amount=v; renderFlow(); activeCardIdx=idx; }
+function toggleCond(idx){ var s=linesData[currentLineId].steps[idx]; s.condition=!s.condition; renderEditPanel(idx); renderFlow(); activeCardIdx=idx; }
+function deleteStep(idx){ linesData[currentLineId].steps.splice(idx,1); hideEditPanel(); renderFlow(); showToast('단계가 삭제되었습니다'); }
+
+/* ── 공통 유틸 ── */
+function toggleDropdown(e,id){ e.stopPropagation(); closeDropdowns(); document.getElementById(id).classList.toggle('open'); }
+function closeDropdowns(){ document.querySelectorAll('.dropdown.open').forEach(function(d){d.classList.remove('open');}); var od=document.getElementById('org-dropdown'); if(od) od.classList.remove('open'); }
+document.addEventListener('click', closeDropdowns);
+function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'; setTimeout(function(){t.className='toast';},2500); }
+window.addEventListener('resize', drawVizHorizLine);
+
+/* ── 초기화 ── */
+renderViz();
+renderListTable();
+</script>
+</body>
+</html>
