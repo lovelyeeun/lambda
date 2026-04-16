@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lambda — 채팅 검색 플로우 기획 v2</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f2;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.07);
+    --text: #0e0e0e;
+    --sub: #777169;
+    --muted: #b8b2a8;
+    --brand: #4e3fb4;
+    --brand-light: rgba(78,63,180,0.08);
+    --green: #16a34a;
+    --green-light: rgba(22,163,74,0.08);
+    --radius: 14px;
+    --shadow-card: rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 3px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+  .page { max-width: 1280px; margin: 0 auto; padding: 40px 24px 80px; }
+  .header { margin-bottom: 36px; }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }
+  .header p { font-size: 13px; color: var(--sub); margin-top: 6px; line-height: 1.6; }
+  .ver-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--brand); color: #fff; margin-top: 10px; }
+  .change-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; background: rgba(220,38,38,0.1); color: #dc2626; margin-left: 6px; vertical-align: middle; }
+
+  .section { margin-bottom: 48px; }
+  .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--sub); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* 탭 */
+  .tab-nav { display: flex; gap: 4px; margin-bottom: 24px; background: rgba(0,0,0,0.04); padding: 4px; border-radius: 10px; width: fit-content; flex-wrap: wrap; }
+  .tab-btn { padding: 7px 18px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--sub); transition: all 0.15s; }
+  .tab-btn.active { background: #fff; color: var(--text); box-shadow: var(--shadow-card); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* 채팅 시뮬 */
+  .chat-sim { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-card); overflow: hidden; }
+  .chat-sim-bar { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .chat-area { padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; min-height: 320px; max-height: 700px; overflow-y: auto; }
+  .bubble-row { display: flex; align-items: flex-end; gap: 8px; }
+  .bubble-row.user { flex-direction: row-reverse; }
+  .av { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; box-shadow: var(--shadow-card); }
+  .av.ai { background: #000; color: #fff; }
+  .av.usr { background: var(--brand-light); color: var(--brand); }
+  .bubble { max-width: 560px; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.6; }
+  .bubble.ai { background: #fff; box-shadow: var(--shadow-card); border-bottom-left-radius: 4px; }
+  .bubble.usr { background: #000; color: #fff; border-bottom-right-radius: 4px; }
+  .bubble.wide { max-width: 760px; }
+
+  /* === Step 1: 프로그레스 === */
+  .progress-box { padding: 0; }
+  .prog-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .prog-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; transition: all 0.3s; }
+  .prog-icon.pending { background: rgba(0,0,0,0.06); color: var(--muted); }
+  .prog-icon.active { background: var(--brand); color: #fff; }
+  .prog-icon.done { background: var(--green-light); color: var(--green); }
+  .prog-lbl { font-size: 12.5px; font-weight: 500; }
+  .prog-lbl.pending { color: var(--muted); font-weight: 400; }
+  .prog-lbl.active { color: var(--text); }
+  .prog-lbl.done { color: var(--sub); }
+  .prog-connector { width: 1px; height: 9px; background: var(--border); margin-left: 11px; }
+
+  /* === Step 1 결과: AI 줄글 카드 (프로그레스 밖) === */
+  .search-result-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+    padding: 16px 18px;
+    max-width: 600px;
+  }
+  .src-header {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 10px;
+  }
+  .src-header-icon { font-size: 14px; }
+  .src-header-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .src-header-count {
+    margin-left: auto;
+    font-size: 11px; font-weight: 600; color: var(--brand);
+    background: var(--brand-light); padding: 2px 9px; border-radius: 20px;
+  }
+  /* AI 줄글 */
+  .src-prose {
+    font-size: 12.5px; color: var(--sub); line-height: 1.7; margin-bottom: 12px;
+    padding: 10px 12px; background: var(--bg); border-radius: 9px;
+  }
+  .src-prose strong { color: var(--text); font-weight: 600; }
+  /* 브랜드 한 줄 */
+  .src-brands {
+    font-size: 11.5px; color: var(--sub); margin-bottom: 10px;
+  }
+  .src-brands span { color: var(--text); font-weight: 500; }
+  /* 썸네일 행 */
+  .src-thumbs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .src-thumb {
+    width: 48px; height: 48px; border-radius: 9px;
+    background: #e8e4df;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+    box-shadow: rgba(0,0,0,0.06) 0px 0px 0px 1px;
+    position: relative;
+  }
+  .src-thumb-more {
+    width: 48px; height: 48px; border-radius: 9px;
+    background: rgba(0,0,0,0.04);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: var(--sub);
+    box-shadow: rgba(0,0,0,0.06) 0px 0px 0px 1px;
+  }
+  /* 스펙 힌트 */
+  .src-specs {
+    display: flex; flex-wrap: wrap; gap: 5px;
+  }
+  .src-spec-item {
+    font-size: 11px; color: var(--sub);
+    background: #fff; padding: 3px 9px; border-radius: 6px;
+    box-shadow: rgba(0,0,0,0.06) 0px 0px 0px 1px;
+  }
+  .src-spec-item strong { color: var(--text); font-weight: 600; }
+  /* 회사 구매기준 메모 */
+  .src-policy {
+    margin-top: 10px; padding: 9px 12px;
+    background: rgba(78,63,180,0.05); border-radius: 8px;
+    border-left: 2px solid var(--brand);
+    font-size: 11.5px; color: var(--sub); line-height: 1.6;
+  }
+  .src-policy strong { color: var(--brand); }
+
+  /* === Step 2: 필터 카드 === */
+  .filter-card { background: #fff; border-radius: 14px; box-shadow: var(--shadow-card); padding: 16px 18px; max-width: 520px; }
+  .filter-header { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
+  .filter-section { margin-bottom: 13px; }
+  .filter-lbl { font-size: 10.5px; font-weight: 700; color: var(--sub); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 7px; }
+  .price-tiers { display: flex; gap: 0; border-radius: 9px; overflow: hidden; box-shadow: rgba(0,0,0,0.06) 0px 0px 0px 1px; }
+  .price-tier {
+    flex: 1; padding: 9px 6px; border: none; cursor: pointer; background: rgba(0,0,0,0.03);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    border-right: 1px solid var(--border); transition: all 0.12s;
+  }
+  .price-tier:last-child { border-right: none; }
+  .price-tier .tier-name { font-size: 12px; font-weight: 600; color: var(--sub); }
+  .price-tier .tier-desc { font-size: 10px; color: var(--muted); }
+  .price-tier .tier-range { font-size: 10.5px; color: var(--sub); margin-top: 1px; }
+  .price-tier.sel { background: var(--brand); }
+  .price-tier.sel .tier-name, .price-tier.sel .tier-desc, .price-tier.sel .tier-range { color: #fff; }
+  .price-tier.sel .tier-desc { color: rgba(255,255,255,0.7); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    cursor: pointer; border: none; background: rgba(0,0,0,0.05); color: var(--sub);
+    transition: all 0.12s; display: flex; align-items: center; gap: 5px;
+  }
+  .chip.sel { background: var(--brand); color: #fff; }
+  .brand-logo { width: 16px; height: 16px; border-radius: 4px; background: rgba(255,255,255,0.2); font-size: 9px; display: flex; align-items: center; justify-content: center; }
+  .filter-cta { width: 100%; padding: 11px; border-radius: 10px; border: none; background: #000; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 6px; transition: opacity 0.12s; letter-spacing: -0.1px; }
+  .filter-cta:hover { opacity: 0.85; }
+
+  /* === Step 3: 추천 결과 가로 카드 === */
+  .result-card { background: #fff; border-radius: 14px; box-shadow: var(--shadow-card); padding: 16px 18px; max-width: 760px; }
+  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .result-header-left { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .result-view-toggle { display: flex; gap: 2px; background: rgba(0,0,0,0.05); padding: 3px; border-radius: 8px; }
+  .view-btn { padding: 5px 11px; border-radius: 5px; font-size: 11px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--sub); transition: all 0.12s; }
+  .view-btn.active { background: #fff; color: var(--text); box-shadow: var(--shadow-card); }
+
+  /* 가로 스크롤 카드 리스트 */
+  .cards-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+  .cards-scroll::-webkit-scrollbar { height: 4px; }
+  .cards-scroll::-webkit-scrollbar-track { background: transparent; }
+  .cards-scroll::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
+
+  .prod-card {
+    flex: 0 0 180px; border-radius: 12px; overflow: hidden;
+    box-shadow: var(--shadow-card); display: flex; flex-direction: column;
+    background: #fff; position: relative; transition: box-shadow 0.15s;
+  }
+  .prod-card:hover { box-shadow: rgba(0,0,0,0.12) 0px 0px 0px 1.5px, rgba(0,0,0,0.06) 0px 4px 12px; }
+  .prod-card.top1 { flex: 0 0 200px; box-shadow: rgba(78,63,180,0.25) 0px 0px 0px 2px, rgba(0,0,0,0.04) 0px 4px 12px; }
+
+  .prod-rank-badge {
+    position: absolute; top: 8px; left: 8px; z-index: 1;
+    width: 20px; height: 20px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800;
+  }
+  .rank-1 { background: #000; color: #fff; }
+  .rank-2 { background: var(--sub); color: #fff; }
+  .rank-3 { background: var(--muted); color: #fff; }
+  .rank-n { background: rgba(0,0,0,0.08); color: var(--sub); }
+
+  .prod-thumb-area {
+    height: 120px; background: #f0ece8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; position: relative;
+  }
+  .prod-card.top1 .prod-thumb-area { height: 130px; }
+  .prod-source-tag {
+    position: absolute; bottom: 7px; right: 7px;
+    padding: 2px 7px; border-radius: 5px; font-size: 9px; font-weight: 600;
+  }
+  .tag-internal { background: rgba(0,0,0,0.08); color: var(--text); }
+  .tag-external { background: rgba(138,111,63,0.12); color: #8a6f3f; }
+
+  .prod-body { padding: 10px 11px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .prod-brand { font-size: 10px; color: var(--muted); }
+  .prod-name { font-size: 12px; font-weight: 600; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; flex: 1; }
+  .prod-price { font-size: 15px; font-weight: 800; letter-spacing: -0.4px; margin-top: 4px; }
+  .prod-rating { font-size: 10px; color: var(--sub); display: flex; align-items: center; gap: 3px; }
+  .prod-rating .star { color: #f59e0b; }
+
+  /* AI 추천 이유 — 카드 하단 */
+  .ai-reason {
+    margin: 0 11px 10px; padding: 8px 10px;
+    background: var(--bg); border-radius: 7px;
+    border-left: 2px solid var(--brand);
+  }
+  .ai-reason-lbl { font-size: 9px; font-weight: 700; color: var(--brand); letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 3px; display: flex; align-items: center; gap: 3px; }
+  .ai-reason-text { font-size: 10.5px; color: var(--sub); line-height: 1.5; }
+  .ai-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+  .ai-tag { padding: 1px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 500; background: var(--brand-light); color: var(--brand); }
+
+  .prod-actions { padding: 0 11px 11px; display: flex; gap: 5px; }
+  .btn-see { flex: 0; padding: 6px 9px; border-radius: 7px; font-size: 10px; font-weight: 500; cursor: pointer; border: none; background: #fff; color: var(--text); box-shadow: var(--shadow-card); white-space: nowrap; transition: opacity 0.12s; }
+  .btn-see:hover { opacity: 0.75; }
+  .btn-price { flex: 0; padding: 6px 9px; border-radius: 7px; font-size: 10px; font-weight: 500; cursor: pointer; border: none; background: var(--green-light); color: var(--green); white-space: nowrap; transition: opacity 0.12s; }
+  .btn-price:hover { opacity: 0.75; }
+  .btn-cart { flex: 1; padding: 6px 8px; border-radius: 7px; font-size: 10px; font-weight: 600; cursor: pointer; border: none; background: #000; color: #fff; transition: opacity 0.12s; }
+  .btn-cart:hover { opacity: 0.8; }
+
+  /* 비교표 스펙 행 (가로 스크롤과 같은 형태) */
+  .spec-compare { overflow-x: auto; }
+  .spec-table { border-collapse: collapse; min-width: 600px; }
+  .spec-table th, .spec-table td { padding: 8px 12px; font-size: 11px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  .spec-table th { font-size: 10px; font-weight: 600; color: var(--sub); letter-spacing: 0.4px; text-transform: uppercase; background: var(--bg); }
+  .spec-table td:first-child { font-weight: 600; color: var(--sub); font-size: 10.5px; background: var(--bg); position: sticky; left: 0; }
+  .spec-table .highlight { background: var(--brand-light); color: var(--brand); font-weight: 600; }
+  .spec-badge { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+
+  /* 가격 비교 모달 */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-box {
+    background: #fff; border-radius: 18px; width: 460px; max-width: 92vw;
+    max-height: 85vh; display: flex; flex-direction: column;
+    box-shadow: rgba(0,0,0,0.2) 0px 20px 60px, rgba(0,0,0,0.08) 0px 0px 0px 1px;
+    transform: translateY(12px); transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal-box { transform: translateY(0); }
+  .modal-header {
+    padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .modal-title { font-size: 15px; font-weight: 700; }
+  .modal-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .modal-close { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(0,0,0,0.06); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; color: var(--sub); transition: background 0.12s; }
+  .modal-close:hover { background: rgba(0,0,0,0.12); }
+  .modal-body { padding: 12px 20px 20px; overflow-y: auto; flex: 1; }
+  .price-list { display: flex; flex-direction: column; gap: 8px; }
+  .price-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; border-radius: 10px; background: var(--bg);
+    cursor: pointer; transition: background 0.12s; position: relative;
+  }
+  .price-item:hover { background: #eae8e5; }
+  .price-item.lowest { background: var(--green-light); border: 1px solid rgba(22,163,74,0.2); }
+  .price-item-left { display: flex; align-items: center; gap: 10px; }
+  .platform-logo { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .logo-coupang { background: #e44d2e; }
+  .logo-auction { background: #e61e28; font-size: 10px; }
+  .logo-gmarket { background: #009900; }
+  .logo-11st { background: #f00; }
+  .platform-name { font-size: 13px; font-weight: 600; }
+  .platform-ship { font-size: 10.5px; color: var(--sub); margin-top: 2px; display: flex; align-items: center; gap: 3px; }
+  .ship-free { color: var(--green); font-weight: 500; }
+  .price-right { text-align: right; }
+  .price-amount { font-size: 16px; font-weight: 800; letter-spacing: -0.4px; }
+  .price-amount.cheapest { color: #e44d2e; }
+  .price-lowest-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--green); color: #fff; margin-top: 3px; }
+  .price-item-select-btn {
+    width: 100%; margin-top: 6px; padding: 8px; border-radius: 7px;
+    border: none; background: #000; color: #fff; font-size: 12px; font-weight: 600;
+    cursor: pointer; display: none; transition: opacity 0.12s;
+  }
+  .price-item:hover .price-item-select-btn { display: block; }
+  .price-item-select-btn:hover { opacity: 0.85; }
+  .modal-note { font-size: 11px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+  .modal-note strong { color: var(--sub); }
+
+  /* 컨트롤 */
+  .sim-controls { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .sim-btn { padding: 7px 13px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; background: #fff; color: var(--text); box-shadow: var(--shadow-card); transition: all 0.12s; }
+  .sim-btn:hover { background: var(--brand); color: #fff; }
+  .sim-btn.primary { background: #000; color: #fff; }
+  .sim-lbl { font-size: 11px; color: var(--muted); }
+
+  /* 주석/메모 */
+  .memo { background: var(--brand-light); border-radius: 10px; padding: 14px 16px; margin-top: 16px; }
+  .memo-title { font-size: 12px; font-weight: 700; color: var(--brand); margin-bottom: 8px; }
+  .memo ul { list-style: none; }
+  .memo ul li { font-size: 12px; color: var(--sub); padding: 3px 0 3px 14px; position: relative; line-height: 1.6; }
+  .memo ul li::before { content: '–'; position: absolute; left: 0; color: var(--muted); }
+  .memo ul li strong { color: var(--text); font-weight: 600; }
+
+  .qa-box { background: rgba(0,0,0,0.03); border: 1px dashed var(--muted); border-radius: 10px; padding: 14px 16px; margin-top: 12px; }
+  .qa-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .qa-text { font-size: 12px; color: var(--sub); line-height: 1.6; }
+  .qa-answer { font-size: 12px; color: var(--green); font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .spinning { animation: spin 1s linear infinite; display: inline-block; }
+  .pulsing { animation: pulse 1.2s ease infinite; }
+  .fade-in { animation: fadeIn 0.35s ease-out forwards; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>채팅 검색 플로우 기획 <span class="ver-badge">v2</span></h1>
+    <p>피드백 반영 — 결과 요약 줄글화 / 최저가 모달 / AI 추천 이유 레이블 / 가로 카드 + Top5 레이아웃</p>
+  </div>
+
+  <!-- 탭 -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('step1')">1단계 — 검색 프로그레스 + 결과</button>
+    <button class="tab-btn" onclick="showTab('step2')">2단계 — 맞춤 필터</button>
+    <button class="tab-btn" onclick="showTab('step3')">3단계 — 추천 결과 (가로)</button>
+    <button class="tab-btn" onclick="showTab('modal')">가격 비교 모달</button>
+    <button class="tab-btn" onclick="showTab('full')">전체 채팅 시뮬</button>
+  </div>
+
+  <!-- ══════════ STEP 1 ══════════ -->
+  <div id="tab-step1" class="tab-content active">
+    <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;">
+
+      <div>
+        <p style="font-size:11px;color:var(--sub);font-weight:600;margin-bottom:10px;">A. 검색 진행 중 (프로그레스 박스)</p>
+        <div style="background:#fff;border-radius:14px;box-shadow:var(--shadow-card);padding:14px 16px;max-width:300px;">
+          <div class="prog-row">
+            <div class="prog-icon done">✓</div>
+            <span class="prog-lbl done">검색 키워드 생성 중</span>
+          </div>
+          <div class="prog-connector"></div>
+          <div class="prog-row">
+            <div class="prog-icon active spinning" style="font-size:9px;">⟳</div>
+            <span class="prog-lbl active pulsing">최적 카테고리 탐색 중</span>
+          </div>
+          <div class="prog-connector"></div>
+          <div class="prog-row">
+            <div class="prog-icon pending">3</div>
+            <span class="prog-lbl pending">회사 구매기준 확인하기</span>
+          </div>
+        </div>
+
+        <p style="font-size:11px;color:var(--sub);font-weight:600;margin:20px 0 10px;">B. 검색 완료 → 프로그레스 박스 닫힘 (✓ 표시)</p>
+        <div style="background:#fff;border-radius:14px;box-shadow:var(--shadow-card);padding:14px 16px;max-width:300px;opacity:0.6;">
+          <div class="prog-row"><div class="prog-icon done">✓</div><span class="prog-lbl done">검색 키워드 생성 중</span></div>
+          <div class="prog-connector"></div>
+          <div class="prog-row"><div class="prog-icon done">✓</div><span class="prog-lbl done">최적 카테고리 탐색 중</span></div>
+          <div class="prog-connector"></div>
+          <div class="prog-row"><div class="prog-icon done">✓</div><span class="prog-lbl done">회사 구매기준 확인하기</span></div>
+        </div>
+        <p style="font-size:10.5px;color:var(--muted);margin-top:6px;">↓ 완료 직후 새 AI 메시지로 결과 카드 등장</p>
+      </div>
+
+      <div>
+        <p style="font-size:11px;color:var(--sub);font-weight:600;margin-bottom:10px;">C. 결과 요약 카드 (별도 AI 메시지) <span class="change-badge">v2 변경</span></p>
+        <div class="search-result-card">
+          <div class="src-header">
+            <span class="src-header-icon">🔍</span>
+            <span class="src-header-title">검색 완료</span>
+            <span class="src-header-count">47개 상품</span>
+          </div>
+
+          <!-- AI 줄글 -->
+          <div class="src-prose">
+            <strong>탄산음료 · 생수 · 기능성음료</strong> 카테고리에서 상품을 찾았어요.<br>
+            쿠팡, G마켓, 11번가 등 외부 마켓과 자체 상품을 합쳐 총 <strong>47개</strong>를 확인했으며,
+            가격 범위는 <strong>8,900원 ~ 38,000원</strong>이에요.<br>
+            리뷰 수가 1,000개 이상인 상품을 우선 선별했어요.
+          </div>
+
+          <!-- 썸네일 -->
+          <div class="src-thumbs">
+            <div class="src-thumb">🥤</div>
+            <div class="src-thumb">🧃</div>
+            <div class="src-thumb">💧</div>
+            <div class="src-thumb">⚡</div>
+            <div class="src-thumb">🍵</div>
+            <div class="src-thumb-more">+42</div>
+          </div>
+
+          <!-- 주요 브랜드 -->
+          <div class="src-brands">주요 브랜드 : <span>펩시콜라, 코카콜라, 롯데칠성, 동아오츠카, 웅진식품</span></div>
+
+          <!-- 스펙 힌트 -->
+          <div class="src-specs">
+            <div class="src-spec-item"><strong>용량</strong> 250ml ~ 1.8L</div>
+            <div class="src-spec-item"><strong>형태</strong> 캔 / PET / 유리</div>
+            <div class="src-spec-item"><strong>수량</strong> 낱개 / 24캔 / 30캔</div>
+            <div class="src-spec-item"><strong>당류</strong> 일반 / 제로</div>
+          </div>
+
+          <!-- 회사 구매기준 적용 내용 -->
+          <div class="src-policy">
+            <strong>🏢 로랩스 구매기준 적용</strong><br>
+            월 예산 50만원 이내 상품 우선 · 5만원 이상 시 팀장 승인 필요.<br>
+            지난 3개월 구매 패턴: 주로 24캔 단위 캔음료 / 평균 단가 18,000원대.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="memo">
+      <div class="memo-title">📋 v2 변경 사항</div>
+      <ul>
+        <li><strong>프로그레스 박스와 결과 카드 분리</strong> — 완료 후 프로그레스는 ✓ 상태로 유지, 결과는 별도 AI 메시지로</li>
+        <li><strong>AI 줄글 형식</strong> — "어떤 카테고리에서 / 몇 개 / 왜 선별했는지" 자연어로 설명</li>
+        <li><strong>썸네일</strong> — 실제 구현 시 상품 이미지 API에서 최대 5개 가져옴 (나머지 +N)</li>
+        <li><strong>주요 브랜드</strong> — 칩 X, 텍스트 한 줄로만 표시</li>
+        <li><strong>스펙 힌트</strong> — "스펙 비교 완료" 대신 실제 비교된 스펙 항목 노출 (용량/형태/수량/당류 등)</li>
+        <li><strong>회사 구매기준 블록</strong> — 설정 데이터(예산/승인체계) + 구매 기록 패턴을 AI가 요약해서 표시</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ STEP 2 ══════════ -->
+  <div id="tab-step2" class="tab-content">
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+      <div>
+        <p style="font-size:11px;color:var(--sub);font-weight:600;margin-bottom:10px;">맞춤 필터 카드 (채팅 인라인)</p>
+        <div class="filter-card">
+          <div class="filter-header">
+            <span>🎯</span>
+            로랩스에 맞는 상품을 고를게요. 조건을 선택해주세요
+          </div>
+
+          <div class="filter-section">
+            <div class="filter-lbl">가격대</div>
+            <div class="price-tiers">
+              <button class="price-tier" onclick="selTier(this)">
+                <span class="tier-name">실속형</span>
+                <span class="tier-desc">가성비 중심</span>
+                <span class="tier-range">~1만원대</span>
+              </button>
+              <button class="price-tier sel" onclick="selTier(this)">
+                <span class="tier-name">일반형</span>
+                <span class="tier-desc">품질 균형</span>
+                <span class="tier-range">1~3만원대</span>
+              </button>
+              <button class="price-tier" onclick="selTier(this)">
+                <span class="tier-name">프리미엄</span>
+                <span class="tier-desc">품질 우선</span>
+                <span class="tier-range">3만원 이상</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <div class="filter-lbl">브랜드 <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400;">(복수 선택)</span></div>
+            <div class="chips">
+              <button class="chip sel" onclick="tog(this)"><div class="brand-logo">🥤</div>펩시콜라</button>
+              <button class="chip" onclick="tog(this)"><div class="brand-logo">🥤</div>코카콜라</button>
+              <button class="chip" onclick="tog(this)"><div class="brand-logo">🍊</div>롯데칠성</button>
+              <button class="chip" onclick="tog(this)"><div class="brand-logo">💧</div>동아오츠카</button>
+              <button class="chip" onclick="tog(this)"><div class="brand-logo">🌿</div>웅진식품</button>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <div class="filter-lbl">옵션</div>
+            <div class="chips" style="margin-bottom:6px;">
+              <button class="chip sel" onclick="tog(this)">캔</button>
+              <button class="chip" onclick="tog(this)">PET</button>
+              <button class="chip" onclick="tog(this)">대용량 (1.5L+)</button>
+            </div>
+            <div class="chips">
+              <button class="chip sel" onclick="tog(this)">탄산</button>
+              <button class="chip" onclick="tog(this)">제로/저당</button>
+              <button class="chip" onclick="tog(this)">에너지</button>
+              <button class="chip" onclick="tog(this)">차/주스</button>
+            </div>
+          </div>
+
+          <button class="filter-cta">맞춤 추천 보기 →</button>
+        </div>
+      </div>
+
+      <div style="max-width:260px;">
+        <div class="qa-box">
+          <div class="qa-title">Q. 2단계는 항상 나오나요?</div>
+          <div class="qa-answer">✅ 확정: 항상 나옴</div>
+          <div class="qa-text" style="margin-top:6px;">결과 개수에 관계없이 항상 필터 카드를 보여줌. 빠른 추천이 필요한 경우에도 기본값 선택 상태로 "맞춤 추천 보기"를 바로 누를 수 있음.</div>
+        </div>
+        <div class="qa-box" style="margin-top:10px;">
+          <div class="qa-title">Q. 위치는?</div>
+          <div class="qa-answer">✅ 확정: 채팅 인라인</div>
+          <div class="qa-text" style="margin-top:6px;">우측 패널이 아닌 채팅 버블로 표시. 선택 → CTA 클릭 시 3단계 결과가 새 AI 메시지로 등장.</div>
+        </div>
+        <div class="memo" style="margin-top:10px;">
+          <div class="memo-title">📋 메모</div>
+          <ul>
+            <li>가격대 기본값: 검색 결과 가격 중앙값 기준 자동 선택</li>
+            <li>브랜드 기본값: 결과 상위 빈도 브랜드 1개 선택</li>
+            <li>옵션: 카테고리별 다르게 동적 생성</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ STEP 3 ══════════ -->
+  <div id="tab-step3" class="tab-content">
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:11px;color:var(--sub);font-weight:600;margin-bottom:10px;">추천 결과 카드 (가로 스크롤 · Top 5) <span class="change-badge">v2 변경</span></p>
+        <div class="result-card" style="max-width:100%;">
+          <div class="result-header">
+            <div class="result-header-left">✨ 로랩스에 맞는 추천 결과예요</div>
+            <div class="result-view-toggle">
+              <button class="view-btn active">추천순</button>
+              <button class="view-btn">스펙 비교</button>
+            </div>
+          </div>
+
+          <!-- 가로 스크롤 카드 -->
+          <div class="cards-scroll" id="cardsScroll">
+
+            <!-- 1위 -->
+            <div class="prod-card top1">
+              <div class="prod-rank-badge rank-1">1</div>
+              <div class="prod-thumb-area">🥤<div class="prod-source-tag tag-internal">⚡ 자체</div></div>
+              <div class="prod-body">
+                <div class="prod-brand">펩시콜라</div>
+                <div class="prod-name">펩시콜라 제로슈거 355ml × 24캔</div>
+                <div class="prod-price">18,900원</div>
+                <div class="prod-rating"><span class="star">★</span>4.8 (2,340)</div>
+              </div>
+              <div class="ai-reason">
+                <div class="ai-reason-lbl">🤖 AI 추천 이유</div>
+                <div class="ai-reason-text">제로슈거 · 24캔 대용량으로 로랩스 구매패턴과 일치. 예산 범위 내.</div>
+                <div class="ai-tags"><span class="ai-tag">제로슈거</span><span class="ai-tag">대용량</span><span class="ai-tag">가성비</span></div>
+              </div>
+              <div class="prod-actions">
+                <button class="btn-see">상세</button>
+                <button class="btn-price" onclick="openModal('펩시콜라 제로슈거 355ml × 24캔')">최저가</button>
+                <button class="btn-cart">담기</button>
+              </div>
+            </div>
+
+            <!-- 2위 -->
+            <div class="prod-card">
+              <div class="prod-rank-badge rank-2">2</div>
+              <div class="prod-thumb-area" style="background:#ece8e0;">🥤<div class="prod-source-tag tag-external">🌐 외부</div></div>
+              <div class="prod-body">
+                <div class="prod-brand">코카콜라</div>
+                <div class="prod-name">코카콜라 제로 250ml × 30캔</div>
+                <div class="prod-price">22,500원</div>
+                <div class="prod-rating"><span class="star">★</span>4.9 (5,120)</div>
+              </div>
+              <div class="ai-reason">
+                <div class="ai-reason-lbl">🤖 AI 추천 이유</div>
+                <div class="ai-reason-text">인지도 최상위. 250ml 소용량 개별 제공에 최적.</div>
+                <div class="ai-tags"><span class="ai-tag">인기 1위</span><span class="ai-tag">소용량</span></div>
+              </div>
+              <div class="prod-actions">
+                <button class="btn-see">상세</button>
+                <button class="btn-price" onclick="openModal('코카콜라 제로 250ml × 30캔')">최저가</button>
+                <button class="btn-cart">담기</button>
+              </div>
+            </div>
+
+            <!-- 3위 -->
+            <div class="prod-card">
+              <div class="prod-rank-badge rank-3">3</div>
+              <div class="prod-thumb-area" style="background:#e8eef0;">🧃<div class="prod-source-tag tag-internal">⚡ 자체</div></div>
+              <div class="prod-body">
+                <div class="prod-brand">롯데칠성</div>
+                <div class="prod-name">칠성사이다 355ml × 24캔</div>
+                <div class="prod-price">16,500원</div>
+                <div class="prod-rating"><span class="star">★</span>4.7 (3,841)</div>
+              </div>
+              <div class="ai-reason">
+                <div class="ai-reason-lbl">🤖 AI 추천 이유</div>
+                <div class="ai-reason-text">비콜라 선호 직원 커버. 가장 저렴한 대용량 옵션.</div>
+                <div class="ai-tags"><span class="ai-tag">사이다</span><span class="ai-tag">최저가</span></div>
+              </div>
+              <div class="prod-actions">
+                <button class="btn-see">상세</button>
+                <button class="btn-price" onclick="openModal('칠성사이다 355ml × 24캔')">최저가</button>
+                <button class="btn-cart">담기</button>
+              </div>
+            </div>
+
+            <!-- 4위 -->
+            <div class="prod-card">
+              <div class="prod-rank-badge rank-n">4</div>
+              <div class="prod-thumb-area" style="background:#e8f0e8;">⚡<div class="prod-source-tag tag-external">🌐 외부</div></div>
+              <div class="prod-body">
+                <div class="prod-brand">동아오츠카</div>
+                <div class="prod-name">포카리스웨트 340ml × 24캔</div>
+                <div class="prod-price">24,900원</div>
+                <div class="prod-rating"><span class="star">★</span>4.8 (1,902)</div>
+              </div>
+              <div class="ai-reason">
+                <div class="ai-reason-lbl">🤖 AI 추천 이유</div>
+                <div class="ai-reason-text">이온음료 수요 있을 때 대안. 여름철 적합.</div>
+                <div class="ai-tags"><span class="ai-tag">이온음료</span><span class="ai-tag">여름</span></div>
+              </div>
+              <div class="prod-actions">
+                <button class="btn-see">상세</button>
+                <button class="btn-price" onclick="openModal('포카리스웨트 340ml × 24캔')">최저가</button>
+                <button class="btn-cart">담기</button>
+              </div>
+            </div>
+
+            <!-- 5위 -->
+            <div class="prod-card">
+              <div class="prod-rank-badge rank-n">5</div>
+              <div class="prod-thumb-area" style="background:#f0e8f0;">🍵<div class="prod-source-tag tag-internal">⚡ 자체</div></div>
+              <div class="prod-body">
+                <div class="prod-brand">웅진식품</div>
+                <div class="prod-name">하늘보리 340ml × 20캔</div>
+                <div class="prod-price">14,800원</div>
+                <div class="prod-rating"><span class="star">★</span>4.5 (987)</div>
+              </div>
+              <div class="ai-reason">
+                <div class="ai-reason-lbl">🤖 AI 추천 이유</div>
+                <div class="ai-reason-text">탄산 기피 직원 커버. 보리차로 건강 선호 트렌드.</div>
+                <div class="ai-tags"><span class="ai-tag">무탄산</span><span class="ai-tag">건강</span></div>
+              </div>
+              <div class="prod-actions">
+                <button class="btn-see">상세</button>
+                <button class="btn-price" onclick="openModal('하늘보리 340ml × 20캔')">최저가</button>
+                <button class="btn-cart">담기</button>
+              </div>
+            </div>
+
+          </div><!-- /cards-scroll -->
+
+          <!-- 스펙 비교표 (토글) -->
+          <div id="specTable" style="display:none; margin-top:14px;">
+            <div class="spec-compare">
+              <table class="spec-table">
+                <thead>
+                  <tr>
+                    <th>스펙</th>
+                    <th>1위 펩시 제로</th>
+                    <th>2위 코카 제로</th>
+                    <th>3위 칠성사이다</th>
+                    <th>4위 포카리</th>
+                    <th>5위 하늘보리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>가격</td>
+                    <td class="highlight">18,900원</td>
+                    <td>22,500원</td>
+                    <td>16,500원</td>
+                    <td>24,900원</td>
+                    <td>14,800원</td>
+                  </tr>
+                  <tr>
+                    <td>단가(캔)</td>
+                    <td class="highlight">788원</td>
+                    <td>750원</td>
+                    <td>688원</td>
+                    <td>1,038원</td>
+                    <td>740원</td>
+                  </tr>
+                  <tr>
+                    <td>용량</td>
+                    <td>355ml</td>
+                    <td>250ml</td>
+                    <td>355ml</td>
+                    <td>340ml</td>
+                    <td>340ml</td>
+                  </tr>
+                  <tr>
+                    <td>수량</td>
+                    <td>24캔</td>
+                    <td>30캔</td>
+                    <td>24캔</td>
+                    <td>24캔</td>
+                    <td>20캔</td>
+                  </tr>
+                  <tr>
+                    <td>당류</td>
+                    <td><span class="spec-badge" style="background:var(--green-light);color:var(--green);">제로</span></td>
+                    <td><span class="spec-badge" style="background:var(--green-light);color:var(--green);">제로</span></td>
+                    <td>일반</td>
+                    <td>이온</td>
+                    <td>무당</td>
+                  </tr>
+                  <tr>
+                    <td>출처</td>
+                    <td><span class="spec-badge" style="background:rgba(0,0,0,0.07);">자체</span></td>
+                    <td><span class="spec-badge" style="background:rgba(138,111,63,0.1);color:#8a6f3f;">외부</span></td>
+                    <td><span class="spec-badge" style="background:rgba(0,0,0,0.07);">자체</span></td>
+                    <td><span class="spec-badge" style="background:rgba(138,111,63,0.1);color:#8a6f3f;">외부</span></td>
+                    <td><span class="spec-badge" style="background:rgba(0,0,0,0.07);">자체</span></td>
+                  </tr>
+                  <tr>
+                    <td>별점</td>
+                    <td>★ 4.8</td>
+                    <td class="highlight">★ 4.9</td>
+                    <td>★ 4.7</td>
+                    <td>★ 4.8</td>
+                    <td>★ 4.5</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div><!-- /result-card -->
+      </div>
+
+      <div style="max-width:260px;flex-shrink:0;">
+        <div class="qa-box">
+          <div class="qa-title">Q. 추천 개수?</div>
+          <div class="qa-answer">✅ 확정: Top 5</div>
+          <div class="qa-text" style="margin-top:4px;">최대 5개까지 가로 스크롤로 표시. 카드 폭 180px (1위는 200px), 채팅 영역 내 2.5~3개 보이는 형태로 스크롤 유도.</div>
+        </div>
+        <div class="memo" style="margin-top:10px;">
+          <div class="memo-title">📋 v2 변경 사항</div>
+          <ul>
+            <li><strong>AI 추천 이유 레이블</strong> "🤖 AI 추천 이유" 명시 — 무엇인지 긴가민가한 문제 해결</li>
+            <li><strong>가로 레이아웃</strong> — 비교형 UI이므로 가로 스크롤이 자연스러움</li>
+            <li><strong>스펙 비교 토글</strong> — "스펙 비교" 버튼 시 같은 카드 하단에 비교표 펼쳐짐 (우측 패널 X)</li>
+            <li><strong>출처: 자체/외부</strong>만 표시 (DB명 비노출)</li>
+            <li><strong>최저가 버튼</strong> → 모달 팝업 (아래 탭 참조)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 가격 비교 모달 ══════════ -->
+  <div id="tab-modal" class="tab-content">
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+      <div>
+        <p style="font-size:11px;color:var(--sub);font-weight:600;margin-bottom:10px;">상품 카드 내 "최저가" 버튼 클릭 시 모달 <span class="change-badge">v2 신규</span></p>
+        <!-- 인라인 모달 미리보기 -->
+        <div class="modal-box" style="position:relative;transform:none;max-height:none;width:440px;">
+          <div class="modal-header">
+            <div>
+              <div class="modal-title">가격 비교</div>
+              <div class="modal-sub">펩시콜라 제로슈거 355ml × 24캔</div>
+            </div>
+            <button class="modal-close">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="price-list">
+
+              <div class="price-item lowest">
+                <div class="price-item-left">
+                  <div class="platform-logo logo-coupang">C</div>
+                  <div>
+                    <div class="platform-name">쿠팡</div>
+                    <div class="platform-ship"><span class="ship-free">무료배송</span> · 내일 도착</div>
+                  </div>
+                </div>
+                <div class="price-right">
+                  <div class="price-amount cheapest">11,230원</div>
+                  <div class="price-lowest-badge">🏷 최저가</div>
+                </div>
+              </div>
+              <!-- 선택 버튼 (호버 시 등장 → 여기선 항상 노출) -->
+              <button style="width:100%;padding:9px;border-radius:8px;border:none;background:#000;color:#fff;font-size:12px;font-weight:600;cursor:pointer;margin-top:-2px;">이 가격으로 선택하기 (외부 상품 정보 수집)</button>
+              <p style="font-size:10.5px;color:var(--muted);margin-top:4px;margin-bottom:6px;">선택 시 쿠팡 상품 정보를 수집해 장바구니에 담을 수 있어요.</p>
+
+              <div class="price-item">
+                <div class="price-item-left">
+                  <div class="platform-logo logo-coupang">C</div>
+                  <div>
+                    <div class="platform-name">쿠팡</div>
+                    <div class="platform-ship"><span class="ship-free">무료배송</span></div>
+                  </div>
+                </div>
+                <div class="price-right"><div class="price-amount">14,500원</div></div>
+              </div>
+
+              <div class="price-item">
+                <div class="price-item-left">
+                  <div class="platform-logo logo-auction">A</div>
+                  <div>
+                    <div class="platform-name">옥션</div>
+                    <div class="platform-ship"><span class="ship-free">무료배송</span></div>
+                  </div>
+                </div>
+                <div class="price-right"><div class="price-amount">16,120원</div></div>
+              </div>
+
+              <div class="price-item">
+                <div class="price-item-left">
+                  <div class="platform-logo logo-gmarket">G</div>
+                  <div>
+                    <div class="platform-name">G마켓</div>
+                    <div class="platform-ship"><span class="ship-free">무료배송</span></div>
+                  </div>
+                </div>
+                <div class="price-right"><div class="price-amount">16,650원</div></div>
+              </div>
+
+              <div class="price-item">
+                <div class="price-item-left">
+                  <div class="platform-logo logo-11st">11</div>
+                  <div>
+                    <div class="platform-name">11번가</div>
+                    <div class="platform-ship">배송비 2,500원</div>
+                  </div>
+                </div>
+                <div class="price-right"><div class="price-amount">17,220원</div></div>
+              </div>
+
+            </div>
+            <div class="modal-note">
+              <strong>외부 마켓 상품 선택 시</strong> 해당 플랫폼의 상품 정보를 실시간으로 수집해요. 배송일, 옵션 등 상세 정보는 수집 후 확인 가능해요.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width:260px;">
+        <div class="memo">
+          <div class="memo-title">📋 v2 변경 사항</div>
+          <ul>
+            <li>기존 "다나와에서 확인 ↗" 배너 → <strong>카드 내 "최저가" 버튼</strong>으로 변경</li>
+            <li>버튼 클릭 → <strong>가격비교 모달</strong> (쿠팡/옥션/G마켓/11번가 등)</li>
+            <li><strong>"이 가격으로 선택하기"</strong> 클릭 → 해당 외부 상품 스크래핑 시작 → 완료 후 장바구니 가능</li>
+            <li>최저가 항목은 빨간 가격 + 🏷 최저가 뱃지로 강조</li>
+            <li>데이터 출처는 "다나와"라고 명시하지 않고, 각 플랫폼(쿠팡/옥션 등)을 직접 표시</li>
+          </ul>
+        </div>
+        <div class="qa-box" style="margin-top:10px;">
+          <div class="qa-title">Q. "최저가" 버튼 항상 노출?</div>
+          <div class="qa-answer">📌 결정 필요</div>
+          <div class="qa-text" style="margin-top:4px;">
+            옵션 A: 항상 노출 (투명성)<br>
+            옵션 B: 외부 마켓 상품에만 노출<br>
+            옵션 C: 자체 상품도 포함 (자체 vs 외부 비교)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 전체 채팅 시뮬 ══════════ -->
+  <div id="tab-full" class="tab-content">
+    <div class="chat-sim">
+      <div class="chat-sim-bar">
+        <div class="dot" style="background:#ff5f57;"></div>
+        <div class="dot" style="background:#febc2e;"></div>
+        <div class="dot" style="background:#28c840;"></div>
+        <span style="font-size:12px;font-weight:600;color:var(--sub);margin-left:8px;">Lambda Chat — 로랩스</span>
+      </div>
+      <div class="chat-area" id="chatArea">
+        <div class="bubble-row user">
+          <div class="av usr">박</div>
+          <div class="bubble usr">사무실 음료 구매하고 싶어요. 콜라나 음료수 추천해줘요.</div>
+        </div>
+        <div class="bubble-row">
+          <div class="av ai">λ</div>
+          <div class="bubble ai" id="progressBubble">
+            <div id="ps1" class="prog-row"><div class="prog-icon pending">1</div><span class="prog-lbl pending">검색 키워드 생성 중</span></div>
+            <div class="prog-connector"></div>
+            <div id="ps2" class="prog-row"><div class="prog-icon pending">2</div><span class="prog-lbl pending">최적 카테고리 탐색 중</span></div>
+            <div class="prog-connector"></div>
+            <div id="ps3" class="prog-row"><div class="prog-icon pending">3</div><span class="prog-lbl pending">회사 구매기준 확인하기</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="sim-controls">
+        <span class="sim-lbl">재생:</span>
+        <button class="sim-btn" onclick="runProg()">▶ 1단계 검색</button>
+        <button class="sim-btn" onclick="addResult()">➕ 결과 요약</button>
+        <button class="sim-btn" onclick="addFilter()">➕ 2단계 필터</button>
+        <button class="sim-btn primary" onclick="addRecs()">➕ 3단계 추천</button>
+        <button class="sim-btn" onclick="resetSim()" style="color:var(--muted);">↺ 리셋</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 가격 비교 모달 (오버레이) -->
+<div class="modal-overlay" id="priceModal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">가격 비교</div>
+        <div class="modal-sub" id="modalProdName">상품명</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('priceModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="price-list">
+        <div class="price-item lowest">
+          <div class="price-item-left">
+            <div class="platform-logo logo-coupang">C</div>
+            <div><div class="platform-name">쿠팡</div><div class="platform-ship"><span class="ship-free">무료배송</span> · 내일 도착</div></div>
+          </div>
+          <div class="price-right">
+            <div class="price-amount cheapest">11,230원</div>
+            <div class="price-lowest-badge">🏷 최저가</div>
+          </div>
+        </div>
+        <button style="width:100%;padding:9px;border-radius:8px;border:none;background:#000;color:#fff;font-size:12px;font-weight:600;cursor:pointer;margin-top:2px;" onclick="alert('외부 상품 정보 수집을 시작해요!\n수집 완료 후 장바구니에 담을 수 있어요.')">이 가격으로 선택하기 (외부 상품 정보 수집)</button>
+        <p style="font-size:10.5px;color:var(--muted);margin-bottom:4px;">선택 시 해당 플랫폼 상품 정보를 수집해요.</p>
+        <div class="price-item"><div class="price-item-left"><div class="platform-logo logo-coupang">C</div><div><div class="platform-name">쿠팡</div><div class="platform-ship"><span class="ship-free">무료배송</span></div></div></div><div class="price-right"><div class="price-amount">14,500원</div></div></div>
+        <div class="price-item"><div class="price-item-left"><div class="platform-logo logo-auction">A</div><div><div class="platform-name">옥션</div><div class="platform-ship"><span class="ship-free">무료배송</span></div></div></div><div class="price-right"><div class="price-amount">16,120원</div></div></div>
+        <div class="price-item"><div class="price-item-left"><div class="platform-logo logo-gmarket">G</div><div><div class="platform-name">G마켓</div><div class="platform-ship"><span class="ship-free">무료배송</span></div></div></div><div class="price-right"><div class="price-amount">16,650원</div></div></div>
+        <div class="price-item"><div class="price-item-left"><div class="platform-logo logo-11st">11</div><div><div class="platform-name">11번가</div><div class="platform-ship">배송비 2,500원</div></div></div><div class="price-right"><div class="price-amount">17,220원</div></div></div>
+      </div>
+      <div class="modal-note">외부 마켓 상품 선택 시 해당 플랫폼 상품 정보를 실시간 수집해요. 배송일·옵션 등 상세 정보는 수집 완료 후 확인할 수 있어요.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 탭 */
+function showTab(n) {
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+n).classList.add('active');
+  event.target.classList.add('active');
+}
+
+/* 필터 인터랙션 */
+function selTier(b){b.parentElement.querySelectorAll('.price-tier').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');}
+function tog(b){b.classList.toggle('sel');}
+
+/* 스펙 비교 토글 */
+document.querySelectorAll('.view-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    btn.parentElement.querySelectorAll('.view-btn').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+    const st=document.getElementById('specTable');
+    if(st) st.style.display=btn.textContent.includes('스펙')?'block':'none';
+  });
+});
+
+/* 모달 */
+function openModal(name){
+  document.getElementById('modalProdName').textContent=name;
+  document.getElementById('priceModal').classList.add('open');
+}
+function closeModal(e){if(e.target.id==='priceModal')document.getElementById('priceModal').classList.remove('open');}
+
+/* 채팅 시뮬 */
+let st=0, anim=false;
+function setIcon(id,cls,txt){const r=document.getElementById(id);r.querySelector('.prog-icon').className='prog-icon '+cls;r.querySelector('.prog-icon').textContent=txt;r.querySelector('.prog-lbl').className='prog-lbl '+cls;}
+function runProg(){
+  if(anim)return; anim=true;
+  setIcon('ps1','pending','1'); setIcon('ps2','pending','2'); setIcon('ps3','pending','3');
+  setTimeout(()=>setIcon('ps1','active spinning','⟳'),200);
+  setTimeout(()=>{setIcon('ps1','done','✓');setIcon('ps2','active spinning','⟳');},1200);
+  setTimeout(()=>{setIcon('ps2','done','✓');setIcon('ps3','active spinning','⟳');},2200);
+  setTimeout(()=>{setIcon('ps3','done','✓');anim=false;st=1;},3200);
+}
+function addResult(){
+  if(st<1){alert('먼저 1단계 검색을 실행하세요');return;}
+  if(st>=2)return; st=2;
+  const a=document.getElementById('chatArea');
+  const d=document.createElement('div');
+  d.className='bubble-row fade-in';
+  d.innerHTML=`<div class="av ai">λ</div><div class="bubble ai wide"><div class="search-result-card" style="box-shadow:none;padding:0;max-width:100%;background:transparent;"><div class="src-header"><span class="src-header-icon">🔍</span><span class="src-header-title">검색 완료</span><span class="src-header-count">47개 상품</span></div><div class="src-prose"><strong>탄산음료 · 생수 · 기능성음료</strong> 카테고리에서 총 <strong>47개</strong>를 찾았어요. 가격은 <strong>8,900원 ~ 38,000원</strong>이며, 리뷰 1,000개 이상 상품을 우선 선별했어요.</div><div class="src-thumbs"><div class="src-thumb">🥤</div><div class="src-thumb">🧃</div><div class="src-thumb">💧</div><div class="src-thumb">⚡</div><div class="src-thumb-more">+43</div></div><div class="src-brands">주요 브랜드 : <span>펩시콜라, 코카콜라, 롯데칠성, 동아오츠카</span></div><div class="src-specs"><div class="src-spec-item"><strong>용량</strong> 250ml~1.8L</div><div class="src-spec-item"><strong>형태</strong> 캔/PET</div><div class="src-spec-item"><strong>수량</strong> 낱개~30캔</div><div class="src-spec-item"><strong>당류</strong> 일반/제로</div></div><div class="src-policy"><strong>🏢 로랩스 구매기준 적용</strong><br>월 예산 50만원 이내 우선 · 5만원 이상 팀장 승인. 최근 3개월: 24캔 단위 캔음료 주로 구매.</div></div></div>`;
+  a.appendChild(d); a.scrollTop=a.scrollHeight;
+}
+function addFilter(){
+  if(st<2){alert('먼저 결과 요약을 추가하세요');return;}
+  if(st>=3)return; st=3;
+  const a=document.getElementById('chatArea');
+  const d=document.createElement('div'); d.className='bubble-row fade-in';
+  d.innerHTML=`<div class="av ai">λ</div><div class="bubble ai" style="max-width:480px;padding:12px;"><div class="filter-card" style="box-shadow:none;padding:0;background:transparent;max-width:100%;"><div class="filter-header" style="font-size:12.5px;">🎯 로랩스에 맞는 상품을 고를게요. 조건을 선택해주세요</div><div class="filter-section"><div class="filter-lbl">가격대</div><div class="price-tiers"><button class="price-tier" onclick="selTier(this)"><span class="tier-name">실속형</span><span class="tier-range">~1만원</span></button><button class="price-tier sel" onclick="selTier(this)"><span class="tier-name">일반형</span><span class="tier-range">1~3만원</span></button><button class="price-tier" onclick="selTier(this)"><span class="tier-name">프리미엄</span><span class="tier-range">3만원+</span></button></div></div><div class="filter-section"><div class="filter-lbl">브랜드</div><div class="chips"><button class="chip sel" onclick="tog(this)"><div class="brand-logo">🥤</div>펩시콜라</button><button class="chip" onclick="tog(this)"><div class="brand-logo">🥤</div>코카콜라</button><button class="chip" onclick="tog(this)"><div class="brand-logo">🍊</div>롯데칠성</button></div></div><button class="filter-cta" onclick="addRecs()">맞춤 추천 보기 →</button></div></div>`;
+  a.appendChild(d); a.scrollTop=a.scrollHeight;
+}
+function addRecs(){
+  if(st<3){alert('먼저 필터 카드를 추가하세요');return;}
+  if(st>=4)return; st=4;
+  const a=document.getElementById('chatArea');
+  const u=document.createElement('div'); u.className='bubble-row user fade-in';
+  u.innerHTML=`<div class="av usr">박</div><div class="bubble usr">일반형, 펩시·코카콜라로 추천해줘요</div>`;
+  a.appendChild(u);
+  setTimeout(()=>{
+    const d=document.createElement('div'); d.className='bubble-row fade-in';
+    d.innerHTML=`<div class="av ai">λ</div><div class="bubble ai wide" style="max-width:700px;padding:12px;"><div style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px;">✨ 로랩스에 맞는 추천 결과예요</div><div class="cards-scroll" style="padding-bottom:4px;"><div class="prod-card top1"><div class="prod-rank-badge rank-1">1</div><div class="prod-thumb-area">🥤<div class="prod-source-tag tag-internal">⚡ 자체</div></div><div class="prod-body"><div class="prod-brand">펩시콜라</div><div class="prod-name">펩시콜라 제로슈거 355ml × 24캔</div><div class="prod-price">18,900원</div></div><div class="ai-reason"><div class="ai-reason-lbl">🤖 AI 추천 이유</div><div class="ai-reason-text">로랩스 구매패턴과 일치. 예산 범위 내.</div><div class="ai-tags"><span class="ai-tag">제로슈거</span><span class="ai-tag">대용량</span></div></div><div class="prod-actions"><button class="btn-see">상세</button><button class="btn-price" onclick="openModal('펩시콜라 제로슈거')">최저가</button><button class="btn-cart">담기</button></div></div><div class="prod-card"><div class="prod-rank-badge rank-2">2</div><div class="prod-thumb-area" style="background:#ece8e0;">🥤<div class="prod-source-tag tag-external">🌐 외부</div></div><div class="prod-body"><div class="prod-brand">코카콜라</div><div class="prod-name">코카콜라 제로 250ml × 30캔</div><div class="prod-price">22,500원</div></div><div class="ai-reason"><div class="ai-reason-lbl">🤖 AI 추천 이유</div><div class="ai-reason-text">인지도 최상위. 소용량 개별 제공 최적.</div><div class="ai-tags"><span class="ai-tag">인기 1위</span></div></div><div class="prod-actions"><button class="btn-see">상세</button><button class="btn-price" onclick="openModal('코카콜라 제로')">최저가</button><button class="btn-cart">담기</button></div></div><div class="prod-card"><div class="prod-rank-badge rank-3">3</div><div class="prod-thumb-area" style="background:#e8eef0;">🧃<div class="prod-source-tag tag-internal">⚡ 자체</div></div><div class="prod-body"><div class="prod-brand">롯데칠성</div><div class="prod-name">칠성사이다 355ml × 24캔</div><div class="prod-price">16,500원</div></div><div class="ai-reason"><div class="ai-reason-lbl">🤖 AI 추천 이유</div><div class="ai-reason-text">비콜라 선호 직원 커버. 가장 저렴.</div><div class="ai-tags"><span class="ai-tag">최저가</span></div></div><div class="prod-actions"><button class="btn-see">상세</button><button class="btn-price" onclick="openModal('칠성사이다')">최저가</button><button class="btn-cart">담기</button></div></div></div></div>`;
+    a.appendChild(d); a.scrollTop=a.scrollHeight;
+  },700);
+  a.scrollTop=a.scrollHeight;
+}
+function resetSim(){
+  st=0; anim=false;
+  const a=document.getElementById('chatArea');
+  const rows=[...a.querySelectorAll('.bubble-row')];
+  rows.forEach((r,i)=>{ if(i>1) r.remove(); });
+  setIcon('ps1','pending','1'); setIcon('ps2','pending','2'); setIcon('ps3','pending','3');
+}
+</script>
+</body>
+</html>

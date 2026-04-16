@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import {
-  Eye, ShoppingCart, Sparkles, Check, ExternalLink,
-  Database, Building2, Globe, Zap, Loader2, ShieldCheck,
-  TrendingDown, RefreshCw, Clock, ChevronDown, ChevronUp,
+  Eye, ShoppingCart, Sparkles, Check,
+  Database, Globe, Zap, Loader2, ShieldCheck,
+  TrendingDown,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
 
@@ -13,7 +13,7 @@ import {
    3가지 DB에서 추출된 상품을 시각적으로 구분
    ═══════════════════════════════════════ */
 
-export type SourceType = "airsupply-db" | "airsupply-supplier" | "api-external";
+export type SourceType = "internal" | "external";
 
 export type ScrapingStatus = "idle" | "scraping" | "done" | "failed";
 
@@ -25,6 +25,7 @@ export interface SourcedProduct {
   brand: string;
   category: string;
   source: SourceType;
+  sourceLabel?: string;
   platform?: string;           // 쿠팡, 네이버, 구글쇼핑
   platformUrl?: string;
   // 에어서플라이 DB 전용 필드
@@ -50,26 +51,19 @@ export interface SourcedProduct {
 }
 
 const sourceConfig: Record<SourceType, { label: string; color: string; bg: string; icon: React.ReactNode; description: string }> = {
-  "airsupply-db": {
-    label: "에어서플라이 DB",
+  internal: {
+    label: "자체 추천",
     color: "#000",
     bg: "rgba(0,0,0,0.04)",
     icon: <Database size={11} strokeWidth={2} />,
-    description: "최근 30일 구매 데이터 기반",
+    description: "회사 데이터와 구매 기준 반영",
   },
-  "airsupply-supplier": {
-    label: "입점 공급사",
-    color: "#777169",
-    bg: "rgba(245,242,239,0.8)",
-    icon: <Building2 size={11} strokeWidth={2} />,
-    description: "에어서플라이 입점 공급사 직거래",
-  },
-  "api-external": {
+  external: {
     label: "외부 마켓",
     color: "#8a6f3f",
     bg: "rgba(138,111,63,0.08)",
     icon: <Globe size={11} strokeWidth={2} />,
-    description: "네이버·쿠팡·구글쇼핑 API",
+    description: "외부 마켓 최저가 비교 가능",
   },
 };
 
@@ -141,7 +135,7 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
       <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${Math.min(visible.length, 3)}, minmax(0, 240px))` }}>
       {visible.map((product) => {
         const sc = sourceConfig[product.source];
-        const isApiProduct = product.source === "api-external";
+        const isApiProduct = product.source === "external";
         const isScraping = product.scrapingStatus === "scraping";
         const scrapeDone = product.scrapingStatus === "done";
         const platColor = product.platform ? platformColors[product.platform] ?? "#999" : "#999";
@@ -191,7 +185,7 @@ export default function SourcedProductCard({ products, onSelect, onAddToCart }: 
                   className="inline-flex items-center gap-1 px-1.5 py-[1.5px] text-[9px] font-medium rounded-full"
                   style={{ backgroundColor: sc.bg, color: sc.color }}
                 >
-                  {sc.icon}{sc.label}
+                  {sc.icon}{product.sourceLabel ?? sc.label}
                 </span>
                 {isApiProduct && product.platform && (
                   <span className="text-[9px] font-medium" style={{ color: platColor }}>{product.platform}</span>

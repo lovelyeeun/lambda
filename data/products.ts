@@ -13,6 +13,12 @@ export const products: Product[] = [
     inStock: true,
     source: "SmartStore",
     tags: ["무료배송"],
+    aiReason: "문서 출력량이 많은 팀에서 가장 무난하게 재구매하는 표준 용지예요.",
+    aiTags: ["표준사양", "재구매많음"],
+    externalPrices: [
+      { platform: "쿠팡", price: 12900, shippingFee: 0, url: "https://example.com/doublea-coupang", isLowest: true },
+      { platform: "11번가", price: 13400, shippingFee: 0, url: "https://example.com/doublea-11st" },
+    ],
   },
   {
     id: "prod-002",
@@ -26,6 +32,12 @@ export const products: Product[] = [
     inStock: true,
     source: "쿠팡",
     tags: ["무료배송", "로켓배송"],
+    aiReason: "호환성 리스크가 적은 정품 토너라 긴급 구매에 적합해요.",
+    aiTags: ["정품", "호환안정"],
+    externalPrices: [
+      { platform: "쿠팡", price: 89000, shippingFee: 0, url: "https://example.com/hp206a-coupang", isLowest: true },
+      { platform: "G마켓", price: 91500, shippingFee: 0, url: "https://example.com/hp206a-gmarket" },
+    ],
   },
   {
     id: "prod-003",
@@ -52,6 +64,12 @@ export const products: Product[] = [
     inStock: true,
     source: "쿠팡",
     tags: ["무료배송", "로켓배송"],
+    aiReason: "사무실 장시간 착석 기준에서 가장 검증된 메쉬 체어예요.",
+    aiTags: ["인체공학", "사내선호"],
+    externalPrices: [
+      { platform: "쿠팡", price: 498000, shippingFee: 0, url: "https://example.com/t50-coupang", isLowest: true },
+      { platform: "옥션", price: 509000, shippingFee: 0, url: "https://example.com/t50-auction" },
+    ],
   },
   {
     id: "prod-005",
@@ -65,6 +83,12 @@ export const products: Product[] = [
     inStock: true,
     source: "쿠팡",
     tags: ["무료배송"],
+    aiReason: "USB-C와 4K 사양이 동시에 필요한 팀에서 기본 추천으로 쓰기 좋아요.",
+    aiTags: ["4K", "USB-C", "표준모델"],
+    externalPrices: [
+      { platform: "쿠팡", price: 459000, shippingFee: 0, url: "https://example.com/27up850-coupang", isLowest: true },
+      { platform: "11번가", price: 469000, shippingFee: 0, url: "https://example.com/27up850-11st" },
+    ],
   },
   {
     id: "prod-006",
