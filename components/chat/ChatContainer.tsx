@@ -17,6 +17,11 @@ import type {
   WorkItemSnapshot,
   WorkItemStatus,
 } from "@/lib/types";
+import {
+  searchScenarios,
+  validateDemoScenarios,
+  type SearchScenario,
+} from "@/data/chat-search-scenarios";
 import { products } from "@/data/products";
 import { chats } from "@/data/chats";
 import { users } from "@/data/users";
@@ -61,188 +66,14 @@ const animStyles = `
 }
 `;
 
-/* ═══════════════════════════════════════
-   3-DB 검색 시나리오 데이터
-   키워드별로 다른 상품 세트 제공
-   ═══════════════════════════════════════ */
-
-interface SearchScenario {
-  keywords: string[];
-  intent: string;
-  products: SourcedProduct[];      // 채팅에서 보여줄 선정 상품 (1~3개)
-  candidates: SourcedProduct[];    // 검색에서 추가로 발견된 후보 상품
-}
-
-const searchScenarios: SearchScenario[] = [
-  {
-    keywords: ["청소기", "청소"],
-    intent: "사무실 청소기 구매 요청 — 기업용 무선 청소기, 사무공간 적합 모델 중심으로 검색합니다.",
-    products: [
-      {
-        id: "src-v01", name: "삼성 비스포크 제트 무선 청소기 VS20A95973B", price: 698000, originalPrice: 799000,
-        brand: "삼성전자", category: "생활가전", source: "internal", sourceLabel: "자체",
-        purchaseCount: 34, deliveryFee: 0, deliveryDays: 2, options: ["미드나이트블루", "코사 핑크", "새틴 그레이"],
-        savingsPercent: 13, isRecommended: true,
-        aiNote: "최근 30일 동종업계 34회 구매 — 가장 많이 선택된 모델. 귀사 유사 규모 기업의 82%가 이 제품을 선택했습니다.",
-      },
-      {
-        id: "src-v02", name: "LG 코드제로 A9S 올인원타워 AS9571GKE", price: 729000,
-        brand: "LG전자", category: "생활가전", source: "internal", sourceLabel: "자체",
-        deliveryFee: 0, deliveryDays: 3, options: ["카밍 그린", "판타지 실버"], purchaseCount: 18, savingsPercent: 8,
-        aiNote: "입점 공급사 직거래 — A/S 직접 연결 가능. LG 선호 기업이라면 유리합니다.",
-      },
-      {
-        id: "src-v03", name: "다이슨 V15 디텍트 컴플리트 무선 청소기", price: 659000,
-        brand: "다이슨", category: "생활가전", source: "external", platform: "쿠팡",
-        platformUrl: "https://www.coupang.com/...",
-        scrapingStatus: "idle", scrapingProgress: 0,
-        scrapingSteps: [
-          { label: "상품 페이지 접속", done: false }, { label: "가격·옵션 정보 추출", done: false },
-          { label: "배송비·배송일 확인", done: false }, { label: "상세 스펙 수집", done: false },
-        ],
-        aiNote: "쿠팡 최저가 — 상세 옵션과 배송 조건은 정보 수집 후 확인 가능합니다.",
-      },
-    ],
-    candidates: [
-      {
-        id: "src-v04", name: "일렉트로룩스 에르고라피도 ZB3320P", price: 289000,
-        brand: "일렉트로룩스", category: "생활가전", source: "internal", sourceLabel: "자체",
-        purchaseCount: 5, deliveryFee: 3000, deliveryDays: 3, savingsPercent: 6,
-        aiNote: "가성비 옵션 — 소규모 사무실용. 저소음 모드 탑재.",
-      },
-      {
-        id: "src-v05", name: "샤오미 미지아 무선 청소기 프로", price: 198000,
-        brand: "샤오미", category: "생활가전", source: "external", platform: "11번가",
-        scrapingStatus: "idle" as const, scrapingProgress: 0,
-        aiNote: "초저가 옵션 — 기업 구매 이력 없음. 브랜드 신뢰도 확인 필요.",
-      },
-      {
-        id: "src-v06", name: "보쉬 Unlimited Serie 8 BBS812PCK", price: 879000,
-        brand: "보쉬", category: "생활가전", source: "internal", sourceLabel: "자체",
-        purchaseCount: 2, deliveryFee: 0, deliveryDays: 5, savingsPercent: 4,
-        aiNote: "프리미엄 옵션 — 교체형 배터리 시스템. 넓은 공간에 적합.",
-      },
-      {
-        id: "src-v07", name: "테팔 에어포스 360 TY5516", price: 349000,
-        brand: "테팔", category: "생활가전", source: "external", platform: "쿠팡",
-        scrapingStatus: "idle" as const, scrapingProgress: 0,
-        aiNote: "중가 옵션 — 가격 대비 흡입력 우수. 기업 구매 이력 3건.",
-      },
-    ],
-  },
-  {
-    keywords: ["모니터", "디스플레이"],
-    intent: "모니터 구매 요청 — 27인치 이상 4K 사무용 모니터 중심으로 비교 검색합니다.",
-    products: [
-      {
-        id: "src-m01", name: "LG 27인치 4K UHD 모니터 27UP850", price: 459000,
-        brand: "LG전자", category: "전자기기", source: "internal", sourceLabel: "자체",
-        purchaseCount: 52, deliveryFee: 0, deliveryDays: 2, options: ["실버", "블랙"],
-        savingsPercent: 11, isRecommended: true,
-        aiNote: "사내 52회 구매 이력 — 개발팀·디자인팀 표준 모니터. USB-C PD 지원으로 노트북 충전 가능.",
-      },
-      {
-        id: "src-m02", name: "삼성 ViewFinity S8 27인치 S80UA", price: 489000,
-        brand: "삼성전자", category: "전자기기", source: "internal", sourceLabel: "자체",
-        deliveryFee: 0, deliveryDays: 3, options: ["블랙"], purchaseCount: 28, savingsPercent: 7,
-        aiNote: "입점 공급사 직거래가. HDR10+ 지원, 컬러 작업에 유리.",
-      },
-      {
-        id: "src-m03", name: "Dell UltraSharp U2723QE 27인치 4K", price: 519000,
-        brand: "Dell", category: "전자기기", source: "external", platform: "네이버쇼핑",
-        platformUrl: "https://shopping.naver.com/...",
-        scrapingStatus: "idle", scrapingProgress: 0,
-        scrapingSteps: [
-          { label: "상품 페이지 접속", done: false }, { label: "가격·옵션 정보 추출", done: false },
-          { label: "배송비·배송일 확인", done: false }, { label: "상세 스펙 수집", done: false },
-        ],
-        aiNote: "네이버쇼핑 최저가 — IPS Black 패널, 색재현율 98% DCI-P3.",
-      },
-    ],
-    candidates: [
-      {
-        id: "src-m04", name: "BenQ PD2705U 27인치 4K 디자이너 모니터", price: 689000,
-        brand: "BenQ", category: "전자기기", source: "internal", sourceLabel: "자체",
-        purchaseCount: 8, deliveryFee: 0, deliveryDays: 4, savingsPercent: 5,
-        aiNote: "디자인팀 특화 — Pantone 인증. 가격대가 높으나 색 정확도 최상.",
-      },
-      {
-        id: "src-m05", name: "LG 27GP850 27인치 QHD 게이밍 모니터", price: 389000,
-        brand: "LG전자", category: "전자기기", source: "internal", sourceLabel: "자체",
-        purchaseCount: 3, deliveryFee: 0, deliveryDays: 2,
-        aiNote: "QHD(비4K) — 해상도 요건 미달 가능. 가격 절감 옵션으로 참고.",
-      },
-      {
-        id: "src-m06", name: "HP Z27k G3 27인치 4K USB-C", price: 579000,
-        brand: "HP", category: "전자기기", source: "external", platform: "11번가",
-        scrapingStatus: "idle" as const, scrapingProgress: 0,
-        aiNote: "HP 생태계 사용 기업에 적합. Thunderbolt 4 지원.",
-      },
-    ],
-  },
-  {
-    keywords: ["의자", "사무용의자", "체어"],
-    intent: "사무용 의자 구매 요청 — 인체공학 메쉬 사무용 의자, 장시간 착석 기준으로 검색합니다.",
-    products: [
-      {
-        id: "src-c01", name: "시디즈 T50 AIR 메쉬 사무용 의자", price: 498000,
-        brand: "시디즈", category: "가구", source: "internal", sourceLabel: "자체",
-        purchaseCount: 67, deliveryFee: 0, deliveryDays: 5, options: ["블랙 메쉬", "그레이 메쉬"],
-        savingsPercent: 15, isRecommended: true,
-        aiNote: "사내 67회 구매 — 가장 많이 선택된 사무용 의자. 10년 A/S 보장.",
-      },
-      {
-        id: "src-c02", name: "퍼시스 CHN4300A 메쉬 의자", price: 380000,
-        brand: "퍼시스", category: "가구", source: "internal", sourceLabel: "자체",
-        deliveryFee: 30000, deliveryDays: 7, options: ["블랙"], purchaseCount: 23,
-        aiNote: "입점 공급사 직거래. 대량 구매 시 추가 할인 가능.",
-      },
-      {
-        id: "src-c03", name: "허먼밀러 에어론 리마스터드 풀옵션", price: 1890000,
-        brand: "허먼밀러", category: "가구", source: "external", platform: "구글쇼핑",
-        platformUrl: "https://shopping.google.com/...",
-        scrapingStatus: "idle", scrapingProgress: 0,
-        scrapingSteps: [
-          { label: "상품 페이지 접속", done: false }, { label: "가격·옵션 정보 추출", done: false },
-          { label: "배송비·배송일 확인", done: false }, { label: "상세 스펙 수집", done: false },
-        ],
-        aiNote: "프리미엄 옵션 — 12년 보증. 예산 범위 확인 필요.",
-      },
-    ],
-    candidates: [
-      {
-        id: "src-c04", name: "듀오백 D2 메쉬 의자 DK-2500", price: 259000,
-        brand: "듀오백", category: "가구", source: "internal", sourceLabel: "자체",
-        purchaseCount: 41, deliveryFee: 0, deliveryDays: 4, savingsPercent: 10,
-        aiNote: "가성비 1위 — 사내 41회 구매. 기본 기능 충실.",
-      },
-      {
-        id: "src-c05", name: "이케아 MARKUS 사무용 의자", price: 199000,
-        brand: "이케아", category: "가구", source: "external", platform: "이케아코리아",
-        scrapingStatus: "idle" as const, scrapingProgress: 0,
-        aiNote: "최저가 옵션 — 기업 구매 시 배송비 별도. 조립 필요.",
-      },
-      {
-        id: "src-c06", name: "스틸케이스 Leap V2 풀옵션", price: 1590000,
-        brand: "스틸케이스", category: "가구", source: "internal", sourceLabel: "자체",
-        purchaseCount: 1, deliveryFee: 0, deliveryDays: 10,
-        aiNote: "프리미엄 대안 — 허먼밀러와 비교 대상. 납품 10일 소요.",
-      },
-      {
-        id: "src-c07", name: "코아스 CKF1060 메쉬 의자", price: 169000,
-        brand: "코아스", category: "가구", source: "internal", sourceLabel: "자체",
-        purchaseCount: 15, deliveryFee: 5000, deliveryDays: 3,
-        aiNote: "대량 구매 최적 — 10개 이상 시 개당 15만원. 사내 15회 구매.",
-      },
-    ],
-  },
-];
 
 function getProductGlyph() {
   return "img";
 }
 
 function getCategorySearchMetrics(category: string) {
+  if (category === "잉크/토너") return { totalCount: 31, sourceCounts: [11, 8, 12] };
+  if (category === "용지") return { totalCount: 42, sourceCounts: [16, 12, 14] };
   if (category === "생활가전") return { totalCount: 65, sourceCounts: [14, 21, 30] };
   if (category === "전자기기") return { totalCount: 48, sourceCounts: [15, 13, 20] };
   if (category === "가구") return { totalCount: 58, sourceCounts: [18, 16, 24] };
@@ -250,6 +81,38 @@ function getCategorySearchMetrics(category: string) {
 }
 
 function getCompanyPurchaseProfile(category: string) {
+  if (category === "잉크/토너") {
+    return {
+      reorderCycle: "6.2주",
+      lastBulkPurchase: "2026-04",
+      averageUnitPrice: 92000,
+      preferredBrand: "HP 정품 206A 계열",
+      preferredBrandShare: 76,
+      premiumPreference: "업무 중단 리스크가 큰 부서는 정품 우선",
+      rankingRules: {
+        preferredBrands: ["HP"],
+        premiumBrands: ["HP"],
+        valueBoostThreshold: 0.12,
+      },
+    };
+  }
+
+  if (category === "용지") {
+    return {
+      reorderCycle: "4.8주",
+      lastBulkPurchase: "2026-03",
+      averageUnitPrice: 23800,
+      preferredBrand: "Double A / 밀크 A4 80g",
+      preferredBrandShare: 72,
+      premiumPreference: "제안서용 문서는 100g 이상 프리미엄 용지 선호",
+      rankingRules: {
+        preferredBrands: ["Double A", "한국제지"],
+        premiumBrands: ["Mondi"],
+        valueBoostThreshold: 0.08,
+      },
+    };
+  }
+
   if (category === "가구") {
     return {
       reorderCycle: "3.2년",
@@ -314,6 +177,22 @@ function getCompanyPurchaseProfile(category: string) {
 }
 
 function getCategorySpecHints(category: string) {
+  if (category === "잉크/토너") {
+    return [
+      { label: "호환", value: "기종별 확인" },
+      { label: "유형", value: "정품/호환/재생" },
+      { label: "구성", value: "단품/세트" },
+      { label: "우선순위", value: "호환안정/납기" },
+    ];
+  }
+  if (category === "용지") {
+    return [
+      { label: "규격", value: "A4 중심" },
+      { label: "평량", value: "75~100g" },
+      { label: "구성", value: "500매~2500매" },
+      { label: "우선순위", value: "재구매/출력품질" },
+    ];
+  }
   if (category === "전자기기") {
     return [
       { label: "화면", value: "27~32인치" },
@@ -415,6 +294,19 @@ function normalizeExternalPrices(product: SourcedProduct): ExternalPrice[] {
   ];
 }
 
+function getDefaultProductOptions(category: string, productName?: string): string[] {
+  if (category === "전자기기") return ["기본형", "블랙", "확장 액세서리 포함"];
+  if (category === "가구") return ["기본형", "블랙", "헤드레스트 포함"];
+  if (category === "잉크/토너") return ["기본형", "대용량", "세트 구성"];
+  if (category === "용지") return ["기본형", "대량 묶음", "친환경형"];
+  if (category === "생활가전") return ["기본형", "프리미엄형", "액세서리 포함"];
+  if (category === "사무기기") return ["기본형", "유선 연결", "소모품 번들"];
+  if (category === "사무용품") return ["기본형", "대용량", "세트 구성"];
+  if (category === "생활용품") return ["기본형", "대용량", "리필 포함"];
+  if (productName?.includes("모니터")) return ["기본형", "블랙", "모니터암 번들"];
+  return ["기본형", "옵션 2", "옵션 3"];
+}
+
 function toRecommendedProducts(items: SourcedProduct[]): RecommendedProduct[] {
   const primaryCategory = items[0]?.category ?? "";
   const companyProfile = getCompanyPurchaseProfile(primaryCategory);
@@ -451,7 +343,7 @@ function toRecommendedProducts(items: SourcedProduct[]): RecommendedProduct[] {
     price: item.price,
     rating: item.rating ?? Math.max(4.1, 4.8 - idx * 0.1),
     reviewCount: item.purchaseCount ? item.purchaseCount * 73 : 1200 - idx * 180,
-    thumbUrl: getProductGlyph(item),
+    thumbUrl: getProductGlyph(),
     source: item.source,
     aiReason: item.aiNote ?? "회사 구매 기준과 가격 균형을 함께 고려했어요.",
     aiTags: [
@@ -460,7 +352,7 @@ function toRecommendedProducts(items: SourcedProduct[]): RecommendedProduct[] {
       item.deliveryDays && item.deliveryDays <= 3 ? "빠른배송" : "비교추천",
       item.purchaseCount && item.purchaseCount > 10 ? "구매검증" : item.source === "internal" ? "자체우선" : "외부최저가",
     ],
-    specs: item.category === "전자기기"
+    specs: (item.category === "전자기기"
       ? {
           화면: idx % 2 === 0 ? "27인치" : "32인치",
           해상도: "4K UHD",
@@ -479,7 +371,7 @@ function toRecommendedProducts(items: SourcedProduct[]): RecommendedProduct[] {
             배터리: idx === 0 ? "60분" : idx === 1 ? "50분" : "40분",
             무게: idx === 0 ? "2.7kg" : idx === 1 ? "2.5kg" : "2.1kg",
             구성: idx < 2 ? "올인원" : "단품",
-          },
+          }) as Record<string, string>,
     externalPrices: normalizeExternalPrices(item),
   }));
 }
@@ -609,6 +501,7 @@ const keywordMap: Record<string, string[]> = {
   "데스크": ["prod-010"], "책상": ["prod-010"], "높이조절": ["prod-010"],
   // 전자기기
   "모니터": ["prod-005"], "디스플레이": ["prod-005"],
+  "노트북": ["prod-013"], "랩탑": ["prod-013"],
   "태블릿": ["prod-008"], "갤럭시탭": ["prod-008"], "아이패드": ["prod-008"],
   // 사무용품
   "포스트잇": ["prod-007"], "파인라이너": ["prod-006"], "필기구": ["prod-006"],
@@ -1190,6 +1083,14 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const totalAnnualBudget = budget.departments.reduce((s, d) => s + d.annual, 0);
   const estimatedSnackBudget = Math.round((totalAnnualBudget / 12) * 0.01 / 1000) * 1000;
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    const warnings = validateDemoScenarios();
+    if (warnings.length > 0) {
+      console.warn("[demo-scenario-check]", warnings);
+    }
+  }, []);
+
   /* ── 간식 시나리오 단계 ── */
   const [snackStep, setSnackStep] = useState<"idle" | "awaiting-confirm" | "completed">("idle");
   const totalPrice = globalCart.totalPrice;
@@ -1226,7 +1127,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
      3-DB 검색 플로우
      ═══════════════════════════════════════ */
 
-  const startDbSearch = useCallback((scenario: SearchScenario) => {
+  const startDbSearch = useCallback((scenario: SearchScenario, queryText?: string) => {
     setLastScenario(scenario);
     setSearchPhase("searching");
     setSearchFlowPhase("step1_progress");
@@ -1294,7 +1195,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         const allFound = combinedProducts;
         const newRecord: SearchRecord = {
           id: `sr-${Date.now()}`,
-          query: scenario.keywords[0],
+          query: queryText ?? scenario.keywords[0],
           timestamp: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
           resultCount: allFound.length,
           sources: [
@@ -1378,6 +1279,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     image: "",
     description: product.aiNote ?? "",
     specs: product.scrapedSpecs ?? {},
+    options: product.scrapedOptions ?? product.options ?? getDefaultProductOptions(product.category, product.name),
     inStock: true,
     source: product.platform ?? (product.source === "internal" ? "자체 추천" : "외부마켓"),
   }), []);
@@ -1429,14 +1331,29 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   }, [addAI]);
 
   const handleRecommendedSelect = useCallback((product: RecommendedProduct) => {
-    const sourceProduct = sourcedProducts.find((item) => item.id === product.id);
+    const sourceProduct = [...sourcedProducts, ...candidateProducts].find((item) => item.id === product.id);
     if (sourceProduct) {
       handleSourcedSelect(sourceProduct);
       return;
     }
 
     addAI(`**${product.name}**을 확인할게요. 가격은 ${product.price.toLocaleString()}원이고, ${product.aiReason}`, "주문");
-  }, [addAI, handleSourcedSelect, sourcedProducts]);
+    viewProductRef.current({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      category: (product.category as Product["category"]) ?? "생활용품",
+      brand: product.brand,
+      image: "",
+      description: product.aiReason,
+      specs: product.specs ?? {},
+      options: getDefaultProductOptions(product.category, product.name),
+      inStock: true,
+      aiReason: product.aiReason,
+      aiTags: product.aiTags,
+      externalPrices: product.externalPrices,
+    });
+  }, [addAI, handleSourcedSelect, sourcedProducts, candidateProducts]);
 
   const handleSelectExternalPrice = useCallback((price: ExternalPrice) => {
     addAI(`최저가인 **${price.platform} ${price.price.toLocaleString()}원** 기준으로 외부 상품 정보를 수집해볼게요. 선택이 끝나면 장바구니나 비교 단계로 이어갈 수 있어요.`, "주문");
@@ -1628,6 +1545,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const viewProduct = useCallback((product: Product) => {
     openPanel(
       <ProductDetailPanel
+        key={product.id}
         product={product}
         onAddToCart={() => {
           addToCart(product);
@@ -1934,6 +1852,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     // 2) 3-DB 검색 시나리오 매칭
     const scenario = findScenario(text);
     if (scenario) {
+      openContextRef.current();
       setIsTyping(true);
       setSearchPhase("idle");
       setSearchFlowPhase("idle");
@@ -1951,7 +1870,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
         setTimeout(() => {
           setIntentText(scenario.intent);
-          setTimeout(() => { startDbSearch(scenario); }, 600);
+          setTimeout(() => { startDbSearch(scenario, text); }, 600);
         }, 1000);
       }, 600);
       return;
@@ -2198,7 +2117,8 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   // 구매 분기 진입 시 false로 리셋됨
   useEffect(() => {
     if (panelSuppressedRef.current) return;
-    if (!contentKey || contentKey === "chat-context") {
+    const chatPanelKeys = new Set(["chat-context", "cart", "order-timeline", "payment", "approval-review", "product-detail"]);
+    if (!contentKey || !chatPanelKeys.has(contentKey) || contentKey === "chat-context") {
       openContext();
     }
   }, [openContext, contentKey]);

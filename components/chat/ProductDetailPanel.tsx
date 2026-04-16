@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { Product } from "@/lib/types";
-import { FolderPlus, Check, Truck, ShoppingCart } from "lucide-react";
+import { FolderPlus, Check, Truck, ShoppingCart, Search, ChevronDown, ChevronUp } from "lucide-react";
 import { folders } from "@/data/folders";
 
 interface ProductDetailPanelProps {
@@ -18,21 +18,30 @@ function formatPrice(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
-export default function ProductDetailPanel({ product, onAddToCart, showCartButton = true, onViewCart }: ProductDetailPanelProps) {
+export default function ProductDetailPanel({ product, onAddToCart, showCartButton = true }: ProductDetailPanelProps) {
   const [folderDropdownOpen, setFolderDropdownOpen] = useState(false);
   const [pickedFolderIds, setPickedFolderIds] = useState<string[]>([]);
+  const [optionDropdownOpen, setOptionDropdownOpen] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string | null>(product.options?.[0] ?? null);
   const [toast, setToast] = useState<string | null>(null);
   const folderWrapRef = useRef<HTMLDivElement>(null);
+  const optionWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!folderDropdownOpen) return;
+    if (!folderDropdownOpen && !optionDropdownOpen) return;
     const onDown = (e: MouseEvent) => {
       if (folderWrapRef.current && !folderWrapRef.current.contains(e.target as Node)) {
         setFolderDropdownOpen(false);
       }
+      if (optionWrapRef.current && !optionWrapRef.current.contains(e.target as Node)) {
+        setOptionDropdownOpen(false);
+      }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFolderDropdownOpen(false);
+      if (e.key === "Escape") {
+        setFolderDropdownOpen(false);
+        setOptionDropdownOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -40,7 +49,7 @@ export default function ProductDetailPanel({ product, onAddToCart, showCartButto
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [folderDropdownOpen]);
+  }, [folderDropdownOpen, optionDropdownOpen]);
 
   const toggleFolderPick = (id: string) => {
     setPickedFolderIds((prev) =>
@@ -102,6 +111,67 @@ export default function ProductDetailPanel({ product, onAddToCart, showCartButto
         {product.description}
       </p>
 
+      {product.options && product.options.length > 0 && (
+        <div ref={optionWrapRef} className="relative">
+          <div className="mb-2 flex items-center gap-4 text-[12px] font-medium text-[#1a1a1a]">
+            <span className="text-[#b8b2a8]">배송 정보</span>
+            <span>무료배송</span>
+            <span className="text-[#b8b2a8]">|</span>
+            <span>택배</span>
+          </div>
+          <button
+            onClick={() => setOptionDropdownOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between px-4 py-3.5 text-left cursor-pointer bg-white"
+            style={{
+              borderRadius: "14px",
+              boxShadow: "rgba(0,0,0,0.12) 0px 0px 0px 1px inset",
+            }}
+          >
+            <span
+              className="text-[15px] font-medium"
+              style={{ color: selectedOption ? "#1a1a1a" : "#c7c4be", letterSpacing: "0.14px" }}
+            >
+              {selectedOption ?? "옵션 선택"}
+            </span>
+            <span className="flex items-center gap-2.5 text-[#1a1a1a]">
+              <Search size={18} strokeWidth={2} />
+              {optionDropdownOpen ? <ChevronUp size={20} strokeWidth={2} /> : <ChevronDown size={20} strokeWidth={2} />}
+            </span>
+          </button>
+
+          {optionDropdownOpen && (
+            <div
+              className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden bg-white"
+              style={{
+                borderRadius: "14px",
+                boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px, rgba(0,0,0,0.08) 0px 10px 30px",
+              }}
+            >
+              {product.options.map((option, index) => {
+                const active = selectedOption === option;
+                return (
+                  <button
+                    key={option}
+                    onClick={() => {
+                      setSelectedOption(option);
+                      setOptionDropdownOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between px-4 py-3 text-left cursor-pointer transition-colors"
+                    style={{
+                      backgroundColor: active ? "#f5f2ef" : "#fff",
+                      borderTop: index === 0 ? "none" : "1px solid rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    <span className="text-[14px] font-medium text-[#1a1a1a]">{option}</span>
+                    {active && <Check size={16} strokeWidth={2.5} color="#000" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Specs */}
       <div>
         <p className="text-[12px] font-medium text-[#777169] uppercase tracking-wider mb-2">
@@ -128,12 +198,6 @@ export default function ProductDetailPanel({ product, onAddToCart, showCartButto
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Stock badge */}
-      <div className="flex items-center gap-1.5">
-        <Check size={14} color="#22c55e" strokeWidth={2} />
-        <span className="text-[13px] text-[#22c55e] font-medium">재고 있음</span>
       </div>
 
       {/* Actions — 장바구니 담기 (채팅에서만) + 폴더에 담기 (항상) */}

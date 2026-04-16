@@ -63,6 +63,9 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
 
   const closePanel = useCallback(() => {
     setOpen(false);
+    setContent(null);
+    setContentKey(null);
+    setMeta(null);
   }, []);
 
   const togglePanel = useCallback(() => {
@@ -105,4 +108,3 @@ export function useRightPanel() {
   if (!ctx) throw new Error("useRightPanel must be used within RightPanelProvider");
   return ctx;
 }
-

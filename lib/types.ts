@@ -12,6 +12,7 @@ export interface Product {
   image: string;
   description: string;
   specs: Record<string, string>;
+  options?: string[];
   inStock: boolean;
   source?: string;           // 소싱처 (쿠팡, SmartStore, 오늘의집 등)
   tags?: string[];           // 배송/프로모션 태그 (무료배송, 로켓배송 등)

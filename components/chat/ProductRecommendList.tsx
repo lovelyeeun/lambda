@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowUpRight, Check, Loader2, ShieldCheck, Sparkles, Star, TrendingDown } from "lucide-react";
 import type { RecommendedProduct } from "@/lib/types";
 import type { SourcedProduct } from "./SourcedProductCard";
@@ -23,6 +23,7 @@ export default function ProductRecommendList({
   scrapingProduct,
 }: ProductRecommendListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("recommend");
+  const [expandedReasonIds, setExpandedReasonIds] = useState<string[]>([]);
   const compareRows = Array.from(
     new Set([
       "가격",
@@ -31,6 +32,13 @@ export default function ProductRecommendList({
       "별점",
     ]),
   );
+  const expandedReasonSet = useMemo(() => new Set(expandedReasonIds), [expandedReasonIds]);
+
+  const toggleReason = (productId: string) => {
+    setExpandedReasonIds((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId],
+    );
+  };
 
   return (
     <div className="w-full">
@@ -75,6 +83,8 @@ export default function ProductRecommendList({
               const isTop = product.rank === 1;
               const isScrapingTarget = scrapingProduct?.id === product.id && product.source === "external";
               const isExternal = product.source === "external";
+              const isReasonExpanded = expandedReasonSet.has(product.id);
+              const compactReason = product.aiReason.split(/[.!?]\s|[.!?]$/)[0] || product.aiReason;
               return (
                 <div key={product.id} className="flex shrink-0 flex-col" style={{ width: isTop ? 220 : 196 }}>
                   <div
@@ -173,34 +183,45 @@ export default function ProductRecommendList({
                         <span>·</span>
                         <span>{product.aiTags[0] ?? "추천"}</span>
                       </div>
+                      <div className="mt-2 rounded-[10px] bg-[#faf8f5] px-2.5 py-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-medium text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+                              추천 포인트
+                            </p>
+                            <p className="mt-1 text-[11px] leading-[1.5] text-[#4e4e4e]" style={{ letterSpacing: "0.14px" }}>
+                              {compactReason}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => toggleReason(product.id)}
+                            className="shrink-0 text-[10px] font-medium text-[#4e3fb4] cursor-pointer"
+                          >
+                            {isReasonExpanded ? "접기" : "더 보기"}
+                          </button>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {product.aiTags.slice(0, 2).map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full px-2 py-1 text-[10px] text-[#4e3fb4]"
+                              style={{ backgroundColor: "rgba(78,63,180,0.08)", letterSpacing: "0.14px" }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        {isReasonExpanded && (
+                          <div
+                            className="mt-2 rounded-[8px] bg-white px-2.5 py-2 text-[11px] leading-[1.6] text-[#4e4e4e]"
+                            style={{ boxShadow: "rgba(0,0,0,0.04) 0px 0px 0px 1px" }}
+                          >
+                            {product.aiReason}
+                          </div>
+                        )}
+                      </div>
 
                       <button onClick={() => onSelectProduct(product)} className="mt-3 w-full cursor-pointer rounded-full bg-black px-3 py-2.5 text-[12px] text-white">상세 보기</button>
-                    </div>
-                  </div>
-
-                  <div
-                    className="mt-2 rounded-[14px] bg-white px-3 py-3"
-                    style={{
-                      boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
-                      background: "linear-gradient(180deg, rgba(245,242,239,0.78) 0%, rgba(255,255,255,0.95) 100%)",
-                    }}
-                  >
-                    <p className="inline-flex rounded-full bg-white px-2 py-1 text-[9px] font-medium uppercase text-[#4e3fb4]" style={{ letterSpacing: "0.7px", boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 0.5px" }}>
-                      AI 추천 이유
-                    </p>
-                    <p className="mt-2 text-[11px] leading-[1.55] text-[#4e4e4e]" style={{ letterSpacing: "0.14px" }}>
-                      {product.aiReason}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {product.aiTags.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full px-2 py-1 text-[10px] text-[#4e3fb4]"
-                          style={{ backgroundColor: "rgba(78,63,180,0.08)", letterSpacing: "0.14px" }}
-                        >
-                          {tag}
-                        </span>
-                      ))}
                     </div>
                   </div>
 

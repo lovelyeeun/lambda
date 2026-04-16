@@ -17,8 +17,8 @@ export default function SearchResultSummary({
     <div
       className="w-full max-w-[620px] bg-white px-5 py-4"
       style={{
-        borderRadius: "20px",
-        boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px, rgba(0,0,0,0.04) 0px 2px 4px",
+        borderRadius: "16px 16px 16px 4px",
+        boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 1px 2px",
       }}
     >
       <div className="mb-4 flex items-center justify-between gap-3">
