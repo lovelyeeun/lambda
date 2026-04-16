@@ -15,6 +15,62 @@ export interface Product {
   inStock: boolean;
   source?: string;           // 소싱처 (쿠팡, SmartStore, 오늘의집 등)
   tags?: string[];           // 배송/프로모션 태그 (무료배송, 로켓배송 등)
+  aiReason?: string;         // AI 추천 이유
+  aiTags?: string[];         // AI 추천 태그
+  externalPrices?: ExternalPrice[];
+}
+
+export type SearchFlowPhase =
+  | "idle"
+  | "step1_progress"
+  | "step1_done"
+  | "step2_filter"
+  | "step3_results";
+
+export type SearchStepState = 0 | 1 | 2 | 3;
+
+export type PriceTier = "budget" | "standard" | "premium";
+
+export interface FilterState {
+  priceTier: PriceTier;
+  brands: string[];
+  options: string[];
+}
+
+export interface ExternalPrice {
+  platform: "쿠팡" | "옥션" | "G마켓" | "11번가" | string;
+  price: number;
+  shippingFee: number;
+  url: string;
+  isLowest?: boolean;
+}
+
+export interface RecommendedProduct {
+  id: string;
+  rank: 1 | 2 | 3 | 4 | 5;
+  name: string;
+  brand: string;
+  category: string;
+  price: number;
+  rating: number;
+  reviewCount: number;
+  thumbUrl: string;
+  source: "internal" | "external";
+  aiReason: string;
+  aiTags: string[];
+  specs?: Record<string, string>;
+  externalPrices?: ExternalPrice[];
+}
+
+export interface SearchResultSummaryData {
+  totalCount: number;
+  priceRange: { min: number; max: number };
+  categoryPath: string;
+  brands: string[];
+  thumbnails: string[];
+  remainingCount: number;
+  specHints: { label: string; value: string }[];
+  companyPolicyNote: string;
 }
 
 export type ProductCategory =
@@ -252,6 +308,7 @@ export interface WorkItem {
 export interface WorkItemSnapshot {
   // 검색 단계
   searchPhase: "idle" | "analyzing" | "searching" | "results";
+  searchFlowPhase?: SearchFlowPhase;
   intentText: string | null;
   // sourcedProducts / candidateProducts / searchRecords 는 any로 두어 ChatContainer 내부 타입 의존 최소화
   // (런타임에서는 실제 형상이 유지되며, 이 문서는 현 시점 MVP용)
