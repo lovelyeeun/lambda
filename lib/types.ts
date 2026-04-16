@@ -3,6 +3,11 @@
    ============================================ */
 
 /* ─── 상품 ─── */
+export interface ProductOption {
+  name: string;
+  price: number; // 해당 옵션의 월 단가 (또는 단위 가격)
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -12,7 +17,7 @@ export interface Product {
   image: string;
   description: string;
   specs: Record<string, string>;
-  options?: string[];
+  options?: ProductOption[];
   inStock: boolean;
   source?: string;           // 소싱처 (쿠팡, SmartStore, 오늘의집 등)
   tags?: string[];           // 배송/프로모션 태그 (무료배송, 로켓배송 등)

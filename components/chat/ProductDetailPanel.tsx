@@ -1,16 +1,21 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { Product } from "@/lib/types";
-import { FolderPlus, Check, Truck, ShoppingCart, Search, ChevronDown, ChevronUp } from "lucide-react";
+import type { Product, ProductOption } from "@/lib/types";
+import {
+  FolderPlus, Check, Truck, ShoppingCart, ChevronDown, Minus, Plus, X,
+} from "lucide-react";
 import { folders } from "@/data/folders";
+
+interface SelectedChip {
+  option: ProductOption;
+  qty: number;
+}
 
 interface ProductDetailPanelProps {
   product: Product;
   onAddToCart: () => void;
-  /** 장바구니 담기 버튼 노출 여부 — 채팅: true(기본), 스토어: false */
   showCartButton?: boolean;
-  /** 장바구니 보기 콜백 — 토스트에서 "장바구니 보기" 액션용. 없으면 액션 숨김. */
   onViewCart?: () => void;
 }
 
@@ -18,46 +23,85 @@ function formatPrice(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
-export default function ProductDetailPanel({ product, onAddToCart, showCartButton = true }: ProductDetailPanelProps) {
-  const [folderDropdownOpen, setFolderDropdownOpen] = useState(false);
-  const [pickedFolderIds, setPickedFolderIds] = useState<string[]>([]);
-  const [optionDropdownOpen, setOptionDropdownOpen] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<string | null>(product.options?.[0] ?? null);
-  const [toast, setToast] = useState<string | null>(null);
-  const folderWrapRef = useRef<HTMLDivElement>(null);
-  const optionWrapRef = useRef<HTMLDivElement>(null);
+export default function ProductDetailPanel({
+  product,
+  onAddToCart,
+  showCartButton = true,
+}: ProductDetailPanelProps) {
+  const hasOptions = product.options && product.options.length > 0;
 
+  // 선택된 옵션 칩 목록
+  const [chips, setChips] = useState<SelectedChip[]>([]);
+  // 상세 스펙 펼침/접힘
+  const [specOpen, setSpecOpen] = useState(false);
+  // 폴더 드롭다운
+  const [folderOpen, setFolderOpen] = useState(false);
+  const [pickedFolderIds, setPickedFolderIds] = useState<string[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const folderRef = useRef<HTMLDivElement>(null);
+
+  // 폴더 드롭다운 외부 클릭 닫기
   useEffect(() => {
-    if (!folderDropdownOpen && !optionDropdownOpen) return;
+    if (!folderOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (folderWrapRef.current && !folderWrapRef.current.contains(e.target as Node)) {
-        setFolderDropdownOpen(false);
-      }
-      if (optionWrapRef.current && !optionWrapRef.current.contains(e.target as Node)) {
-        setOptionDropdownOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setFolderDropdownOpen(false);
-        setOptionDropdownOpen(false);
-      }
+      if (folderRef.current && !folderRef.current.contains(e.target as Node))
+        setFolderOpen(false);
     };
     document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [folderDropdownOpen, optionDropdownOpen]);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [folderOpen]);
 
-  const toggleFolderPick = (id: string) => {
-    setPickedFolderIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+  // 옵션 선택 → 칩 추가 (중복이면 수량 +1)
+  const handleSelectOption = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const idx = parseInt(e.target.value, 10);
+    if (isNaN(idx)) return;
+    const opt = product.options![idx];
+    e.target.value = ""; // 드롭다운 리셋
+
+    setChips((prev) => {
+      const existing = prev.findIndex((c) => c.option.name === opt.name);
+      if (existing >= 0) {
+        return prev.map((c, i) =>
+          i === existing ? { ...c, qty: c.qty + 1 } : c,
+        );
+      }
+      return [...prev, { option: opt, qty: 1 }];
+    });
+  };
+
+  // 수량 변경
+  const changeQty = (name: string, delta: number) => {
+    setChips((prev) =>
+      prev
+        .map((c) => c.option.name === name ? { ...c, qty: c.qty + delta } : c)
+        .filter((c) => c.qty > 0),
     );
   };
 
-  const handleConfirmFolders = () => {
+  // 칩 제거
+  const removeChip = (name: string) => {
+    setChips((prev) => prev.filter((c) => c.option.name !== name));
+  };
+
+  // 최종 금액 합산
+  const totalPrice = chips.reduce((sum, c) => sum + c.option.price * c.qty, 0);
+  const hasSelection = chips.length > 0;
+
+  // 가격 헤더 표시 (옵션 있는 상품: 선택 전엔 최저가~, 선택 후엔 선택된 첫 옵션 가격)
+  const displayPrice = hasOptions
+    ? hasSelection
+      ? chips[0].option.price
+      : Math.min(...(product.options ?? []).map((o) => o.price))
+    : product.price;
+  const priceLabel = hasOptions && !hasSelection ? `${formatPrice(displayPrice)}~` : formatPrice(displayPrice);
+
+  // 폴더 관련
+  const toggleFolder = (id: string) =>
+    setPickedFolderIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const confirmFolders = () => {
     if (pickedFolderIds.length === 0) return;
     const names = folders
       .filter((f) => pickedFolderIds.includes(f.id))
@@ -65,201 +109,301 @@ export default function ProductDetailPanel({ product, onAddToCart, showCartButto
       .join(", ");
     setToast(`${names} 폴더에 담았어요`);
     setTimeout(() => setToast(null), 2500);
-    setFolderDropdownOpen(false);
+    setFolderOpen(false);
     setPickedFolderIds([]);
   };
 
-  const handleAddToCartClick = () => {
-    onAddToCart();
-  };
+  const hasTags = product.tags && product.tags.length > 0;
 
   return (
-    <div className="flex flex-col gap-4 relative">
-      {/* Image placeholder */}
+    <div className="flex flex-col relative">
+      {/* ── 이미지 ── */}
+      {/* DEBUG v2 */}
       <div
-        className="w-full h-[200px] bg-[#f5f5f5] flex items-center justify-center text-[14px] text-[#777169]"
-        style={{ borderRadius: "12px" }}
+        className="w-full bg-[#f5f5f5] flex items-center justify-center text-[13px] text-[#aaa]"
+        style={{ height: "192px", borderRadius: "12px", marginBottom: "16px" }}
       >
         {product.brand} · {product.category}
       </div>
 
-      {/* Info */}
-      <div>
-        <p className="text-[12px] text-[#777169] mb-1" style={{ letterSpacing: "0.14px" }}>
+      {/* ── 기본 정보 ── */}
+      <div style={{ marginBottom: "12px" }}>
+        <p className="text-[11px] font-medium text-[#999] uppercase" style={{ letterSpacing: "0.3px", marginBottom: "4px" }}>
           {product.brand}
         </p>
-        <h3 className="text-[16px] font-semibold leading-tight">
+        <h3 className="text-[15px] font-semibold text-[#111] leading-snug" style={{ marginBottom: "10px" }}>
           {product.name}
         </h3>
-        <p className="text-[20px] font-semibold mt-2">
-          {formatPrice(product.price)}
-        </p>
+
+        {/* 가격 */}
+        <div className="flex items-baseline gap-2" style={{ marginBottom: hasOptions && !hasSelection ? "4px" : "0" }}>
+          <span className="text-[22px] font-semibold text-[#111]">{priceLabel}</span>
+          {hasOptions && hasSelection && (
+            <span className="text-[12px] text-[#999]">/월</span>
+          )}
+        </div>
+        {hasOptions && !hasSelection && (
+          <p className="text-[11px] text-[#bbb]" style={{ marginBottom: "4px" }}>
+            옵션 선택 후 최종 금액이 확정됩니다
+          </p>
+        )}
       </div>
 
-      {/* Delivery badges */}
-      <div className="flex items-center gap-1.5">
-        <span className="flex items-center gap-1 px-2 py-[3px] text-[11px] font-medium text-[#3b82f6] bg-[#eff6ff] rounded" style={{ boxShadow: "rgba(59,130,246,0.12) 0px 0px 0px 1px" }}>
-          <Truck size={11} strokeWidth={1.5} />무료배송
-        </span>
-        <span className="px-2 py-[3px] text-[11px] font-medium text-[#f59e0b] bg-[#fefce8] rounded" style={{ boxShadow: "rgba(245,158,11,0.12) 0px 0px 0px 1px" }}>
-          로켓배송
-        </span>
-      </div>
+      {/* ── 배송 배지 ── */}
+      {hasTags && (
+        <div className="flex items-center gap-1.5" style={{ marginBottom: "16px" }}>
+          {product.tags!.map((tag) => {
+            const isRocket = tag === "로켓배송";
+            return (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-2 py-[3px] text-[11px] font-medium rounded-full"
+                style={
+                  isRocket
+                    ? { color: "#b45309", background: "#fef9c3", border: "1px solid #fde68a" }
+                    : { color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe" }
+                }
+              >
+                {!isRocket && <Truck size={10} strokeWidth={1.5} />}
+                {isRocket && <span style={{ fontSize: "10px" }}>⚡</span>}
+                {tag}
+              </span>
+            );
+          })}
+          <span className="text-[11px] text-[#bbb]">내일(목) 도착</span>
+        </div>
+      )}
 
-      {/* Description */}
-      <p className="text-[14px] text-[#4e4e4e] leading-[1.6]" style={{ letterSpacing: "0.14px" }}>
-        {product.description}
-      </p>
+      {/* ── 구분선 ── */}
+      <div style={{ height: "1px", background: "#f0f0f0", margin: "0 0 14px" }} />
 
-      {product.options && product.options.length > 0 && (
-        <div ref={optionWrapRef} className="relative">
-          <div className="mb-2 flex items-center gap-4 text-[12px] font-medium text-[#1a1a1a]">
-            <span className="text-[#b8b2a8]">배송 정보</span>
-            <span>무료배송</span>
-            <span className="text-[#b8b2a8]">|</span>
-            <span>택배</span>
-          </div>
-          <button
-            onClick={() => setOptionDropdownOpen((prev) => !prev)}
-            className="flex w-full items-center justify-between px-4 py-3.5 text-left cursor-pointer bg-white"
-            style={{
-              borderRadius: "14px",
-              boxShadow: "rgba(0,0,0,0.12) 0px 0px 0px 1px inset",
-            }}
-          >
-            <span
-              className="text-[15px] font-medium"
-              style={{ color: selectedOption ? "#1a1a1a" : "#c7c4be", letterSpacing: "0.14px" }}
-            >
-              {selectedOption ?? "옵션 선택"}
-            </span>
-            <span className="flex items-center gap-2.5 text-[#1a1a1a]">
-              <Search size={18} strokeWidth={2} />
-              {optionDropdownOpen ? <ChevronUp size={20} strokeWidth={2} /> : <ChevronDown size={20} strokeWidth={2} />}
-            </span>
-          </button>
+      {/* ── 옵션 선택 ── */}
+      {hasOptions && (
+        <div style={{ marginBottom: "14px" }}>
+          <p className="text-[11px] font-semibold text-[#bbb] uppercase" style={{ letterSpacing: "0.5px", marginBottom: "8px" }}>
+            옵션 선택
+          </p>
 
-          {optionDropdownOpen && (
-            <div
-              className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden bg-white"
+          {/* Select */}
+          <div className="relative">
+            <select
+              onChange={handleSelectOption}
+              defaultValue=""
+              className="w-full appearance-none bg-[#fafafa] text-[13px] font-medium text-[#111] cursor-pointer"
               style={{
-                borderRadius: "14px",
-                boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px, rgba(0,0,0,0.08) 0px 10px 30px",
+                border: "1.5px solid #e8e8e8",
+                borderRadius: "10px",
+                padding: "10px 36px 10px 12px",
+                fontFamily: "inherit",
+                outline: "none",
+                transition: "border-color 0.15s",
               }}
+              onFocus={(e) => (e.target.style.borderColor = "#111")}
+              onBlur={(e) => (e.target.style.borderColor = "#e8e8e8")}
             >
-              {product.options.map((option, index) => {
-                const active = selectedOption === option;
-                return (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setSelectedOption(option);
-                      setOptionDropdownOpen(false);
-                    }}
-                    className="flex w-full items-center justify-between px-4 py-3 text-left cursor-pointer transition-colors"
-                    style={{
-                      backgroundColor: active ? "#f5f2ef" : "#fff",
-                      borderTop: index === 0 ? "none" : "1px solid rgba(0,0,0,0.05)",
-                    }}
-                  >
-                    <span className="text-[14px] font-medium text-[#1a1a1a]">{option}</span>
-                    {active && <Check size={16} strokeWidth={2.5} color="#000" />}
-                  </button>
-                );
-              })}
+              <option value="" disabled>
+                옵션을 선택하세요
+              </option>
+              {product.options!.map((opt, i) => (
+                <option key={opt.name} value={i}>
+                  {opt.name} — {formatPrice(opt.price)}{product.category === "생활용품" ? "/월" : ""}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={14}
+              strokeWidth={1.5}
+              className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#aaa]"
+            />
+          </div>
+
+          {/* 선택된 옵션 칩 */}
+          {chips.length > 0 && (
+            <div className="flex flex-col gap-1.5" style={{ marginTop: "10px" }}>
+              {chips.map((chip) => (
+                <div
+                  key={chip.option.name}
+                  className="flex items-center justify-between bg-[#f8f8f8]"
+                  style={{ border: "1px solid #ebebeb", borderRadius: "10px", padding: "10px 12px" }}
+                >
+                  {/* 좌: 옵션명 + 가격 */}
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[12px] font-medium text-[#333]">{chip.option.name}</span>
+                    <span className="text-[13px] font-semibold text-[#111]">
+                      {formatPrice(chip.option.price)}{product.category === "생활용품" ? "/월" : ""}
+                    </span>
+                  </div>
+
+                  {/* 우: 수량 + 삭제 */}
+                  <div className="flex items-center gap-2">
+                    {/* 수량 컨트롤 */}
+                    <div
+                      className="flex items-center"
+                      style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "8px", overflow: "hidden" }}
+                    >
+                      <button
+                        onClick={() => changeQty(chip.option.name, -1)}
+                        disabled={chip.qty <= 1}
+                        className="flex items-center justify-center cursor-pointer transition-colors hover:bg-[#f5f5f5] disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{ width: "28px", height: "28px", border: "none", background: "transparent" }}
+                      >
+                        <Minus size={11} strokeWidth={2} />
+                      </button>
+                      <span className="text-[13px] font-semibold text-[#111]" style={{ width: "24px", textAlign: "center" }}>
+                        {chip.qty}
+                      </span>
+                      <button
+                        onClick={() => changeQty(chip.option.name, 1)}
+                        className="flex items-center justify-center cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+                        style={{ width: "28px", height: "28px", border: "none", background: "transparent" }}
+                      >
+                        <Plus size={11} strokeWidth={2} />
+                      </button>
+                    </div>
+                    {/* 삭제 */}
+                    <button
+                      onClick={() => removeChip(chip.option.name)}
+                      className="flex items-center justify-center cursor-pointer hover:bg-[#e0e0e0] transition-colors"
+                      style={{ width: "22px", height: "22px", background: "#ebebeb", borderRadius: "50%", border: "none", color: "#888" }}
+                    >
+                      <X size={10} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Specs */}
-      <div>
-        <p className="text-[12px] font-medium text-[#777169] uppercase tracking-wider mb-2">
-          상세 스펙
-        </p>
+      {/* ── 최종 금액 ── */}
+      {hasOptions && (
         <div
-          className="overflow-hidden"
+          className="flex items-center justify-between"
           style={{
-            borderRadius: "10px",
-            boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px",
+            background: hasSelection ? "#f8f8f8" : "#f8f8f8",
+            borderRadius: "12px",
+            padding: "12px 14px",
+            marginBottom: "14px",
+            opacity: hasSelection ? 1 : 0.45,
+            transition: "opacity 0.2s",
           }}
         >
-          {Object.entries(product.specs).map(([key, value], i) => (
-            <div
-              key={key}
-              className="flex px-3 py-2 text-[13px]"
-              style={{
-                backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa",
-                borderBottom: i < Object.entries(product.specs).length - 1 ? "1px solid rgba(0,0,0,0.05)" : undefined,
-              }}
-            >
-              <span className="w-[90px] shrink-0 text-[#777169]">{key}</span>
-              <span className="text-[#000]">{value}</span>
-            </div>
-          ))}
+          <div>
+            <p className="text-[12px] font-medium text-[#888]">최종 금액</p>
+            {hasSelection && (
+              <p className="text-[11px] text-[#bbb]" style={{ marginTop: "2px" }}>
+                {chips.map((c) => `${c.option.name} × ${c.qty}`).join(", ")}
+              </p>
+            )}
+            {!hasSelection && (
+              <p className="text-[11px] text-[#bbb]" style={{ marginTop: "2px" }}>옵션 선택 후 확인 가능</p>
+            )}
+          </div>
+          <span className="text-[20px] font-semibold text-[#111]">
+            {hasSelection ? formatPrice(totalPrice) : "—"}
+          </span>
         </div>
-      </div>
+      )}
 
-      {/* Actions — 장바구니 담기 (채팅에서만) + 폴더에 담기 (항상) */}
+      {/* ── 설명 ── */}
+      <p className="text-[13px] text-[#555] leading-relaxed" style={{ marginBottom: "12px" }}>
+        {product.description}
+      </p>
+
+      {/* ── 상세 스펙 (토글) ── */}
+      {product.specs && Object.keys(product.specs).length > 0 && (
+        <div style={{ marginBottom: "16px" }}>
+          <button
+            onClick={() => setSpecOpen((v) => !v)}
+            className="flex items-center justify-between w-full cursor-pointer"
+            style={{ background: "none", border: "none", padding: "0" }}
+          >
+            <span className="text-[11px] font-semibold text-[#bbb] uppercase" style={{ letterSpacing: "0.5px" }}>
+              상세 스펙
+            </span>
+            <ChevronDown
+              size={13}
+              strokeWidth={1.5}
+              className="text-[#bbb] transition-transform"
+              style={{ transform: specOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
+          </button>
+
+          {specOpen && (
+            <div className="flex flex-col gap-1.5" style={{ marginTop: "10px" }}>
+              {Object.entries(product.specs).map(([k, v]) => (
+                <div key={k} className="flex items-start gap-3 text-[12px]">
+                  <span className="text-[#bbb] font-medium shrink-0" style={{ width: "72px" }}>{k}</span>
+                  <span className="text-[#444] leading-relaxed">{v}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 구분선 ── */}
+      <div style={{ height: "1px", background: "#f0f0f0", marginBottom: "14px" }} />
+
+      {/* ── 액션 버튼 ── */}
       <div className="flex flex-col gap-2">
         {showCartButton && (
           <button
-            onClick={handleAddToCartClick}
-            className="flex items-center justify-center gap-2 w-full py-[11px] text-[14px] font-medium text-white bg-black rounded-xl cursor-pointer transition-opacity hover:opacity-80"
+            onClick={onAddToCart}
+            disabled={hasOptions && !hasSelection}
+            className="flex items-center justify-center gap-2 w-full text-[14px] font-semibold text-white bg-black rounded-xl cursor-pointer transition-all hover:bg-[#333] disabled:bg-[#d0d0d0] disabled:cursor-not-allowed"
+            style={{ padding: "13px", border: "none" }}
           >
-            <ShoppingCart size={16} strokeWidth={1.5} />
+            <ShoppingCart size={15} strokeWidth={1.5} />
             장바구니 담기
           </button>
         )}
 
-        <div ref={folderWrapRef} className="relative">
+        {/* 폴더에 담기 */}
+        <div ref={folderRef} className="relative">
           <button
-            onClick={() => {
-              setFolderDropdownOpen((v) => !v);
-              setPickedFolderIds([]);
-            }}
-            className="flex items-center justify-center gap-2 w-full py-[11px] text-[14px] font-medium text-[#1a1a1a] bg-white rounded-xl cursor-pointer transition-colors hover:bg-[#f5f5f5]"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 0px 0px 1px" }}
+            onClick={() => { setFolderOpen((v) => !v); setPickedFolderIds([]); }}
+            className="flex items-center justify-center gap-2 w-full text-[14px] font-medium text-[#333] bg-white rounded-xl cursor-pointer transition-colors hover:bg-[#f5f5f5]"
+            style={{ padding: "12px", border: "1.5px solid #e8e8e8" }}
           >
-            <FolderPlus size={16} strokeWidth={1.5} />
+            <FolderPlus size={15} strokeWidth={1.5} />
             폴더에 담기
           </button>
 
-          {folderDropdownOpen && (
+          {folderOpen && (
             <div
               className="absolute bottom-full mb-1.5 left-0 right-0 bg-white py-1.5 z-50"
               style={{
                 borderRadius: "10px",
-                boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 8px, rgba(0,0,0,0.04) 0px 8px 20px",
+                boxShadow: "rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 8px, rgba(0,0,0,0.06) 0px 8px 20px",
               }}
             >
-              <p className="px-3 pt-1 pb-1.5 text-[11px] text-[#777169]" style={{ letterSpacing: "0.14px" }}>
+              <p className="px-3 pt-1 pb-1.5 text-[11px] text-[#aaa]">
                 여러 폴더를 선택할 수 있어요
               </p>
-              <div className="max-h-[200px] overflow-y-auto">
+              <div className="max-h-[180px] overflow-y-auto">
                 {folders.map((f) => {
                   const picked = pickedFolderIds.includes(f.id);
                   return (
                     <button
                       key={f.id}
-                      onClick={(e) => { e.stopPropagation(); toggleFolderPick(f.id); }}
+                      onClick={(e) => { e.stopPropagation(); toggleFolder(f.id); }}
                       className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-[12px] cursor-pointer transition-colors"
                       style={{
                         color: picked ? "#000" : "#444",
-                        backgroundColor: picked ? "#f5f2ef" : "transparent",
+                        background: picked ? "#f5f2ef" : "transparent",
                         fontWeight: picked ? 500 : 400,
+                        border: "none",
                       }}
-                      onMouseEnter={(e) => {
-                        if (!picked) e.currentTarget.style.backgroundColor = "#fafafa";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!picked) e.currentTarget.style.backgroundColor = "transparent";
-                      }}
+                      onMouseEnter={(e) => { if (!picked) e.currentTarget.style.background = "#fafafa"; }}
+                      onMouseLeave={(e) => { if (!picked) e.currentTarget.style.background = "transparent"; }}
                     >
                       <span
-                        className="flex items-center justify-center w-4 h-4 rounded-[4px] shrink-0"
+                        className="flex items-center justify-center shrink-0"
                         style={{
-                          backgroundColor: picked ? "#000" : "transparent",
+                          width: "16px", height: "16px", borderRadius: "4px",
+                          background: picked ? "#000" : "transparent",
                           boxShadow: picked ? "none" : "rgba(0,0,0,0.15) 0px 0px 0px 1px inset",
                         }}
                       >
@@ -272,18 +416,20 @@ export default function ProductDetailPanel({ product, onAddToCart, showCartButto
               </div>
               <div className="flex items-center gap-1.5 px-2 pt-1.5 pb-1" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setFolderDropdownOpen(false); }}
-                  className="flex-1 px-2 py-1.5 text-[12px] text-[#777169] rounded-[6px] cursor-pointer hover:bg-[#fafafa]"
+                  onClick={(e) => { e.stopPropagation(); setFolderOpen(false); }}
+                  className="flex-1 px-2 py-1.5 text-[12px] text-[#999] rounded-[6px] cursor-pointer hover:bg-[#fafafa]"
+                  style={{ border: "none", background: "transparent" }}
                 >
                   취소
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleConfirmFolders(); }}
+                  onClick={(e) => { e.stopPropagation(); confirmFolders(); }}
                   disabled={pickedFolderIds.length === 0}
-                  className="flex-1 px-2 py-1.5 text-[12px] font-medium rounded-[6px] cursor-pointer transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 px-2 py-1.5 text-[12px] font-medium rounded-[6px] cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
-                    backgroundColor: pickedFolderIds.length > 0 ? "#000" : "#e5e5e5",
+                    background: pickedFolderIds.length > 0 ? "#000" : "#ebebeb",
                     color: pickedFolderIds.length > 0 ? "#fff" : "#999",
+                    border: "none",
                   }}
                 >
                   담기{pickedFolderIds.length > 0 ? ` (${pickedFolderIds.length})` : ""}
@@ -294,13 +440,14 @@ export default function ProductDetailPanel({ product, onAddToCart, showCartButto
         </div>
       </div>
 
-      {/* Toast — 폴더 담기 등 패널 내부 알림 */}
+      {/* ── 토스트 ── */}
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 px-4 py-2.5 bg-[#1a1a1a] text-white text-[13px] font-medium"
-          style={{ borderRadius: "10px" }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 text-white text-[13px] font-medium"
+          style={{ background: "#1a1a1a", borderRadius: "10px", padding: "10px 16px" }}
         >
-          <Check size={14} strokeWidth={2} />{toast}
+          <Check size={14} strokeWidth={2} />
+          {toast}
         </div>
       )}
     </div>

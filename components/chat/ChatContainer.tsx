@@ -793,6 +793,9 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   // 3-DB 검색 상태
   const [searchPhase, setSearchPhase] = useState<"idle" | "analyzing" | "searching" | "results">("idle");
+  // 검색 완료 · 필터 제출 후 카드 시퀀스 내 인라인 AI 메시지 (messages 배열 대신 위치 고정)
+  const [searchCompletionMsg, setSearchCompletionMsg] = useState<string | null>(null);
+  const [filterCompletionMsg, setFilterCompletionMsg] = useState<string | null>(null);
   const [searchFlowPhase, setSearchFlowPhase] = useState<SearchFlowPhase>("idle");
   const [intentText, setIntentText] = useState<string | null>(null);
   const [dbSteps, setDbSteps] = useState<DbSearchStep[]>([]);
@@ -1131,6 +1134,8 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     setLastScenario(scenario);
     setSearchPhase("searching");
     setSearchFlowPhase("step1_progress");
+    setSearchCompletionMsg(null);
+    setFilterCompletionMsg(null);
 
     const initial: DbSearchStep[] = [
       { db: "에어서플라이 상품 DB", icon: <Database size={12} strokeWidth={2} />, color: "#6366f1", status: "waiting" },
@@ -1208,6 +1213,27 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
         setTimeout(() => {
           setSearchFlowPhase("step2_filter");
+
+          // 검색 완료 — 시나리오 데이터 기반 AI 메시지
+          const topProduct =
+            scenario.products.find((p) => (p as { isRecommended?: boolean }).isRecommended) ??
+            scenario.products[0];
+          if (topProduct) {
+            const savings = (topProduct as { savingsPercent?: number }).savingsPercent;
+            const purchaseCount = (topProduct as { purchaseCount?: number }).purchaseCount;
+            const savingsLine = savings ? ` (정가 대비 ${savings}% 절감)` : "";
+            const purchaseLine =
+              purchaseCount && purchaseCount > 0
+                ? `\n사내·동종업계 **${purchaseCount}회** 구매 이력이 있는 검증된 모델이에요.`
+                : "";
+
+            setSearchCompletionMsg(
+              `총 **${combinedProducts.length}개** 상품을 찾았어요.\n\n` +
+              `**1순위 추천: ${topProduct.name}**${savingsLine} — **${topProduct.price.toLocaleString()}원**\n` +
+              `${topProduct.aiNote ?? ""}${purchaseLine}\n\n` +
+              `바로 이걸로 하시려면 "그걸로 해줘"라고 말씀해주세요. 아래 조건을 더 좁혀보셔도 돼요.`
+            );
+          }
         }, 500);
       }, 400);
     }, 3400);
@@ -1279,7 +1305,9 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     image: "",
     description: product.aiNote ?? "",
     specs: product.scrapedSpecs ?? {},
-    options: product.scrapedOptions ?? product.options ?? getDefaultProductOptions(product.category, product.name),
+    options: (product.scrapedOptions ?? product.options ?? getDefaultProductOptions(product.category, product.name)).map(
+      (o: string) => ({ name: o, price: product.price })
+    ),
     inStock: true,
     source: product.platform ?? (product.source === "internal" ? "자체 추천" : "외부마켓"),
   }), []);
@@ -1324,11 +1352,29 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   }, [updateMeta]);
 
   const handleFilterSubmit = useCallback((filter: FilterState) => {
+    const filtered = applyFilterToProducts(recommendedProducts, filter);
     setActiveFilter(filter);
-    setRecommendedProducts((prev) => applyFilterToProducts(prev, filter));
+    setRecommendedProducts(filtered);
     setSearchFlowPhase("step3_results");
-    addAI("조건을 반영해서 상위 추천 결과를 다시 정렬했어요. 카드에서 상세, 최저가, 담기 액션을 바로 이어서 진행할 수 있어요.", "주문");
-  }, [addAI]);
+
+    const top = filtered[0];
+    if (top) {
+      const deliveryDays = (top as unknown as { deliveryDays?: number }).deliveryDays;
+      const purchaseCount = (top as unknown as { purchaseCount?: number }).purchaseCount;
+      const deliveryLine = deliveryDays ? `배송비 무료 · ${deliveryDays}일 내 도착.` : "";
+      const purchaseLine =
+        purchaseCount && purchaseCount > 0 ? ` 사내 **${purchaseCount}회** 구매 이력.` : "";
+
+      setFilterCompletionMsg(
+        `**${top.name}** — ${top.price.toLocaleString()}원을 1순위로 추천드려요.\n\n` +
+        `${top.aiReason}${purchaseLine}\n` +
+        (deliveryLine ? `${deliveryLine}\n\n` : "\n") +
+        `수량을 말씀해주시면 바로 장바구니에 담아드릴게요.`
+      );
+    } else {
+      setFilterCompletionMsg("조건에 맞는 상품을 정렬했어요. 카드에서 상세 정보를 확인하고 수량을 말씀해주세요.");
+    }
+  }, [addAI, recommendedProducts]);
 
   const handleRecommendedSelect = useCallback((product: RecommendedProduct) => {
     const sourceProduct = [...sourcedProducts, ...candidateProducts].find((item) => item.id === product.id);
@@ -1347,7 +1393,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       image: "",
       description: product.aiReason,
       specs: product.specs ?? {},
-      options: getDefaultProductOptions(product.category, product.name),
+      options: getDefaultProductOptions(product.category, product.name).map((name: string) => ({ name, price: product.price })),
       inStock: true,
       aiReason: product.aiReason,
       aiTags: product.aiTags,
@@ -2267,6 +2313,18 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
             </div>
           )}
 
+          {searchCompletionMsg && (searchFlowPhase === "step2_filter" || searchFlowPhase === "step3_results") && (
+            <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.3s ease-out" }}>
+              <ChatBubble message={{
+                id: "search-completion",
+                role: "assistant",
+                content: searchCompletionMsg,
+                timestamp: new Date().toISOString(),
+                agent: "주문",
+              }} />
+            </div>
+          )}
+
           {searchFlowPhase === "step2_filter" && recommendedProducts.length > 0 && (
             <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.35s ease-out" }}>
               <ProductFilterCard
@@ -2291,6 +2349,18 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
                   scrapingProduct={scrapingProduct}
                 />
               </div>
+            </div>
+          )}
+
+          {filterCompletionMsg && searchFlowPhase === "step3_results" && (
+            <div className="flex justify-start mb-1" style={{ animation: "fade-in 0.3s ease-out" }}>
+              <ChatBubble message={{
+                id: "filter-completion",
+                role: "assistant",
+                content: filterCompletionMsg,
+                timestamp: new Date().toISOString(),
+                agent: "주문",
+              }} />
             </div>
           )}
 
