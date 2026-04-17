@@ -646,7 +646,16 @@ export function validateDemoScenarios() {
 
   searchScenarios.forEach((scenario) => {
     const scenarioLabel = scenario.keywords[0] ?? "unknown";
-    [...scenario.products, ...scenario.candidates].forEach((product) => {
+    const scenarioProducts = [...scenario.products, ...scenario.candidates];
+
+    if (scenarioProducts.length < 4) {
+      warnings.push(`[${scenarioLabel}] 추천 후보 4개 미만: ${scenarioProducts.length}개`);
+    }
+    if (!scenarioProducts.some((product) => product.source === "external")) {
+      warnings.push(`[${scenarioLabel}] external 상품 누락`);
+    }
+
+    scenarioProducts.forEach((product) => {
       if (!product.aiNote) warnings.push(`[${scenarioLabel}] aiNote 누락: ${product.name}`);
       if (product.source === "internal" && (!product.options || product.options.length === 0)) {
         warnings.push(`[${scenarioLabel}] internal options 누락: ${product.name}`);

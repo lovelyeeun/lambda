@@ -307,6 +307,59 @@ function getDefaultProductOptions(category: string, productName?: string): strin
   return ["기본형", "옵션 2", "옵션 3"];
 }
 
+const TARGET_RECOMMENDATION_COUNT = 4;
+
+function dedupeProductsById<T extends { id: string }>(items: T[]): T[] {
+  return Array.from(new Map(items.map((item) => [item.id, item])).values());
+}
+
+function ensureRecommendationMix<T extends { id: string; source: "internal" | "external" }>(
+  preferred: T[],
+  fallback: T[],
+  targetCount = TARGET_RECOMMENDATION_COUNT,
+): T[] {
+  const preferredUnique = dedupeProductsById(preferred);
+  const fallbackUnique = dedupeProductsById(fallback);
+  const selected = [...preferredUnique.slice(0, targetCount)];
+
+  for (const candidate of fallbackUnique) {
+    if (selected.length >= targetCount) break;
+    if (!selected.some((item) => item.id === candidate.id)) {
+      selected.push(candidate);
+    }
+  }
+
+  const hasExternal = selected.some((item) => item.source === "external");
+  if (!hasExternal) {
+    const externalCandidate = [...preferredUnique, ...fallbackUnique].find(
+      (item) => item.source === "external" && !selected.some((picked) => picked.id === item.id),
+    );
+
+    if (externalCandidate) {
+      if (selected.length < targetCount) {
+        selected.push(externalCandidate);
+      } else {
+        const replaceIndex = [...selected]
+          .reverse()
+          .findIndex((item) => item.source === "internal");
+        const normalizedIndex = replaceIndex >= 0 ? selected.length - 1 - replaceIndex : selected.length - 1;
+        selected[normalizedIndex] = externalCandidate;
+      }
+    }
+  }
+
+  return selected.slice(0, targetCount);
+}
+
+function findVisibleExternalProduct(
+  recommendations: RecommendedProduct[],
+  sourceProducts: SourcedProduct[],
+): SourcedProduct | null {
+  const externalRecommendation = recommendations.find((product) => product.source === "external");
+  if (!externalRecommendation) return null;
+  return sourceProducts.find((product) => product.id === externalRecommendation.id) ?? null;
+}
+
 function toRecommendedProducts(items: SourcedProduct[]): RecommendedProduct[] {
   const primaryCategory = items[0]?.category ?? "";
   const companyProfile = getCompanyPurchaseProfile(primaryCategory);
@@ -331,10 +384,15 @@ function toRecommendedProducts(items: SourcedProduct[]): RecommendedProduct[] {
 
       return { item, score, isPreferredBrand, priceAdvantage };
     })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
+    .sort((a, b) => b.score - a.score);
+  const selectedRankedItems = ensureRecommendationMix(
+    rankedItems.map((rankedItem) => rankedItem.item),
+    rankedItems.map((rankedItem) => rankedItem.item),
+  );
 
-  return rankedItems.map(({ item, isPreferredBrand, priceAdvantage }, idx) => ({
+  return selectedRankedItems.map((selectedItem, idx) => {
+    const { item, isPreferredBrand, priceAdvantage } = rankedItems.find((rankedItem) => rankedItem.item.id === selectedItem.id)!;
+    return ({
     id: item.id,
     rank: (idx + 1) as RecommendedProduct["rank"],
     name: item.name,
@@ -373,10 +431,15 @@ function toRecommendedProducts(items: SourcedProduct[]): RecommendedProduct[] {
             구성: idx < 2 ? "올인원" : "단품",
           }) as Record<string, string>,
     externalPrices: normalizeExternalPrices(item),
-  }));
+  });
+  });
 }
 
-function applyFilterToProducts(products: RecommendedProduct[], filter: FilterState): RecommendedProduct[] {
+function applyFilterToProducts(
+  products: RecommendedProduct[],
+  filter: FilterState,
+  fallbackProducts: RecommendedProduct[] = products,
+): RecommendedProduct[] {
   const prices = products.map((product) => product.price);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
@@ -391,7 +454,10 @@ function applyFilterToProducts(products: RecommendedProduct[], filter: FilterSta
     return product.price > budgetMax && product.price < premiumMin;
   });
   const base = byPrice.length > 0 ? byPrice : byBrand.length > 0 ? byBrand : products;
-  return base.slice(0, 5).map((product, idx) => ({ ...product, rank: (idx + 1) as RecommendedProduct["rank"] }));
+  return ensureRecommendationMix(base, fallbackProducts).map((product, idx) => ({
+    ...product,
+    rank: (idx + 1) as RecommendedProduct["rank"],
+  }));
 }
 
 /* ─── 재검색 키워드 감지 ─── */
@@ -804,6 +870,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   const [scrapingProduct, setScrapingProduct] = useState<SourcedProduct | null>(null);
   const [candidateProducts, setCandidateProducts] = useState<SourcedProduct[]>([]);
   const [summaryData, setSummaryData] = useState<SearchResultSummaryData | null>(null);
+  const [recommendationPool, setRecommendationPool] = useState<RecommendedProduct[]>([]);
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterState | null>(null);
   const [priceCompareTarget, setPriceCompareTarget] = useState<RecommendedProduct | null>(null);
@@ -811,6 +878,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   // 검색 기록 (작업 현황 패널에 송출)
   const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([]);
+  const autoScrapeProductIdRef = useRef<string | null>(null);
 
   // Purchase flow state (기존)
   const [flowActive, setFlowActive] = useState(false);
@@ -1108,11 +1176,13 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
   useEffect(() => {
     if (searchPhase !== "results" || sourcedProducts.length === 0) return;
-    if (summaryData && recommendedProducts.length > 0) return;
+    if (summaryData && recommendationPool.length > 0 && recommendedProducts.length > 0) return;
 
+    const nextRecommendations = toRecommendedProducts([...sourcedProducts, ...candidateProducts]);
     setSummaryData(buildSummaryData([...sourcedProducts, ...candidateProducts]));
-    setRecommendedProducts(toRecommendedProducts([...sourcedProducts, ...candidateProducts]));
-  }, [searchPhase, sourcedProducts, candidateProducts, summaryData, recommendedProducts]);
+    setRecommendationPool(nextRecommendations);
+    setRecommendedProducts(nextRecommendations);
+  }, [searchPhase, sourcedProducts, candidateProducts, summaryData, recommendationPool, recommendedProducts]);
 
   const addMsg = useCallback((msg: Omit<ChatMessage, "id" | "timestamp">) => {
     setMessages((prev) => [
@@ -1136,6 +1206,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     setSearchFlowPhase("step1_progress");
     setSearchCompletionMsg(null);
     setFilterCompletionMsg(null);
+    setRecommendationPool([]);
 
     const initial: DbSearchStep[] = [
       { db: "에어서플라이 상품 DB", icon: <Database size={12} strokeWidth={2} />, color: "#6366f1", status: "waiting" },
@@ -1168,33 +1239,35 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         i === 2 ? { ...s, status: "done", resultCount: db3Count } : s
       ));
 
-      // API 상품 백그라운드 프리스크래핑 시작
-      const apiProduct = scenario.products.find((p) => p.source === "external");
-      if (apiProduct) {
-        setScrapingProduct({
-          ...apiProduct,
-          scrapingStatus: "scraping" as ScrapingStatus,
-          scrapingProgress: 0,
-        });
-        runBackgroundScrape();
-      }
-
       setTimeout(() => {
         const combinedProducts = [...scenario.products, ...(scenario.candidates ?? [])];
         const summary = buildSummaryData(combinedProducts);
         const recommended = toRecommendedProducts(combinedProducts);
+        const visibleExternalProduct = findVisibleExternalProduct(recommended, combinedProducts);
 
         setSourcedProducts(scenario.products);
         setCandidateProducts(scenario.candidates ?? []);
         setSearchPhase("results");
         setSearchFlowPhase("step1_done");
         setSummaryData(summary);
+        setRecommendationPool(recommended);
         setRecommendedProducts(recommended);
         setActiveFilter({
           priceTier: detectDefaultPriceTier(combinedProducts),
-          brands: recommended.length > 0 ? [recommended[0].brand] : [],
+          brands: [],
           options: [],
         });
+
+        if (visibleExternalProduct) {
+          setScrapingProduct({
+            ...visibleExternalProduct,
+            scrapingStatus: "scraping" as ScrapingStatus,
+            scrapingProgress: 0,
+          });
+          runBackgroundScrape();
+        } else {
+          setScrapingProduct(null);
+        }
 
         // 검색 기록 추가
         const allFound = combinedProducts;
@@ -1271,6 +1344,39 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     });
   }, []);
 
+  useEffect(() => {
+    if (!scrapingProduct) {
+      autoScrapeProductIdRef.current = null;
+      return;
+    }
+    if (!scrapingProduct || scrapingProduct.scrapingStatus !== "scraping") return;
+    if (autoScrapeProductIdRef.current === scrapingProduct.id) return;
+    autoScrapeProductIdRef.current = scrapingProduct.id;
+    runBackgroundScrape();
+  }, [scrapingProduct, runBackgroundScrape]);
+
+  useEffect(() => {
+    if (recommendedProducts.length === 0) {
+      setScrapingProduct(null);
+      return;
+    }
+
+    const visibleExternalProduct = findVisibleExternalProduct(
+      recommendedProducts,
+      [...sourcedProducts, ...candidateProducts],
+    );
+
+    setScrapingProduct((prev) => {
+      if (!visibleExternalProduct) return null;
+      if (prev?.id === visibleExternalProduct.id) return prev;
+      return {
+        ...visibleExternalProduct,
+        scrapingStatus: "scraping" as ScrapingStatus,
+        scrapingProgress: 0,
+      };
+    });
+  }, [recommendedProducts, sourcedProducts, candidateProducts]);
+
   /* ── 재검색 ── */
 
   const handleResearch = useCallback((condition: ResearchCondition) => {
@@ -1281,14 +1387,20 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
 
     setTimeout(() => {
       setIsTyping(false);
-      const reordered = condition.useCandidates
+      const rawReordered = condition.useCandidates
         ? condition.modifier(lastScenario.products, lastScenario.candidates ?? [])
         : condition.modifier(lastScenario.products);
+      const reordered = ensureRecommendationMix(
+        rawReordered,
+        [...lastScenario.products, ...(lastScenario.candidates ?? [])],
+      );
+      const nextRecommendations = toRecommendedProducts(reordered);
       setSourcedProducts(reordered);
       setSearchPhase("results");
       setSearchFlowPhase("step3_results");
       setSummaryData(buildSummaryData(reordered));
-      setRecommendedProducts(toRecommendedProducts(reordered));
+      setRecommendationPool(nextRecommendations);
+      setRecommendedProducts(nextRecommendations);
       addAI(condition.response + `\n\n**적용 조건:** ${condition.label}`, "주문");
     }, 1200);
   }, [lastScenario, addAI]);
@@ -1329,7 +1441,6 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
           scrapingStatus: "scraping" as ScrapingStatus,
           scrapingProgress: 0,
         });
-        runBackgroundScrape();
         addAI(`**${product.name}** — 외부 마켓 상품이라 상세 정보를 수집할게요.\n\n잠시만 기다려주세요. 다른 질문이 있으시면 먼저 진행하셔도 됩니다.`, "주문");
       }
     } else {
@@ -1352,10 +1463,21 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
   }, [updateMeta]);
 
   const handleFilterSubmit = useCallback((filter: FilterState) => {
-    const filtered = applyFilterToProducts(recommendedProducts, filter);
+    const filtered = applyFilterToProducts(recommendationPool, filter, recommendationPool);
     setActiveFilter(filter);
     setRecommendedProducts(filtered);
     setSearchFlowPhase("step3_results");
+
+    const visibleExternalProduct = findVisibleExternalProduct(filtered, [...sourcedProducts, ...candidateProducts]);
+    setScrapingProduct((prev) => {
+      if (!visibleExternalProduct) return null;
+      if (prev?.id === visibleExternalProduct.id) return prev;
+      return {
+        ...visibleExternalProduct,
+        scrapingStatus: "scraping" as ScrapingStatus,
+        scrapingProgress: 0,
+      };
+    });
 
     const top = filtered[0];
     if (top) {
@@ -1374,7 +1496,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     } else {
       setFilterCompletionMsg("조건에 맞는 상품을 정렬했어요. 카드에서 상세 정보를 확인하고 수량을 말씀해주세요.");
     }
-  }, [addAI, recommendedProducts]);
+  }, [recommendationPool, sourcedProducts, candidateProducts]);
 
   const handleRecommendedSelect = useCallback((product: RecommendedProduct) => {
     const sourceProduct = [...sourcedProducts, ...candidateProducts].find((item) => item.id === product.id);
@@ -1752,6 +1874,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       setSearchPhase("idle");
       setSearchFlowPhase("idle");
       setSummaryData(null);
+      setRecommendationPool([]);
       setRecommendedProducts([]);
       setActiveFilter(null);
       panelSuppressedRef.current = true;
@@ -1778,6 +1901,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       setSearchPhase("idle");
       setSearchFlowPhase("idle");
       setSummaryData(null);
+      setRecommendationPool([]);
       setRecommendedProducts([]);
       setActiveFilter(null);
       panelSuppressedRef.current = true;
@@ -1906,6 +2030,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
       setCandidateProducts([]);
       setScrapingProduct(null);
       setSummaryData(null);
+      setRecommendationPool([]);
       setRecommendedProducts([]);
       setActiveFilter(null);
 
@@ -1961,11 +2086,13 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
         setCandidateProducts([]);
         setSearchPhase("results");
         setSearchFlowPhase("step2_filter");
+        const nextRecommendations = toRecommendedProducts(sourced);
         setSummaryData(buildSummaryData(sourced));
-        setRecommendedProducts(toRecommendedProducts(sourced));
+        setRecommendationPool(nextRecommendations);
+        setRecommendedProducts(nextRecommendations);
         setActiveFilter({
           priceTier: detectDefaultPriceTier(sourced),
-          brands: sourced[0] ? [sourced[0].brand] : [],
+          brands: [],
           options: [],
         });
 
@@ -2060,7 +2187,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     : [];
 
   const filterBrands = Array.from(
-    new Map(recommendedProducts.map((product) => [product.brand, { name: product.brand }])).values(),
+    new Map(recommendationPool.map((product) => [product.brand, { name: product.brand }])).values(),
   );
   const priceTierOptions = getPriceTierOptions([...sourcedProducts, ...candidateProducts]);
 
@@ -2068,7 +2195,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     {
       groupLabel: "형태",
       options: Array.from(new Set(
-        recommendedProducts.map((product) =>
+        recommendationPool.map((product) =>
           product.category === "전자기기" ? (product.specs?.화면 ?? "표준형") :
           product.category === "가구" ? (product.specs?.소재 ?? "표준형") :
           (product.specs?.구성 ?? "표준형"),
@@ -2077,7 +2204,7 @@ export default function ChatContainer({ initialChatId, initialQuery }: ChatConta
     },
     {
       groupLabel: "유형",
-      options: Array.from(new Set(recommendedProducts.map((product) => product.aiTags[0] ?? "추천"))).slice(0, 4),
+      options: Array.from(new Set(recommendationPool.map((product) => product.aiTags[0] ?? "추천"))).slice(0, 4),
     },
   ].filter((group) => group.options.length > 0);
 
